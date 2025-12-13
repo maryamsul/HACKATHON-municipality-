@@ -1,5 +1,5 @@
 import { ArrowLeft } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useIssues } from "@/context/IssuesContext";
 import IssueCard from "@/components/IssueCard";
 import BottomNav from "@/components/BottomNav";
@@ -7,6 +7,26 @@ import BottomNav from "@/components/BottomNav";
 const AllIssues = () => {
   const navigate = useNavigate();
   const { issues } = useIssues();
+  const [searchParams] = useSearchParams();
+
+  const statusFilter = searchParams.get("status") || "all";
+  const categoryFilter = searchParams.get("category") || "all";
+  const sortBy = searchParams.get("sort") || "newest";
+
+  const filteredIssues = issues
+    .filter((issue) => {
+      const matchesStatus =
+        statusFilter === "all" || issue.status === statusFilter;
+      const matchesCategory =
+        categoryFilter === "all" || issue.category === categoryFilter;
+      return matchesStatus && matchesCategory;
+    })
+    .sort((a, b) => {
+      if (sortBy === "newest") {
+        return new Date(b.date).getTime() - new Date(a.date).getTime();
+      }
+      return new Date(a.date).getTime() - new Date(b.date).getTime();
+    });
 
   return (
     <div className="min-h-screen bg-background pb-24">
@@ -24,10 +44,10 @@ const AllIssues = () => {
 
       <main className="p-4">
         <p className="text-sm text-muted-foreground mb-4">
-          {issues.length} issues reported
+          {filteredIssues.length} issues reported
         </p>
         <div className="space-y-3">
-          {issues.map((issue) => (
+          {filteredIssues.map((issue) => (
             <IssueCard key={issue.id} issue={issue} />
           ))}
         </div>
