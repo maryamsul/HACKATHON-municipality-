@@ -1,7 +1,7 @@
-import { Search, SlidersHorizontal } from "lucide-react";
+import { Search, SlidersHorizontal, User, LogOut } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useState, useRef, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import {
   Popover,
   PopoverContent,
@@ -11,7 +11,8 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Button } from "@/components/ui/button";
 import { useIssues } from "@/context/IssuesContext";
-
+import { useAuth } from "@/context/AuthContext";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 interface HeaderProps {
   onSearch?: (query: string) => void;
   onFilter?: (filters: FilterOptions) => void;
@@ -34,7 +35,12 @@ const Header = ({ onFilter, showSearch = true }: HeaderProps) => {
   });
   const navigate = useNavigate();
   const { issues } = useIssues();
+  const { user, isAuthenticated, signOut } = useAuth();
   const searchRef = useRef<HTMLDivElement>(null);
+
+  const getInitials = (name: string) => {
+    return name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2);
+  };
 
   const filteredSuggestions = searchQuery.trim()
     ? issues.filter(
@@ -80,6 +86,49 @@ const Header = ({ onFilter, showSearch = true }: HeaderProps) => {
           <h1 className="text-2xl font-bold">CityReport</h1>
           <p className="text-blue-100 text-sm">Make your city better</p>
         </div>
+        
+        {isAuthenticated && user ? (
+          <Popover>
+            <PopoverTrigger asChild>
+              <button className="flex items-center gap-2">
+                <Avatar className="h-10 w-10 border-2 border-white/30 cursor-pointer hover:border-white/60 transition-colors">
+                  <AvatarFallback className="bg-white/20 text-white font-semibold">
+                    {getInitials(user.fullName)}
+                  </AvatarFallback>
+                </Avatar>
+              </button>
+            </PopoverTrigger>
+            <PopoverContent className="w-56" align="end">
+              <div className="space-y-3">
+                <div className="border-b border-border pb-3">
+                  <p className="font-semibold text-foreground">{user.fullName}</p>
+                  <p className="text-sm text-muted-foreground">{user.email}</p>
+                  <span className="text-xs px-2 py-0.5 bg-primary/10 text-primary rounded-full capitalize">
+                    {user.role}
+                  </span>
+                </div>
+                <Button
+                  variant="ghost"
+                  className="w-full justify-start text-destructive hover:text-destructive hover:bg-destructive/10"
+                  onClick={() => {
+                    signOut();
+                    navigate("/auth");
+                  }}
+                >
+                  <LogOut className="h-4 w-4 mr-2" />
+                  Sign Out
+                </Button>
+              </div>
+            </PopoverContent>
+          </Popover>
+        ) : (
+          <Link to="/auth">
+            <Button variant="secondary" size="sm" className="bg-white/20 hover:bg-white/30 text-white border-0">
+              <User className="h-4 w-4 mr-2" />
+              Sign In
+            </Button>
+          </Link>
+        )}
       </div>
       
       {showSearch && (
