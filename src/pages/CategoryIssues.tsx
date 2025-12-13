@@ -1,15 +1,16 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
-import { mockIssues } from "@/data/mockIssues";
+import { useIssues } from "@/context/IssuesContext";
 import IssueCard from "@/components/IssueCard";
 import BottomNav from "@/components/BottomNav";
 
 const CategoryIssues = () => {
   const { category } = useParams<{ category: string }>();
   const navigate = useNavigate();
+  const { issues } = useIssues();
 
   const decodedCategory = decodeURIComponent(category || "");
-  const filteredIssues = mockIssues.filter(
+  const filteredIssues = issues.filter(
     (issue) => issue.category.toLowerCase() === decodedCategory.toLowerCase()
   );
 

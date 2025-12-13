@@ -2,13 +2,16 @@ import Header from "@/components/Header";
 import StatsCard from "@/components/StatsCard";
 import CategoryItem from "@/components/CategoryItem";
 import BottomNav from "@/components/BottomNav";
+import { useIssues } from "@/context/IssuesContext";
 import { Circle, Trash2, Droplets, Lightbulb, TrafficCone, FileText } from "lucide-react";
 
 const Index = () => {
+  const { issues } = useIssues();
+
   const stats = [
-    { count: 12, label: "Pending", color: "orange" as const },
-    { count: 8, label: "In Progress", color: "blue" as const },
-    { count: 45, label: "Resolved", color: "green" as const },
+    { count: issues.filter(i => i.status === "pending").length, label: "Pending", color: "orange" as const },
+    { count: issues.filter(i => i.status === "in-progress").length, label: "In Progress", color: "blue" as const },
+    { count: issues.filter(i => i.status === "resolved").length, label: "Resolved", color: "green" as const },
   ];
 
   const categories = [
