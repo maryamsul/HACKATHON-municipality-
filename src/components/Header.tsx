@@ -43,12 +43,21 @@ const Header = ({ onFilter, showSearch = true }: HeaderProps) => {
   };
 
   const filteredSuggestions = searchQuery.trim()
-    ? issues.filter(
-        (issue) =>
+    ? issues.filter((issue) => {
+        // Text search
+        const matchesSearch =
           issue.location.toLowerCase().includes(searchQuery.toLowerCase()) ||
           issue.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          issue.description.toLowerCase().includes(searchQuery.toLowerCase())
-      )
+          issue.description.toLowerCase().includes(searchQuery.toLowerCase());
+
+        // Filter conditions
+        const matchesStatus =
+          filters.status === "all" || issue.status === filters.status;
+        const matchesCategory =
+          filters.category === "all" || issue.category === filters.category;
+
+        return matchesSearch && matchesStatus && matchesCategory;
+      })
     : [];
 
   useEffect(() => {
