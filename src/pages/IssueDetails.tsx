@@ -1,6 +1,6 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, MapPin, Calendar, Clock } from "lucide-react";
-import { mockIssues } from "@/data/mockIssues";
+import { useIssues } from "@/context/IssuesContext";
 import BottomNav from "@/components/BottomNav";
 
 const statusStyles = {
@@ -24,8 +24,9 @@ const statusLabels = {
 const IssueDetails = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { issues } = useIssues();
 
-  const issue = mockIssues.find((i) => i.id === id);
+  const issue = issues.find((i) => i.id === id);
 
   if (!issue) {
     return (
