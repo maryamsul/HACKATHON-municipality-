@@ -42,22 +42,33 @@ const Header = ({ onFilter, showSearch = true }: HeaderProps) => {
     return name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2);
   };
 
-  const filteredSuggestions = searchQuery.trim()
-    ? issues.filter((issue) => {
-        // Text search
-        const matchesSearch =
-          issue.location.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          issue.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          issue.description.toLowerCase().includes(searchQuery.toLowerCase());
+  const hasActiveFilters = filters.status !== "all" || filters.category !== "all";
+  const hasSearchQuery = searchQuery.trim().length > 0;
 
-        // Filter conditions
-        const matchesStatus =
-          filters.status === "all" || issue.status === filters.status;
-        const matchesCategory =
-          filters.category === "all" || issue.category === filters.category;
+  const filteredSuggestions = (hasSearchQuery || hasActiveFilters)
+    ? issues
+        .filter((issue) => {
+          // Text search (only apply if there's a search query)
+          const matchesSearch = !hasSearchQuery ||
+            issue.location.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            issue.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            issue.description.toLowerCase().includes(searchQuery.toLowerCase());
 
-        return matchesSearch && matchesStatus && matchesCategory;
-      })
+          // Filter conditions
+          const matchesStatus =
+            filters.status === "all" || issue.status === filters.status;
+          const matchesCategory =
+            filters.category === "all" || issue.category === filters.category;
+
+          return matchesSearch && matchesStatus && matchesCategory;
+        })
+        .sort((a, b) => {
+          if (filters.sortBy === "newest") {
+            return new Date(b.date).getTime() - new Date(a.date).getTime();
+          } else {
+            return new Date(a.date).getTime() - new Date(b.date).getTime();
+          }
+        })
     : [];
 
   useEffect(() => {
@@ -192,7 +203,7 @@ const Header = ({ onFilter, showSearch = true }: HeaderProps) => {
               </div>
             )}
             
-            {showSuggestions && searchQuery.trim() && filteredSuggestions.length === 0 && (
+            {showSuggestions && (hasSearchQuery || hasActiveFilters) && filteredSuggestions.length === 0 && (
               <div className="absolute top-full left-0 right-0 mt-2 bg-card rounded-xl shadow-lg border border-border p-4 z-50">
                 <p className="text-sm text-muted-foreground text-center">
                   No issues found
@@ -286,7 +297,7 @@ const Header = ({ onFilter, showSearch = true }: HeaderProps) => {
                   </RadioGroup>
                 </div>
 
-                <Button onClick={handleApplyFilters} className="w-full">
+                <Button onClick={() => { handleApplyFilters(); setShowSuggestions(true); }} className="w-full">
                   Apply Filters
                 </Button>
               </div>
