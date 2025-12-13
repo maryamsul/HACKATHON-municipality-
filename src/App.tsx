@@ -9,6 +9,8 @@ import CategoryIssues from "./pages/CategoryIssues";
 import IssueDetails from "./pages/IssueDetails";
 import AllIssues from "./pages/AllIssues";
 import AddIssue from "./pages/AddIssue";
+import SearchResults from "./pages/SearchResults";
+import Notifications from "./pages/Notifications";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -24,6 +26,8 @@ const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/issues" element={<AllIssues />} />
             <Route path="/add" element={<AddIssue />} />
+            <Route path="/search" element={<SearchResults />} />
+            <Route path="/notifications" element={<Notifications />} />
             <Route path="/category/:category" element={<CategoryIssues />} />
             <Route path="/issue/:id" element={<IssueDetails />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
