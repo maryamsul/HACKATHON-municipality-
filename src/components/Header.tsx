@@ -1,6 +1,6 @@
 import { Search, SlidersHorizontal } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Popover,
@@ -10,6 +10,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Button } from "@/components/ui/button";
+import { useIssues } from "@/context/IssuesContext";
 
 interface HeaderProps {
   onSearch?: (query: string) => void;
@@ -23,22 +24,41 @@ export interface FilterOptions {
   sortBy: string;
 }
 
-const Header = ({ onSearch, onFilter, showSearch = true }: HeaderProps) => {
+const Header = ({ onFilter, showSearch = true }: HeaderProps) => {
   const [searchQuery, setSearchQuery] = useState("");
+  const [showSuggestions, setShowSuggestions] = useState(false);
   const [filters, setFilters] = useState<FilterOptions>({
     status: "all",
     category: "all",
     sortBy: "newest",
   });
   const navigate = useNavigate();
+  const { issues } = useIssues();
+  const searchRef = useRef<HTMLDivElement>(null);
 
-  const handleSearch = (value: string) => {
-    setSearchQuery(value);
-    if (onSearch) {
-      onSearch(value);
-    } else if (value.trim()) {
-      navigate(`/search?q=${encodeURIComponent(value)}`);
-    }
+  const filteredSuggestions = searchQuery.trim()
+    ? issues.filter(
+        (issue) =>
+          issue.location.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          issue.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          issue.description.toLowerCase().includes(searchQuery.toLowerCase())
+      )
+    : [];
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
+        setShowSuggestions(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const handleSelectIssue = (issueId: string) => {
+    setShowSuggestions(false);
+    setSearchQuery("");
+    navigate(`/issue/${issueId}`);
   };
 
   const handleApplyFilters = () => {
@@ -63,15 +83,64 @@ const Header = ({ onSearch, onFilter, showSearch = true }: HeaderProps) => {
       </div>
       
       {showSearch && (
-        <div className="relative flex items-center gap-3">
+        <div className="relative flex items-center gap-3" ref={searchRef}>
           <div className="flex-1 relative">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground z-10" />
             <Input 
               placeholder="Search issues..."
               value={searchQuery}
-              onChange={(e) => handleSearch(e.target.value)}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                setShowSuggestions(true);
+              }}
+              onFocus={() => setShowSuggestions(true)}
               className="w-full pl-12 pr-4 py-3 bg-white text-foreground rounded-xl border-0 shadow-lg"
             />
+            
+            {showSuggestions && filteredSuggestions.length > 0 && (
+              <div className="absolute top-full left-0 right-0 mt-2 bg-card rounded-xl shadow-lg border border-border overflow-hidden z-50 max-h-64 overflow-y-auto">
+                {filteredSuggestions.map((issue) => (
+                  <button
+                    key={issue.id}
+                    onClick={() => handleSelectIssue(issue.id)}
+                    className="w-full px-4 py-3 text-left hover:bg-muted transition-colors flex items-center gap-3 border-b border-border last:border-b-0"
+                  >
+                    <img
+                      src={issue.thumbnail}
+                      alt={issue.category}
+                      className="w-10 h-10 rounded-lg object-cover flex-shrink-0"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-foreground text-sm truncate">
+                        {issue.category}
+                      </p>
+                      <p className="text-xs text-muted-foreground truncate">
+                        {issue.location}
+                      </p>
+                    </div>
+                    <span
+                      className={`text-xs px-2 py-1 rounded-full flex-shrink-0 ${
+                        issue.status === "pending"
+                          ? "bg-orange-100 text-orange-700"
+                          : issue.status === "in-progress"
+                          ? "bg-blue-100 text-blue-700"
+                          : "bg-green-100 text-green-700"
+                      }`}
+                    >
+                      {issue.status}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
+            
+            {showSuggestions && searchQuery.trim() && filteredSuggestions.length === 0 && (
+              <div className="absolute top-full left-0 right-0 mt-2 bg-card rounded-xl shadow-lg border border-border p-4 z-50">
+                <p className="text-sm text-muted-foreground text-center">
+                  No issues found
+                </p>
+              </div>
+            )}
           </div>
           
           <Popover>
