@@ -1,4 +1,4 @@
-import { Search, SlidersHorizontal, User, LogOut } from "lucide-react";
+import { Search, SlidersHorizontal, User, LogOut, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useState, useRef, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { useIssues } from "@/context/IssuesContext";
 import { useAuth } from "@/context/AuthContext";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+
 interface HeaderProps {
   onSearch?: (query: string) => void;
   onFilter?: (filters: FilterOptions) => void;
@@ -28,6 +29,7 @@ export interface FilterOptions {
 const Header = ({ onFilter, showSearch = true }: HeaderProps) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [filterPopoverOpen, setFilterPopoverOpen] = useState(false);
   const [filters, setFilters] = useState<FilterOptions>({
     status: "all",
     category: "all",
@@ -44,17 +46,19 @@ const Header = ({ onFilter, showSearch = true }: HeaderProps) => {
 
   const hasActiveFilters = filters.status !== "all" || filters.category !== "all";
   const hasSearchQuery = searchQuery.trim().length > 0;
+  
+  const activeFilterCount = 
+    (filters.status !== "all" ? 1 : 0) + 
+    (filters.category !== "all" ? 1 : 0);
 
   const filteredSuggestions = (hasSearchQuery || hasActiveFilters)
     ? issues
         .filter((issue) => {
-          // Text search (only apply if there's a search query)
           const matchesSearch = !hasSearchQuery ||
             issue.location.toLowerCase().includes(searchQuery.toLowerCase()) ||
             issue.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
             issue.description.toLowerCase().includes(searchQuery.toLowerCase());
 
-          // Filter conditions
           const matchesStatus =
             filters.status === "all" || issue.status === filters.status;
           const matchesCategory =
@@ -88,15 +92,22 @@ const Header = ({ onFilter, showSearch = true }: HeaderProps) => {
   };
 
   const handleApplyFilters = () => {
-    if (onFilter) {
-      onFilter(filters);
-    } else {
-      const params = new URLSearchParams();
-      if (filters.status !== "all") params.set("status", filters.status);
-      if (filters.category !== "all") params.set("category", filters.category);
-      params.set("sort", filters.sortBy);
-      navigate(`/issues?${params.toString()}`);
-    }
+    setFilterPopoverOpen(false);
+    setShowSuggestions(true);
+  };
+
+  const handleViewAllResults = () => {
+    const params = new URLSearchParams();
+    if (filters.status !== "all") params.set("status", filters.status);
+    if (filters.category !== "all") params.set("category", filters.category);
+    params.set("sort", filters.sortBy);
+    setShowSuggestions(false);
+    navigate(`/issues?${params.toString()}`);
+  };
+
+  const handleClearFilters = () => {
+    setFilters({ status: "all", category: "all", sortBy: "newest" });
+    setShowSuggestions(false);
   };
 
   return (
@@ -166,56 +177,99 @@ const Header = ({ onFilter, showSearch = true }: HeaderProps) => {
               className="w-full pl-12 pr-4 py-3 bg-white text-foreground rounded-xl border-0 shadow-lg"
             />
             
-            {showSuggestions && filteredSuggestions.length > 0 && (
-              <div className="absolute top-full left-0 right-0 mt-2 bg-card rounded-xl shadow-lg border border-border overflow-hidden z-50 max-h-64 overflow-y-auto">
-                {filteredSuggestions.map((issue) => (
-                  <button
-                    key={issue.id}
-                    onClick={() => handleSelectIssue(issue.id)}
-                    className="w-full px-4 py-3 text-left hover:bg-muted transition-colors flex items-center gap-3 border-b border-border last:border-b-0"
-                  >
-                    <img
-                      src={issue.thumbnail}
-                      alt={issue.category}
-                      className="w-10 h-10 rounded-lg object-cover flex-shrink-0"
-                    />
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-foreground text-sm truncate">
-                        {issue.category}
-                      </p>
-                      <p className="text-xs text-muted-foreground truncate">
-                        {issue.location}
-                      </p>
+            {showSuggestions && (hasSearchQuery || hasActiveFilters) && (
+              <div className="absolute top-full left-0 right-0 mt-2 bg-card rounded-xl shadow-lg border border-border overflow-hidden z-50">
+                {/* Active filters bar */}
+                {hasActiveFilters && (
+                  <div className="px-4 py-2 bg-muted/50 border-b border-border flex items-center justify-between">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-xs text-muted-foreground">Filters:</span>
+                      {filters.status !== "all" && (
+                        <span className="text-xs px-2 py-0.5 bg-primary/10 text-primary rounded-full capitalize">
+                          {filters.status}
+                        </span>
+                      )}
+                      {filters.category !== "all" && (
+                        <span className="text-xs px-2 py-0.5 bg-primary/10 text-primary rounded-full">
+                          {filters.category}
+                        </span>
+                      )}
                     </div>
-                    <span
-                      className={`text-xs px-2 py-1 rounded-full flex-shrink-0 ${
-                        issue.status === "pending"
-                          ? "bg-orange-100 text-orange-700"
-                          : issue.status === "in-progress"
-                          ? "bg-blue-100 text-blue-700"
-                          : "bg-green-100 text-green-700"
-                      }`}
+                    <button 
+                      onClick={handleClearFilters}
+                      className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1"
                     >
-                      {issue.status}
-                    </span>
-                  </button>
-                ))}
-              </div>
-            )}
-            
-            {showSuggestions && (hasSearchQuery || hasActiveFilters) && filteredSuggestions.length === 0 && (
-              <div className="absolute top-full left-0 right-0 mt-2 bg-card rounded-xl shadow-lg border border-border p-4 z-50">
-                <p className="text-sm text-muted-foreground text-center">
-                  No issues found
-                </p>
+                      <X className="w-3 h-3" />
+                      Clear
+                    </button>
+                  </div>
+                )}
+
+                {/* Results */}
+                {filteredSuggestions.length > 0 ? (
+                  <>
+                    <div className="max-h-48 overflow-y-auto">
+                      {filteredSuggestions.slice(0, 5).map((issue) => (
+                        <button
+                          key={issue.id}
+                          onClick={() => handleSelectIssue(issue.id)}
+                          className="w-full px-4 py-3 text-left hover:bg-muted transition-colors flex items-center gap-3 border-b border-border last:border-b-0"
+                        >
+                          <img
+                            src={issue.thumbnail}
+                            alt={issue.category}
+                            className="w-10 h-10 rounded-lg object-cover flex-shrink-0"
+                          />
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium text-foreground text-sm truncate">
+                              {issue.category}
+                            </p>
+                            <p className="text-xs text-muted-foreground truncate">
+                              {issue.location}
+                            </p>
+                          </div>
+                          <span
+                            className={`text-xs px-2 py-1 rounded-full flex-shrink-0 ${
+                              issue.status === "pending"
+                                ? "bg-orange-100 text-orange-700"
+                                : issue.status === "in-progress"
+                                ? "bg-blue-100 text-blue-700"
+                                : "bg-green-100 text-green-700"
+                            }`}
+                          >
+                            {issue.status}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                    {/* View All Results button */}
+                    <button
+                      onClick={handleViewAllResults}
+                      className="w-full px-4 py-3 text-center text-sm font-medium text-primary hover:bg-muted transition-colors border-t border-border"
+                    >
+                      View all {filteredSuggestions.length} results →
+                    </button>
+                  </>
+                ) : (
+                  <div className="p-4">
+                    <p className="text-sm text-muted-foreground text-center">
+                      No issues found
+                    </p>
+                  </div>
+                )}
               </div>
             )}
           </div>
           
-          <Popover>
+          <Popover open={filterPopoverOpen} onOpenChange={setFilterPopoverOpen}>
             <PopoverTrigger asChild>
-              <button className="p-3 bg-white rounded-xl shadow-lg hover:bg-gray-50 transition-colors">
+              <button className="p-3 bg-white rounded-xl shadow-lg hover:bg-gray-50 transition-colors relative">
                 <SlidersHorizontal className="w-5 h-5 text-muted-foreground" />
+                {activeFilterCount > 0 && (
+                  <span className="absolute -top-1 -right-1 w-5 h-5 bg-primary text-primary-foreground text-xs rounded-full flex items-center justify-center font-medium">
+                    {activeFilterCount}
+                  </span>
+                )}
               </button>
             </PopoverTrigger>
             <PopoverContent className="w-72" align="end">
@@ -297,9 +351,20 @@ const Header = ({ onFilter, showSearch = true }: HeaderProps) => {
                   </RadioGroup>
                 </div>
 
-                <Button onClick={() => { handleApplyFilters(); setShowSuggestions(true); }} className="w-full">
-                  Apply Filters
-                </Button>
+                <div className="flex gap-2">
+                  {hasActiveFilters && (
+                    <Button 
+                      variant="outline" 
+                      onClick={handleClearFilters}
+                      className="flex-1"
+                    >
+                      Clear
+                    </Button>
+                  )}
+                  <Button onClick={handleApplyFilters} className="flex-1">
+                    Apply Filters
+                  </Button>
+                </div>
               </div>
             </PopoverContent>
           </Popover>
