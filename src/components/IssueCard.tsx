@@ -45,8 +45,7 @@ const IssueCard = ({ issue, index = 0 }: IssueCardProps) => {
     return `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
   };
 
-  const handleStatusChange = async (newStatus: string, e: React.MouseEvent) => {
-    e.stopPropagation();
+  const handleStatusChange = async (newStatus: string) => {
     try {
       const { error } = await supabase
         .from("issues")
@@ -87,22 +86,23 @@ const IssueCard = ({ issue, index = 0 }: IssueCardProps) => {
         <div className="flex items-start justify-between gap-2 mb-2">
           <h3 className="font-semibold text-foreground truncate">{issue.title || issue.category}</h3>
           {isEmployee ? (
-            <Select
-              value={issue.status}
-              onValueChange={(value) => handleStatusChange(value, { stopPropagation: () => {} } as React.MouseEvent)}
-            >
-              <SelectTrigger 
-                className={`w-28 h-7 text-xs ${statusStyles[issue.status]}`}
-                onClick={(e) => e.stopPropagation()}
+            <div onClick={(e) => e.stopPropagation()}>
+              <Select
+                value={issue.status}
+                onValueChange={handleStatusChange}
               >
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="pending">Pending</SelectItem>
-                <SelectItem value="in-progress">In Progress</SelectItem>
-                <SelectItem value="resolved">Resolved</SelectItem>
-              </SelectContent>
-            </Select>
+                <SelectTrigger 
+                  className={`w-28 h-7 text-xs font-medium border-0 ${statusStyles[issue.status as keyof typeof statusStyles]}`}
+                >
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent className="bg-popover border border-border shadow-lg z-50">
+                  <SelectItem value="pending">Pending</SelectItem>
+                  <SelectItem value="in-progress">In Progress</SelectItem>
+                  <SelectItem value="resolved">Resolved</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           ) : (
             <motion.span 
               className={`px-2 py-1 rounded-full text-xs font-medium flex-shrink-0 ${statusStyles[issue.status]}`}
