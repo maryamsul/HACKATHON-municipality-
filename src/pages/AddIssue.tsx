@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Camera, MapPin } from "lucide-react";
+import { ArrowLeft, Camera, MapPin, Navigation } from "lucide-react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,7 +10,6 @@ import { useToast } from "@/hooks/use-toast";
 import { useIssues } from "@/context/IssuesContext";
 import BottomNav from "@/components/BottomNav";
 import SuccessAnimation from "@/components/SuccessAnimation";
-import { createIssue } from "@/api/issueApi";
 
 const categories = [
   "Pothole",
@@ -25,13 +24,68 @@ const AddIssue = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { addIssue } = useIssues();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   const [category, setCategory] = useState("");
   const [location, setLocation] = useState("");
   const [description, setDescription] = useState("");
   const [thumbnail, setThumbnail] = useState("");
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [coordinates, setCoordinates] = useState<{ lat: number; lng: number } | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [isGettingLocation, setIsGettingLocation] = useState(false);
+
+  const handlePhotoClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const previewUrl = URL.createObjectURL(file);
+      setPhotoPreview(previewUrl);
+      setThumbnail(previewUrl);
+    }
+  };
+
+  const handleGetLocation = () => {
+    if (!navigator.geolocation) {
+      toast({
+        title: "Geolocation not supported",
+        description: "Your browser does not support geolocation",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsGettingLocation(true);
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const { latitude, longitude } = position.coords;
+        setCoordinates({ lat: latitude, lng: longitude });
+        setLocation("Current Location");
+        setIsGettingLocation(false);
+        toast({
+          title: "Location found",
+          description: `Lat: ${latitude.toFixed(4)}, Lng: ${longitude.toFixed(4)}`,
+        });
+      },
+      (error) => {
+        setIsGettingLocation(false);
+        let message = "Unable to get your location";
+        if (error.code === error.PERMISSION_DENIED) {
+          message = "Location permission denied. Please enable it in your browser settings.";
+        }
+        toast({
+          title: "Location error",
+          description: message,
+          variant: "destructive",
+        });
+      }
+    );
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -47,26 +101,25 @@ const AddIssue = () => {
 
     setIsSubmitting(true);
 
-    const issueData = {
-      title: "New Issue",
-      description,
-      category,
-      reportedBy: "user123", // Replace with authenticated user ID
-      location,
-      coordinates: { lat: 40.7128, lng: -74.006 },
-      thumbnail: thumbnail || "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=200&h=200&fit=crop",
-    };
-
     try {
-      const response = await createIssue(issueData);
+      // Simulate API call with delay (replace with real API when backend is connected)
+      await new Promise(resolve => setTimeout(resolve, 1500));
+
+      addIssue({
+        category,
+        location,
+        description,
+        thumbnail: thumbnail || "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=200&h=200&fit=crop",
+        coordinates: coordinates || { lat: 40.7128, lng: -74.006 },
+      });
+
       setIsSubmitting(false);
       setShowSuccess(true);
-      addIssue(response.data);
     } catch (error) {
       setIsSubmitting(false);
       toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "An error occurred while creating the issue.",
+        title: "Error submitting issue",
+        description: error instanceof Error ? error.message : "Network error. Please try again.",
         variant: "destructive",
       });
     }
@@ -83,6 +136,15 @@ const AddIssue = () => {
         show={showSuccess} 
         message="Issue Reported!" 
         onComplete={handleSuccessComplete} 
+      />
+
+      {/* Hidden file input */}
+      <input
+        type="file"
+        ref={fileInputRef}
+        onChange={handlePhotoChange}
+        accept="image/*"
+        className="hidden"
       />
 
       {/* Header */}
@@ -116,7 +178,8 @@ const AddIssue = () => {
         >
           <label className="text-sm font-medium text-foreground">Photo</label>
           <motion.div 
-            className="border-2 border-dashed border-border rounded-lg p-8 flex flex-col items-center justify-center gap-2 bg-muted/30 cursor-pointer"
+            onClick={handlePhotoClick}
+            className="border-2 border-dashed border-border rounded-lg p-8 flex flex-col items-center justify-center gap-2 bg-muted/30 cursor-pointer overflow-hidden"
             whileHover={{ 
               scale: 1.02, 
               borderColor: "hsl(var(--primary))",
@@ -125,19 +188,23 @@ const AddIssue = () => {
             whileTap={{ scale: 0.98 }}
             transition={{ duration: 0.2 }}
           >
-            <motion.div
-              animate={{ 
-                scale: [1, 1.1, 1],
-              }}
-              transition={{ 
-                duration: 2, 
-                repeat: Infinity,
-                ease: "easeInOut"
-              }}
-            >
-              <Camera className="w-10 h-10 text-muted-foreground" />
-            </motion.div>
-            <p className="text-sm text-muted-foreground">Tap to add photo</p>
+            {photoPreview ? (
+              <img 
+                src={photoPreview} 
+                alt="Preview" 
+                className="w-full h-40 object-cover rounded-md"
+              />
+            ) : (
+              <>
+                <motion.div
+                  animate={{ scale: [1, 1.1, 1] }}
+                  transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+                >
+                  <Camera className="w-10 h-10 text-muted-foreground" />
+                </motion.div>
+                <p className="text-sm text-muted-foreground">Tap to add photo</p>
+              </>
+            )}
           </motion.div>
         </motion.div>
 
@@ -171,26 +238,40 @@ const AddIssue = () => {
           transition={{ delay: 0.3 }}
         >
           <label className="text-sm font-medium text-foreground">Location *</label>
-          <div className="relative group">
-            <motion.div
-              className="absolute left-3 top-1/2 -translate-y-1/2"
-              animate={{ 
-                y: [0, -2, 0],
-              }}
-              transition={{ 
-                duration: 1.5, 
-                repeat: Infinity,
-                ease: "easeInOut"
-              }}
+          <div className="flex gap-2">
+            <div className="relative group flex-1">
+              <motion.div
+                className="absolute left-3 top-1/2 -translate-y-1/2"
+                animate={{ y: [0, -2, 0] }}
+                transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
+              >
+                <MapPin className="w-5 h-5 text-muted-foreground group-focus-within:text-primary transition-colors" />
+              </motion.div>
+              <Input
+                value={location}
+                onChange={(e) => setLocation(e.target.value)}
+                placeholder="Enter location"
+                className="pl-10 focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all duration-200"
+              />
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              onClick={handleGetLocation}
+              disabled={isGettingLocation}
+              className="shrink-0"
             >
-              <MapPin className="w-5 h-5 text-muted-foreground group-focus-within:text-primary transition-colors" />
-            </motion.div>
-            <Input
-              value={location}
-              onChange={(e) => setLocation(e.target.value)}
-              placeholder="Enter location or use GPS"
-              className="pl-10 focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all duration-200"
-            />
+              {isGettingLocation ? (
+                <motion.div
+                  className="w-5 h-5 border-2 border-muted-foreground/30 border-t-primary rounded-full"
+                  animate={{ rotate: 360 }}
+                  transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                />
+              ) : (
+                <Navigation className="w-5 h-5" />
+              )}
+            </Button>
           </div>
         </motion.div>
 
@@ -242,12 +323,7 @@ const AddIssue = () => {
                     className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent"
                     initial={{ x: "-100%" }}
                     animate={{ x: "100%" }}
-                    transition={{ 
-                      duration: 2, 
-                      repeat: Infinity,
-                      repeatDelay: 1,
-                      ease: "easeInOut"
-                    }}
+                    transition={{ duration: 2, repeat: Infinity, repeatDelay: 1, ease: "easeInOut" }}
                   />
                   Submit Report
                 </>
