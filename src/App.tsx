@@ -14,18 +14,9 @@ import SearchResults from "./pages/SearchResults";
 import Notifications from "./pages/Notifications";
 import NotFound from "./pages/NotFound";
 import Auth from "./pages/Auth";
-import { useEffect } from "react";
-
 const queryClient = new QueryClient();
 
 const App = () => {
-  // ✅ Move useEffect inside component body
-  useEffect(() => {
-    fetch("https://diobouflwfqrystkmjyu.supabase.co/functions/v1/api/health")
-      .then((res) => res.json())
-      .then((data) => console.log("Backend response:", data))
-      .catch((err) => console.error("API error:", err));
-  }, []);
 
   return (
     <QueryClientProvider client={queryClient}>
