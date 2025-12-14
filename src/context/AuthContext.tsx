@@ -33,24 +33,36 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const fetchProfile = async (userId: string, userEmail?: string) => {
     try {
       // Get profile
-      const { data: profileData } = await supabase
+      const { data: profileData, error: profileError } = await supabase
         .from("profiles")
         .select("*")
         .eq("id", userId)
         .maybeSingle();
 
-      // Get role
-      const { data: roleData } = await supabase
+      if (profileError) {
+        console.error("Error fetching profile:", profileError);
+      }
+
+      // Get role from user_roles table
+      const { data: roleData, error: roleError } = await supabase
         .from("user_roles")
         .select("role")
         .eq("user_id", userId)
         .maybeSingle();
 
+      if (roleError) {
+        console.error("Error fetching role:", roleError);
+      }
+
+      console.log("Fetched role data:", roleData);
+
+      const role = roleData?.role === "employee" ? "employee" : "citizen";
+
       setProfile({
         id: userId,
         full_name: profileData?.full_name || "",
         email: userEmail || "",
-        role: (roleData?.role as UserRole) || "citizen",
+        role: role,
       });
     } catch (error) {
       console.error("Error fetching profile:", error);
