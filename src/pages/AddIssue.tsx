@@ -90,8 +90,8 @@ const AddIssue = () => {
     category: string;
     reportedBy: string;
     location: string;
-    latitude: coordinates.lat;
-    longitude: coordinates.lng;
+    latitude: number;
+    longitude: number;
     thumbnail: string;
   }) => {
     try {
@@ -137,7 +137,8 @@ const AddIssue = () => {
         category,
         reportedBy: "anonymous",
         location,
-        coordinates,
+        latitude: coordinates.lat,
+        longitude: coordinates.lng,
         thumbnail: thumbnail || "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=200&h=200&fit=crop",
       });
 
