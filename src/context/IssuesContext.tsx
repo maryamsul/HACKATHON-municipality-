@@ -1,32 +1,56 @@
-import { createContext, useContext, useState, ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { Issue } from "@/types/issue";
-import { mockIssues } from "@/data/mockIssues";
+import { supabase } from "@/integrations/supabase/client";
 
 interface IssuesContextType {
   issues: Issue[];
-  addIssue: (issue: Omit<Issue, "id" | "status" | "date" | "statusHistory">) => void;
+  loading: boolean;
+  refetchIssues: () => Promise<void>;
 }
 
 const IssuesContext = createContext<IssuesContextType | undefined>(undefined);
 
 export const IssuesProvider = ({ children }: { children: ReactNode }) => {
-  const [issues, setIssues] = useState<Issue[]>(mockIssues);
+  const [issues, setIssues] = useState<Issue[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const addIssue = (newIssue: Omit<Issue, "id" | "status" | "date" | "statusHistory">) => {
-    const issue: Issue = {
-      ...newIssue,
-      id: (issues.length + 1).toString(),
-      status: "pending",
-      date: new Date().toISOString().split("T")[0],
-      statusHistory: [
-        { status: "pending", date: new Date().toISOString().split("T")[0], note: "Issue reported by citizen" }
-      ]
-    };
-    setIssues([issue, ...issues]);
+  const fetchIssues = async () => {
+    setLoading(true);
+    const { data, error } = await supabase
+      .from("issues")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.error("Error fetching issues:", error);
+    } else {
+      setIssues(data as Issue[]);
+    }
+    setLoading(false);
   };
 
+  useEffect(() => {
+    fetchIssues();
+
+    // Subscribe to realtime updates
+    const channel = supabase
+      .channel("issues-changes")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "issues" },
+        () => {
+          fetchIssues();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
   return (
-    <IssuesContext.Provider value={{ issues, addIssue }}>
+    <IssuesContext.Provider value={{ issues, loading, refetchIssues: fetchIssues }}>
       {children}
     </IssuesContext.Provider>
   );

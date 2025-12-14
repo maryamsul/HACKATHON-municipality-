@@ -5,13 +5,14 @@ export interface StatusHistory {
 }
 
 export interface Issue {
-  id: string;
+  id: number;
+  title: string;
   category: string;
-  thumbnail: string;
-  location: string;
-  coordinates: { lat: number; lng: number };
+  latitude: number;
+  longitude: number;
   status: "pending" | "in-progress" | "resolved";
-  date: string;
   description: string;
-  statusHistory: StatusHistory[];
+  reported_by: string;
+  assigned_to?: string;
+  created_at: string;
 }

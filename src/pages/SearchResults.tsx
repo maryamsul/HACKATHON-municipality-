@@ -13,7 +13,7 @@ const SearchResults = () => {
 
   const filteredIssues = issues.filter(
     (issue) =>
-      issue.location.toLowerCase().includes(query.toLowerCase()) ||
+      issue.title.toLowerCase().includes(query.toLowerCase()) ||
       issue.category.toLowerCase().includes(query.toLowerCase()) ||
       issue.description.toLowerCase().includes(query.toLowerCase())
   );
