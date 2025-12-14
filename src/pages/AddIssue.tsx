@@ -14,7 +14,7 @@ import SuccessAnimation from "@/components/SuccessAnimation";
 // Define the categories for the issues
 const categories = ["Pothole", "Garbage", "Water Leak", "Lighting", "Traffic", "Other"];
 
-const API_URL = "https://ypgoodjdxcnjysrsortp.supabase.co/functions/v1/super-task";
+const API_URL = "https://ypgoodjdxcnjysrsortp.supabase.co/functions/v1/api/issues";
 const SUPABASE_ANON_KEY = "sb_publishable_rs58HjDUbtkp9QvD7Li4VA_fqtAUF2u";
 
 const AddIssue = () => {
@@ -90,7 +90,8 @@ const AddIssue = () => {
     category: string;
     reportedBy: string;
     location: string;
-    coordinates: { lat: number; lng: number };
+    latitude: coordinates.lat;
+    longitude: coordinates.lng;
     thumbnail: string;
   }) => {
     try {
@@ -182,11 +183,7 @@ const AddIssue = () => {
 
       <form onSubmit={handleSubmit} className="p-4 space-y-6">
         {/* Photo Upload */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="space-y-2"
-        >
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-2">
           <label className="text-sm font-medium text-foreground">Photo</label>
           <div
             onClick={handlePhotoClick}
@@ -201,13 +198,7 @@ const AddIssue = () => {
               </div>
             )}
           </div>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            onChange={handlePhotoChange}
-            className="hidden"
-          />
+          <input ref={fileInputRef} type="file" accept="image/*" onChange={handlePhotoChange} className="hidden" />
         </motion.div>
 
         {/* Category Select */}
@@ -279,11 +270,7 @@ const AddIssue = () => {
         </motion.div>
 
         {/* Submit Button */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4 }}
-        >
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>
           <Button type="submit" className="w-full" disabled={isSubmitting}>
             {isSubmitting ? "Submitting..." : "Submit Report"}
           </Button>
