@@ -15,6 +15,21 @@ import Notifications from "./pages/Notifications";
 import NotFound from "./pages/NotFound";
 import Auth from "./pages/Auth";
 
+import { useEffect } from "react";
+
+function App() {
+  useEffect(() => {
+    fetch("https://diobouflwfqrystkmjyu.supabase.co/functions/v1/api/health")
+      .then((res) => res.json())
+      .then((data) => console.log("Backend response:", data))
+      .catch((err) => console.error("API error:", err));
+  }, []);
+
+  return <div>Frontend is running</div>;
+}
+
+export default App;
+
 const queryClient = new QueryClient();
 
 const App = () => (
