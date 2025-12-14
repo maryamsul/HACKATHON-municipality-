@@ -134,7 +134,6 @@ const AddIssue = () => {
         title: `${category} issue`,
         description,
         category,
-        location,
         latitude: coordinates.lat,
         longitude: coordinates.lng,
         thumbnail: thumbnail || "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=200&h=200&fit=crop",
