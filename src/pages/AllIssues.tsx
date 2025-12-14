@@ -86,10 +86,10 @@ const AllIssues = () => {
                   <IssueCard issue={issue} />
                   {profile?.role === "employee" && (
                     <div className="flex gap-2">
-                      <Button variant="outline" onClick={() => handleStatusChange(issue.id, "work_in_progress")}>
+                      <Button variant="outline" onClick={() => handleStatusChange(String(issue.id), "work_in_progress")}>
                         Work in Progress
                       </Button>
-                      <Button variant="outline" onClick={() => handleStatusChange(issue.id, "resolved")}>
+                      <Button variant="outline" onClick={() => handleStatusChange(String(issue.id), "resolved")}>
                         Resolved
                       </Button>
                     </div>
