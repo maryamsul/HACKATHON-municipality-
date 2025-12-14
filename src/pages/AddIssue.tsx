@@ -10,6 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useIssues } from "@/context/IssuesContext";
 import BottomNav from "@/components/BottomNav";
 import SuccessAnimation from "@/components/SuccessAnimation";
+import { createIssue } from "@/api/issueApi";
 
 const categories = [
   "Pothole",
@@ -46,19 +47,29 @@ const AddIssue = () => {
 
     setIsSubmitting(true);
 
-    // Simulate submission delay
-    await new Promise(resolve => setTimeout(resolve, 1500));
-
-    addIssue({
-      category,
-      location,
+    const issueData = {
+      title: "New Issue",
       description,
+      category,
+      reportedBy: "user123", // Replace with authenticated user ID
+      location,
+      coordinates: { lat: 40.7128, lng: -74.006 },
       thumbnail: thumbnail || "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=200&h=200&fit=crop",
-      coordinates: { lat: 40.7128, lng: -74.006 }
-    });
+    };
 
-    setIsSubmitting(false);
-    setShowSuccess(true);
+    try {
+      const response = await createIssue(issueData);
+      setIsSubmitting(false);
+      setShowSuccess(true);
+      addIssue(response.data);
+    } catch (error) {
+      setIsSubmitting(false);
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "An error occurred while creating the issue.",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleSuccessComplete = () => {
