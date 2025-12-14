@@ -37,7 +37,7 @@ const Header = ({ onFilter, showSearch = true }: HeaderProps) => {
   });
   const navigate = useNavigate();
   const { issues } = useIssues();
-  const { user, isAuthenticated, signOut } = useAuth();
+  const { profile, isAuthenticated, signOut } = useAuth();
   const searchRef = useRef<HTMLDivElement>(null);
 
   const getInitials = (name: string) => {
@@ -123,13 +123,13 @@ const Header = ({ onFilter, showSearch = true }: HeaderProps) => {
           <p className="text-teal-100 text-sm mt-1">خدمة المواطن</p>
         </div>
         
-        {isAuthenticated && user ? (
+        {isAuthenticated && profile ? (
           <Popover>
             <PopoverTrigger asChild>
               <button className="flex items-center gap-2">
                 <Avatar className="h-10 w-10 border-2 border-white/30 cursor-pointer hover:border-white/60 transition-colors">
                   <AvatarFallback className="bg-white/20 text-white font-semibold">
-                    {getInitials(user.fullName)}
+                    {getInitials(profile.full_name)}
                   </AvatarFallback>
                 </Avatar>
               </button>
@@ -137,10 +137,10 @@ const Header = ({ onFilter, showSearch = true }: HeaderProps) => {
             <PopoverContent className="w-56" align="end">
               <div className="space-y-3">
                 <div className="border-b border-border pb-3">
-                  <p className="font-semibold text-foreground">{user.fullName}</p>
-                  <p className="text-sm text-muted-foreground">{user.email}</p>
+                  <p className="font-semibold text-foreground">{profile.full_name}</p>
+                  <p className="text-sm text-muted-foreground">{profile.email}</p>
                   <span className="text-xs px-2 py-0.5 bg-primary/10 text-primary rounded-full capitalize">
-                    {user.role}
+                    {profile.role}
                   </span>
                 </div>
                 <Button

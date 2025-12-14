@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Camera, MapPin, Navigation } from "lucide-react";
 import { motion } from "framer-motion";
@@ -8,19 +8,18 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { useIssues } from "@/context/IssuesContext";
+import { useAuth } from "@/context/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 import BottomNav from "../components/BottomNav";
 import SuccessAnimation from "@/components/SuccessAnimation";
 
-// Define the categories for the issues
 const categories = ["Pothole", "Garbage", "Water Leak", "Lighting", "Traffic", "Other"];
-
-const API_URL = "https://ypgoodjdxcnjysrsortp.supabase.co/functions/v1/super-task";
-const SUPABASE_ANON_KEY = "sb_publishable_rs58HjDUbtkp9QvD7Li4VA_fqtAUF2u";
 
 const AddIssue = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { addIssue } = useIssues();
+  const { user, profile, isAuthenticated, isLoading } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [category, setCategory] = useState("");
@@ -32,6 +31,28 @@ const AddIssue = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [isGettingLocation, setIsGettingLocation] = useState(false);
+
+  useEffect(() => {
+    if (!isLoading && !isAuthenticated) {
+      toast({
+        title: "Authentication required",
+        description: "Please sign in to report an issue",
+        variant: "destructive",
+      });
+      navigate("/auth");
+    }
+  }, [isAuthenticated, isLoading, navigate, toast]);
+
+  useEffect(() => {
+    if (!isLoading && isAuthenticated && profile && profile.role !== "citizen") {
+      toast({
+        title: "Access denied",
+        description: "Only citizens can report issues",
+        variant: "destructive",
+      });
+      navigate("/");
+    }
+  }, [profile, isAuthenticated, isLoading, navigate, toast]);
 
   const handlePhotoClick = () => {
     fileInputRef.current?.click();
@@ -84,38 +105,6 @@ const AddIssue = () => {
     );
   };
 
-  const createIssue = async (issueData: {
-    title: string;
-    description: string;
-    category: string;
-    reportedBy: string;
-    location: string;
-    latitude: number;
-    longitude: number;
-    thumbnail: string;
-  }) => {
-    try {
-      const response = await fetch(API_URL, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          apikey: SUPABASE_ANON_KEY,
-        },
-        body: JSON.stringify(issueData),
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to create issue");
-      }
-
-      const data = await response.json(); // Get the response
-      return data; // You can use this response in the frontend
-    } catch (error) {
-      console.error("Error creating issue:", error);
-      throw new Error(error instanceof Error ? error.message : "Unknown error occurred");
-    }
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -128,19 +117,34 @@ const AddIssue = () => {
       return;
     }
 
+    if (!user) {
+      toast({
+        title: "Not authenticated",
+        description: "Please sign in to submit an issue",
+        variant: "destructive",
+      });
+      navigate("/auth");
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
-      await createIssue({
+      const { error } = await supabase.from("issues").insert({
         title: `${category} issue`,
         description,
         category,
-        reportedBy: "anonymous",
         location,
         latitude: coordinates.lat,
         longitude: coordinates.lng,
         thumbnail: thumbnail || "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=200&h=200&fit=crop",
+        reported_by: user.id,
+        status: "pending",
       });
+
+      if (error) {
+        throw error;
+      }
 
       addIssue({
         category,
@@ -152,6 +156,7 @@ const AddIssue = () => {
 
       setShowSuccess(true);
     } catch (error) {
+      console.error("Error creating issue:", error);
       toast({
         title: "Error",
         description: error instanceof Error ? error.message : "An error occurred while creating the issue.",
@@ -166,6 +171,14 @@ const AddIssue = () => {
     setShowSuccess(false);
     navigate("/");
   };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <p>Loading...</p>
+      </div>
+    );
+  }
 
   if (showSuccess) {
     return <SuccessAnimation show={showSuccess} onComplete={handleSuccessComplete} />;
