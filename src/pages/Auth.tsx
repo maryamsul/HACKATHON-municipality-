@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useToast } from "@/hooks/use-toast";
-import { User, Mail, Lock, Users } from "lucide-react";
+import { User, Mail, Lock, Users, CheckCircle } from "lucide-react";
 
 const Auth = () => {
   const [isSignUp, setIsSignUp] = useState(true);
@@ -16,6 +16,8 @@ const Auth = () => {
   const [password, setPassword] = useState("");
   const [role, setRole] = useState<UserRole>("citizen");
   const [isLoading, setIsLoading] = useState(false);
+  const [showEmailConfirmation, setShowEmailConfirmation] = useState(false);
+  const [registeredEmail, setRegisteredEmail] = useState("");
   
   const { signUp, signIn, isAuthenticated } = useAuth();
   const navigate = useNavigate();
@@ -40,7 +42,6 @@ const Auth = () => {
         }
         const { error } = await signUp(fullName, email, password, role);
         if (error) {
-          // Handle duplicate email error
           if (error.toLowerCase().includes("already registered") || error.toLowerCase().includes("already exists")) {
             toast({ title: "Email Already Registered", description: "This email is already in use. Please sign in instead.", variant: "destructive" });
             setIsSignUp(false);
@@ -48,8 +49,8 @@ const Auth = () => {
             toast({ title: "Error", description: error, variant: "destructive" });
           }
         } else {
-          toast({ title: "Success", description: "Account created! Redirecting..." });
-          navigate("/");
+          setRegisteredEmail(email);
+          setShowEmailConfirmation(true);
         }
       } else {
         if (!email || !password) {
@@ -71,6 +72,43 @@ const Auth = () => {
       setIsLoading(false);
     }
   };
+
+  // Show email confirmation screen after successful signup
+  if (showEmailConfirmation) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <Card className="w-full max-w-md text-center">
+          <CardHeader>
+            <div className="mx-auto mb-4 w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center">
+              <CheckCircle className="w-8 h-8 text-primary" />
+            </div>
+            <CardTitle className="text-2xl font-bold text-primary">
+              Check Your Email
+            </CardTitle>
+            <CardDescription className="text-base">
+              We've sent a welcome email to
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="font-medium text-foreground">{registeredEmail}</p>
+            <p className="text-sm text-muted-foreground">
+              Your account has been created successfully. You can now sign in with your credentials.
+            </p>
+            <Button 
+              onClick={() => {
+                setShowEmailConfirmation(false);
+                setIsSignUp(false);
+                setPassword("");
+              }} 
+              className="w-full"
+            >
+              Continue to Sign In
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
