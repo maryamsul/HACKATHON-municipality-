@@ -29,7 +29,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-
   const fetchProfile = async (userId: string, userEmail?: string) => {
     try {
       // Get profile
@@ -71,22 +70,22 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     // Set up auth state listener FIRST
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
-        
-        if (session?.user) {
-          // Defer profile fetch to avoid deadlock
-          setTimeout(() => {
-            fetchProfile(session.user.id, session.user.email);
-          }, 0);
-        } else {
-          setProfile(null);
-        }
-        setIsLoading(false);
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      setSession(session);
+      setUser(session?.user ?? null);
+
+      if (session?.user) {
+        // Defer profile fetch to avoid deadlock
+        setTimeout(() => {
+          fetchProfile(session.user.id, session.user.email);
+        }, 0);
+      } else {
+        setProfile(null);
       }
-    );
+      setIsLoading(false);
+    });
 
     // THEN check for existing session
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -111,9 +110,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  const signUp = async (fullName: string, email: string, password: string, role: UserRole): Promise<{ error: string | null }> => {
+  const signUp = async (
+    fullName: string,
+    email: string,
+    password: string,
+    role: UserRole,
+  ): Promise<{ error: string | null }> => {
     const redirectUrl = `${window.location.origin}/`;
-    
+
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
@@ -138,7 +142,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         sendAuthEmail(email, "security_alert");
         return { error: "This email is already registered. Please sign in instead." };
       }
-      
+
       // Check if user was created more than 10 seconds ago (meaning it's an existing user)
       const createdAt = new Date(data.user.created_at);
       const now = new Date();
