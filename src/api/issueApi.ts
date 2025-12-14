@@ -18,7 +18,7 @@ export const createIssue = async (issueData: {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${sb_publishable_rs58HjDUbtkp9QvD7Li4VA_fqtAUF2u}`,
+        Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
       },
       body: JSON.stringify(issueData),
     });
