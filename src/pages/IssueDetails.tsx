@@ -15,15 +15,6 @@ const statusLabels = {
   resolved: "Resolved",
 };
 
-const categoryIcons: Record<string, string> = {
-  Pothole: "🕳️",
-  Garbage: "🗑️",
-  "Water Leak": "💧",
-  Lighting: "💡",
-  Traffic: "🚦",
-  Other: "📋",
-};
-
 const IssueDetails = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -47,15 +38,21 @@ const IssueDetails = () => {
     );
   }
 
+  // Google Maps and OpenStreetMap URLs
   const googleMapUrl = `https://maps.googleapis.com/maps/api/staticmap?center=${issue.latitude},${issue.longitude}&zoom=15&size=400x200&scale=2&markers=color:red%7C${issue.latitude},${issue.longitude}&key=AIzaSyBEXdBSvU7f8aNCe_t_Z-6hW5_JwAGV8Hs`;
   const openStreetMapUrl = `https://www.openstreetmap.org/export/embed.html?bbox=${issue.longitude - 0.01},${issue.latitude - 0.01},${issue.longitude + 0.01},${issue.latitude + 0.01}&layer=mapnik&marker=${issue.latitude},${issue.longitude}`;
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-amber-50 to-background pb-24">
-      {/* Header with Icon */}
+      {/* Header with Category Image */}
       <div className="relative bg-gradient-to-br from-primary/20 to-primary/10">
         <div className="h-64 flex items-center justify-center">
-          <span className="text-8xl">{categoryIcons[issue.category] || "📋"}</span>
+          {/* Display Image if available, else fallback to icon */}
+          {issue.categoryImageUrl ? (
+            <img src={issue.categoryImageUrl} alt={issue.category} className="h-48 object-cover rounded-xl" />
+          ) : (
+            <span className="text-8xl">{categoryIcons[issue.category] || "📋"}</span>
+          )}
         </div>
         <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent" />
         <button
@@ -79,16 +76,21 @@ const IssueDetails = () => {
           <div className="flex flex-col gap-2">
             <div className="flex items-center gap-2 text-muted-foreground">
               <MapPin className="w-4 h-4" />
-              <span className="text-sm">{issue.latitude.toFixed(4)}, {issue.longitude.toFixed(4)}</span>
+              <span className="text-sm">
+                {issue.latitude.toFixed(4)}, {issue.longitude.toFixed(4)}
+              </span>
             </div>
             <div className="flex items-center gap-2 text-muted-foreground">
               <Calendar className="w-4 h-4" />
-              <span className="text-sm">Reported on {new Date(issue.created_at).toLocaleDateString('en-US', { 
-                weekday: 'long', 
-                year: 'numeric', 
-                month: 'long', 
-                day: 'numeric' 
-              })}</span>
+              <span className="text-sm">
+                Reported on{" "}
+                {new Date(issue.created_at).toLocaleDateString("en-US", {
+                  weekday: "long",
+                  year: "numeric",
+                  month: "long",
+                  day: "numeric",
+                })}
+              </span>
             </div>
           </div>
         </div>
@@ -102,22 +104,16 @@ const IssueDetails = () => {
         {/* Map with Google Maps Link */}
         <div>
           <h2 className="text-lg font-semibold text-foreground mb-2">Location</h2>
-          <a 
+          <a
             href={`https://www.google.com/maps?q=${issue.latitude},${issue.longitude}`}
             target="_blank"
             rel="noopener noreferrer"
             className="block"
           >
             <div className="rounded-2xl overflow-hidden shadow-sm border border-border">
-              <iframe
-                src={openStreetMapUrl}
-                className="w-full h-48 border-0"
-                title="Issue location map"
-              />
+              <iframe src={openStreetMapUrl} className="w-full h-48 border-0" title="Issue location map" />
             </div>
-            <p className="text-sm text-primary mt-2 underline">
-              Open in Google Maps →
-            </p>
+            <p className="text-sm text-primary mt-2 underline">Open in Google Maps →</p>
           </a>
           <p className="text-sm text-muted-foreground mt-1">
             Coordinates: {issue.latitude.toFixed(4)}, {issue.longitude.toFixed(4)}
