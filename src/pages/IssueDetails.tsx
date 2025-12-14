@@ -47,7 +47,8 @@ const IssueDetails = () => {
     );
   }
 
-  const staticMapUrl = `https://api.mapbox.com/styles/v1/mapbox/streets-v12/static/pin-l+ef4444(${issue.longitude},${issue.latitude})/${issue.longitude},${issue.latitude},14,0/400x200@2x?access_token=pk.eyJ1IjoibG92YWJsZS1kZW1vIiwiYSI6ImNtN2Z6bHE3ZzBnMHIycXM2NTY4NnRtNnkifQ.bMDOJwKDJqllBIYc0MbhfA`;
+  const googleMapUrl = `https://maps.googleapis.com/maps/api/staticmap?center=${issue.latitude},${issue.longitude}&zoom=15&size=400x200&scale=2&markers=color:red%7C${issue.latitude},${issue.longitude}&key=AIzaSyBEXdBSvU7f8aNCe_t_Z-6hW5_JwAGV8Hs`;
+  const openStreetMapUrl = `https://www.openstreetmap.org/export/embed.html?bbox=${issue.longitude - 0.01},${issue.latitude - 0.01},${issue.longitude + 0.01},${issue.latitude + 0.01}&layer=mapnik&marker=${issue.latitude},${issue.longitude}`;
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-amber-50 to-background pb-24">
@@ -98,20 +99,27 @@ const IssueDetails = () => {
           <p className="text-muted-foreground leading-relaxed">{issue.description}</p>
         </div>
 
-        {/* Static Map */}
+        {/* Map with Google Maps Link */}
         <div>
           <h2 className="text-lg font-semibold text-foreground mb-2">Location</h2>
-          <div className="rounded-2xl overflow-hidden shadow-sm">
-            <img
-              src={staticMapUrl}
-              alt="Issue location map"
-              className="w-full h-48 object-cover"
-              onError={(e) => {
-                e.currentTarget.src = `https://via.placeholder.com/400x200/e5e7eb/9ca3af?text=Map+Location`;
-              }}
-            />
-          </div>
-          <p className="text-sm text-muted-foreground mt-2">
+          <a 
+            href={`https://www.google.com/maps?q=${issue.latitude},${issue.longitude}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="block"
+          >
+            <div className="rounded-2xl overflow-hidden shadow-sm border border-border">
+              <iframe
+                src={openStreetMapUrl}
+                className="w-full h-48 border-0"
+                title="Issue location map"
+              />
+            </div>
+            <p className="text-sm text-primary mt-2 underline">
+              Open in Google Maps →
+            </p>
+          </a>
+          <p className="text-sm text-muted-foreground mt-1">
             Coordinates: {issue.latitude.toFixed(4)}, {issue.longitude.toFixed(4)}
           </p>
         </div>
