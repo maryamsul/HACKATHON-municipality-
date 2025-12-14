@@ -26,6 +26,15 @@ export interface FilterOptions {
   sortBy: string;
 }
 
+const categoryIcons: Record<string, string> = {
+  Pothole: "🕳️",
+  Garbage: "🗑️",
+  "Water Leak": "💧",
+  Lighting: "💡",
+  Traffic: "🚦",
+  Other: "📋",
+};
+
 const Header = ({ onFilter, showSearch = true }: HeaderProps) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -44,6 +53,10 @@ const Header = ({ onFilter, showSearch = true }: HeaderProps) => {
     return name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2);
   };
 
+  const formatLocation = (lat: number, lng: number) => {
+    return `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+  };
+
   const hasActiveFilters = filters.status !== "all" || filters.category !== "all";
   const hasSearchQuery = searchQuery.trim().length > 0;
   
@@ -54,10 +67,12 @@ const Header = ({ onFilter, showSearch = true }: HeaderProps) => {
   const filteredSuggestions = (hasSearchQuery || hasActiveFilters)
     ? issues
         .filter((issue) => {
+          const locationStr = formatLocation(issue.latitude, issue.longitude);
           const matchesSearch = !hasSearchQuery ||
-            issue.location.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            locationStr.toLowerCase().includes(searchQuery.toLowerCase()) ||
             issue.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            issue.description.toLowerCase().includes(searchQuery.toLowerCase());
+            issue.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            issue.title.toLowerCase().includes(searchQuery.toLowerCase());
 
           const matchesStatus =
             filters.status === "all" || issue.status === filters.status;
@@ -68,9 +83,9 @@ const Header = ({ onFilter, showSearch = true }: HeaderProps) => {
         })
         .sort((a, b) => {
           if (filters.sortBy === "newest") {
-            return new Date(b.date).getTime() - new Date(a.date).getTime();
+            return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
           } else {
-            return new Date(a.date).getTime() - new Date(b.date).getTime();
+            return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
           }
         })
     : [];
@@ -85,7 +100,7 @@ const Header = ({ onFilter, showSearch = true }: HeaderProps) => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const handleSelectIssue = (issueId: string) => {
+  const handleSelectIssue = (issueId: number) => {
     setShowSuggestions(false);
     setSearchQuery("");
     navigate(`/issue/${issueId}`);
@@ -220,17 +235,15 @@ const Header = ({ onFilter, showSearch = true }: HeaderProps) => {
                           onClick={() => handleSelectIssue(issue.id)}
                           className="w-full px-4 py-3 text-left hover:bg-muted transition-colors flex items-center gap-3 border-b border-border last:border-b-0"
                         >
-                          <img
-                            src={issue.thumbnail}
-                            alt={issue.category}
-                            className="w-10 h-10 rounded-lg object-cover flex-shrink-0"
-                          />
+                          <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0 text-xl">
+                            {categoryIcons[issue.category] || "📋"}
+                          </div>
                           <div className="flex-1 min-w-0">
                             <p className="font-medium text-foreground text-sm truncate">
-                              {issue.category}
+                              {issue.title || issue.category}
                             </p>
                             <p className="text-xs text-muted-foreground truncate">
-                              {issue.location}
+                              {formatLocation(issue.latitude, issue.longitude)}
                             </p>
                           </div>
                           <span

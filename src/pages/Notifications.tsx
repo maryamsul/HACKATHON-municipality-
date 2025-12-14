@@ -8,6 +8,10 @@ const Notifications = () => {
   const navigate = useNavigate();
   const { issues } = useIssues();
 
+  const formatLocation = (lat: number, lng: number) => {
+    return `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+  };
+
   // Generate notifications based on recent issues
   const notifications = issues.slice(0, 5).map((issue, index) => ({
     id: index,
@@ -19,11 +23,11 @@ const Notifications = () => {
         : `New Report: ${issue.category}`,
     message:
       issue.status === "resolved"
-        ? `The issue at ${issue.location} has been resolved.`
+        ? `The issue at ${formatLocation(issue.latitude, issue.longitude)} has been resolved.`
         : issue.status === "in-progress"
-        ? `Work has started on the issue at ${issue.location}.`
-        : `A new issue has been reported at ${issue.location}.`,
-    time: issue.date,
+        ? `Work has started on the issue at ${formatLocation(issue.latitude, issue.longitude)}.`
+        : `A new issue has been reported at ${formatLocation(issue.latitude, issue.longitude)}.`,
+    time: new Date(issue.created_at).toLocaleDateString(),
     status: issue.status,
     issueId: issue.id,
   }));

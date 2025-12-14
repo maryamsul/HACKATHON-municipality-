@@ -18,14 +18,13 @@ const categories = ["Pothole", "Garbage", "Water Leak", "Lighting", "Traffic", "
 const AddIssue = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { addIssue } = useIssues();
+  const { refetchIssues } = useIssues();
   const { user, profile, isAuthenticated, isLoading } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [category, setCategory] = useState("");
   const [location, setLocation] = useState("");
   const [description, setDescription] = useState("");
-  const [thumbnail, setThumbnail] = useState("");
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [coordinates, setCoordinates] = useState<{ lat: number; lng: number } | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -63,7 +62,6 @@ const AddIssue = () => {
     if (file) {
       const previewUrl = URL.createObjectURL(file);
       setPhotoPreview(previewUrl);
-      setThumbnail(previewUrl);
     }
   };
 
@@ -144,13 +142,8 @@ const AddIssue = () => {
         throw error;
       }
 
-      addIssue({
-        category,
-        location,
-        description,
-        thumbnail: thumbnail || "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=200&h=200&fit=crop",
-        coordinates,
-      });
+      // Refetch issues to update the list
+      await refetchIssues();
 
       setShowSuccess(true);
     } catch (error) {
@@ -196,7 +189,7 @@ const AddIssue = () => {
       <form onSubmit={handleSubmit} className="p-4 space-y-6">
         {/* Photo Upload */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-2">
-          <label className="text-sm font-medium text-foreground">Photo</label>
+          <label className="text-sm font-medium text-foreground">Photo (optional)</label>
           <div
             onClick={handlePhotoClick}
             className="relative h-48 rounded-xl border-2 border-dashed border-muted-foreground/30 bg-muted/50 flex items-center justify-center cursor-pointer hover:border-primary/50 transition-colors overflow-hidden"

@@ -6,7 +6,7 @@ import BottomNav from "@/components/BottomNav";
 
 const AllIssues = () => {
   const navigate = useNavigate();
-  const { issues } = useIssues();
+  const { issues, loading } = useIssues();
   const [searchParams] = useSearchParams();
 
   const statusFilter = searchParams.get("status") || "all";
@@ -23,9 +23,9 @@ const AllIssues = () => {
     })
     .sort((a, b) => {
       if (sortBy === "newest") {
-        return new Date(b.date).getTime() - new Date(a.date).getTime();
+        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
       }
-      return new Date(a.date).getTime() - new Date(b.date).getTime();
+      return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
     });
 
   return (
@@ -43,14 +43,20 @@ const AllIssues = () => {
       </header>
 
       <main className="p-4">
-        <p className="text-sm text-muted-foreground mb-4">
-          {filteredIssues.length} issues reported
-        </p>
-        <div className="space-y-3">
-          {filteredIssues.map((issue) => (
-            <IssueCard key={issue.id} issue={issue} />
-          ))}
-        </div>
+        {loading ? (
+          <p className="text-center text-muted-foreground py-8">Loading issues...</p>
+        ) : (
+          <>
+            <p className="text-sm text-muted-foreground mb-4">
+              {filteredIssues.length} issues reported
+            </p>
+            <div className="space-y-3">
+              {filteredIssues.map((issue) => (
+                <IssueCard key={issue.id} issue={issue} />
+              ))}
+            </div>
+          </>
+        )}
       </main>
 
       <BottomNav />
