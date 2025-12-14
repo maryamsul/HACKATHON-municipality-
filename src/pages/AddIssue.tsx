@@ -14,7 +14,7 @@ import SuccessAnimation from "@/components/SuccessAnimation";
 // Define the categories for the issues
 const categories = ["Pothole", "Garbage", "Water Leak", "Lighting", "Traffic", "Other"];
 
-const API_URL = "https://ypgoodjdxcnjysrsortp.supabase.co/functions/v1/api/issues";
+const API_URL = "https://ypgoodjdxcnjysrsortp.supabase.co/functions/v1/super-task";
 const SUPABASE_ANON_KEY = "sb_publishable_rs58HjDUbtkp9QvD7Li4VA_fqtAUF2u";
 
 const AddIssue = () => {
