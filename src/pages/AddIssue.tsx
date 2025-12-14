@@ -8,8 +8,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { useIssues } from "@/context/IssuesContext";
-import { createIssue } from "@/services/issues";
-import BottomNav from "@/components/BottomNav";
+import { createIssue } from "../services/issues";
+import BottomNav from "../components/BottomNav";
 import SuccessAnimation from "@/components/SuccessAnimation";
 
 const categories = ["Pothole", "Garbage", "Water Leak", "Lighting", "Traffic", "Other"];
