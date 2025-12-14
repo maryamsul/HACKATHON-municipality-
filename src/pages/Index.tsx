@@ -1,5 +1,6 @@
 import { motion } from "framer-motion";
 import Header from "@/components/Header";
+import HeroCarousel from "@/components/HeroCarousel";
 import StatsCard from "@/components/StatsCard";
 import CategoryItem from "@/components/CategoryItem";
 import BottomNav from "@/components/BottomNav";
@@ -27,6 +28,9 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-gradient-to-b from-amber-50 to-background pb-24">
       <Header />
+      
+      {/* Hero Carousel */}
+      <HeroCarousel />
       
       {/* Stats Section */}
       <motion.section 
