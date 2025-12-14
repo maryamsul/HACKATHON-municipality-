@@ -89,6 +89,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return () => subscription.unsubscribe();
   }, []);
 
+  const sendAuthEmail = async (email: string, type: "security_alert" | "welcome", name?: string) => {
+    try {
+      await supabase.functions.invoke("send-auth-email", {
+        body: { email, type, name },
+      });
+    } catch (error) {
+      console.error("Failed to send email:", error);
+    }
+  };
+
   const signUp = async (fullName: string, email: string, password: string, role: UserRole): Promise<{ error: string | null }> => {
     const redirectUrl = `${window.location.origin}/`;
     
@@ -110,8 +120,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     // Check if user already exists (Supabase returns user but with empty identities or existing created_at)
     if (data.user) {
       const identities = data.user.identities;
-      // If identities is empty or user was created before this signup attempt, email already exists
+      // If identities is empty, email already exists
       if (!identities || identities.length === 0) {
+        // Send security alert email for existing account
+        sendAuthEmail(email, "security_alert");
         return { error: "This email is already registered. Please sign in instead." };
       }
       
@@ -120,20 +132,24 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const now = new Date();
       const diffSeconds = (now.getTime() - createdAt.getTime()) / 1000;
       if (diffSeconds > 10) {
+        // Send security alert email for existing account
+        sendAuthEmail(email, "security_alert");
         return { error: "This email is already registered. Please sign in instead." };
       }
 
-      // Insert profile (without email since column doesn't exist)
+      // New user - insert profile and role
       await supabase.from("profiles").insert({
         id: data.user.id,
         full_name: fullName,
       });
 
-      // Insert role - using user_id referencing auth.users
       await supabase.from("user_roles").insert({
         user_id: data.user.id,
         role: role,
       });
+
+      // Send welcome email for new account
+      sendAuthEmail(email, "welcome", fullName);
     }
 
     return { error: null };
