@@ -2,6 +2,11 @@ import { Issue } from "@/types/issue";
 import { MapPin, Calendar } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
+import { useAuth } from "@/context/AuthContext";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { supabase } from "@/integrations/supabase/client";
+import { useIssues } from "@/context/IssuesContext";
+import { useToast } from "@/hooks/use-toast";
 
 interface IssueCardProps {
   issue: Issue;
@@ -31,15 +36,35 @@ const categoryIcons: Record<string, string> = {
 
 const IssueCard = ({ issue, index = 0 }: IssueCardProps) => {
   const navigate = useNavigate();
+  const { profile } = useAuth();
+  const { refetchIssues } = useIssues();
+  const { toast } = useToast();
+  const isEmployee = profile?.role === "employee";
 
   const formatLocation = (lat: number, lng: number) => {
     return `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
   };
 
+  const handleStatusChange = async (newStatus: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      const { error } = await supabase
+        .from("issues")
+        .update({ status: newStatus })
+        .eq("id", issue.id);
+      
+      if (error) throw error;
+      
+      await refetchIssues();
+      toast({ title: "Status updated", description: `Issue marked as ${statusLabels[newStatus as keyof typeof statusLabels]}` });
+    } catch (error) {
+      toast({ title: "Error", description: "Failed to update status", variant: "destructive" });
+    }
+  };
+
   return (
-    <motion.button
-      onClick={() => navigate(`/issue/${issue.id}`)}
-      className="w-full flex gap-4 p-4 bg-card rounded-2xl shadow-sm hover:shadow-md transition-shadow text-left"
+    <motion.div
+      className="w-full flex gap-4 p-4 bg-card rounded-2xl shadow-sm hover:shadow-md transition-shadow"
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.08 }}
@@ -47,27 +72,47 @@ const IssueCard = ({ issue, index = 0 }: IssueCardProps) => {
         scale: 1.02, 
         boxShadow: "0 8px 25px rgba(0,0,0,0.1)"
       }}
-      whileTap={{ scale: 0.98 }}
     >
-      <motion.div
+      <motion.button
+        onClick={() => navigate(`/issue/${issue.id}`)}
         className="w-20 h-20 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0 text-3xl"
         initial={{ scale: 0.8, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         transition={{ delay: index * 0.08 + 0.1 }}
+        whileTap={{ scale: 0.98 }}
       >
         {categoryIcons[issue.category] || "📋"}
-      </motion.div>
-      <div className="flex-1 min-w-0">
+      </motion.button>
+      <div className="flex-1 min-w-0" onClick={() => navigate(`/issue/${issue.id}`)}>
         <div className="flex items-start justify-between gap-2 mb-2">
           <h3 className="font-semibold text-foreground truncate">{issue.title || issue.category}</h3>
-          <motion.span 
-            className={`px-2 py-1 rounded-full text-xs font-medium flex-shrink-0 ${statusStyles[issue.status]}`}
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            transition={{ delay: index * 0.08 + 0.15 }}
-          >
-            {statusLabels[issue.status]}
-          </motion.span>
+          {isEmployee ? (
+            <Select
+              value={issue.status}
+              onValueChange={(value) => handleStatusChange(value, { stopPropagation: () => {} } as React.MouseEvent)}
+            >
+              <SelectTrigger 
+                className={`w-28 h-7 text-xs ${statusStyles[issue.status]}`}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="pending">Pending</SelectItem>
+                <SelectItem value="in-progress">In Progress</SelectItem>
+                <SelectItem value="resolved">Resolved</SelectItem>
+              </SelectContent>
+            </Select>
+          ) : (
+            <motion.span 
+              className={`px-2 py-1 rounded-full text-xs font-medium flex-shrink-0 ${statusStyles[issue.status]}`}
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              transition={{ delay: index * 0.08 + 0.15 }}
+            >
+              {statusLabels[issue.status]}
+            </motion.span>
+          )}
         </div>
         <div className="flex items-center gap-1 text-muted-foreground text-sm mb-1">
           <MapPin className="w-3.5 h-3.5" />
@@ -78,7 +123,7 @@ const IssueCard = ({ issue, index = 0 }: IssueCardProps) => {
           <span>{new Date(issue.created_at).toLocaleDateString()}</span>
         </div>
       </div>
-    </motion.button>
+    </motion.div>
   );
 };
 
