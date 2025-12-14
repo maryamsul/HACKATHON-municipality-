@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth, UserRole } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -17,9 +17,15 @@ const Auth = () => {
   const [role, setRole] = useState<UserRole>("citizen");
   const [isLoading, setIsLoading] = useState(false);
   
-  const { signUp, signIn } = useAuth();
+  const { signUp, signIn, isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate("/");
+    }
+  }, [isAuthenticated, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -29,20 +35,25 @@ const Auth = () => {
       if (isSignUp) {
         if (!fullName || !email || !password) {
           toast({ title: "Error", description: "Please fill all fields", variant: "destructive" });
+          setIsLoading(false);
           return;
         }
-        const success = await signUp(fullName, email, password, role);
-        if (success) {
-          toast({ title: "Success", description: "Account created successfully!" });
-          navigate("/");
+        const { error } = await signUp(fullName, email, password, role);
+        if (error) {
+          toast({ title: "Error", description: error, variant: "destructive" });
+        } else {
+          toast({ title: "Success", description: "Account created! Please check your email to confirm." });
         }
       } else {
         if (!email || !password) {
           toast({ title: "Error", description: "Please fill all fields", variant: "destructive" });
+          setIsLoading(false);
           return;
         }
-        const success = await signIn(email, password);
-        if (success) {
+        const { error } = await signIn(email, password);
+        if (error) {
+          toast({ title: "Error", description: error, variant: "destructive" });
+        } else {
           toast({ title: "Success", description: "Signed in successfully!" });
           navigate("/");
         }
