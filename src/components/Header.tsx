@@ -49,8 +49,11 @@ const Header = ({ onFilter, showSearch = true }: HeaderProps) => {
   const { profile, isAuthenticated, signOut } = useAuth();
   const searchRef = useRef<HTMLDivElement>(null);
 
-  const getInitials = (name: string) => {
-    return name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2);
+  const getInitials = (name: string | undefined | null) => {
+    if (!name || name.trim() === "") return "U";
+    const parts = name.trim().split(" ").filter(n => n.length > 0);
+    if (parts.length === 0) return "U";
+    return parts.map(n => n[0]).join("").toUpperCase().slice(0, 2);
   };
 
   const formatLocation = (lat: number, lng: number) => {
