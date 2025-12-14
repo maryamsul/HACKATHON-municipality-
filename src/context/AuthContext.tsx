@@ -107,7 +107,22 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       return { error: error.message };
     }
 
+    // Check if user already exists (Supabase returns user but with empty identities or existing created_at)
     if (data.user) {
+      const identities = data.user.identities;
+      // If identities is empty or user was created before this signup attempt, email already exists
+      if (!identities || identities.length === 0) {
+        return { error: "This email is already registered. Please sign in instead." };
+      }
+      
+      // Check if user was created more than 10 seconds ago (meaning it's an existing user)
+      const createdAt = new Date(data.user.created_at);
+      const now = new Date();
+      const diffSeconds = (now.getTime() - createdAt.getTime()) / 1000;
+      if (diffSeconds > 10) {
+        return { error: "This email is already registered. Please sign in instead." };
+      }
+
       // Insert profile (without email since column doesn't exist)
       await supabase.from("profiles").insert({
         id: data.user.id,
