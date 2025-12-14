@@ -40,9 +40,16 @@ const Auth = () => {
         }
         const { error } = await signUp(fullName, email, password, role);
         if (error) {
-          toast({ title: "Error", description: error, variant: "destructive" });
+          // Handle duplicate email error
+          if (error.toLowerCase().includes("already registered") || error.toLowerCase().includes("already exists")) {
+            toast({ title: "Email Already Registered", description: "This email is already in use. Please sign in instead.", variant: "destructive" });
+            setIsSignUp(false);
+          } else {
+            toast({ title: "Error", description: error, variant: "destructive" });
+          }
         } else {
-          toast({ title: "Success", description: "Account created! Please check your email to confirm." });
+          toast({ title: "Success", description: "Account created! Redirecting..." });
+          navigate("/");
         }
       } else {
         if (!email || !password) {
