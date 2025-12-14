@@ -136,7 +136,6 @@ const AddIssue = () => {
         category,
         latitude: coordinates.lat,
         longitude: coordinates.lng,
-        thumbnail: thumbnail || "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=200&h=200&fit=crop",
         reported_by: user.id,
         status: "pending",
       });
