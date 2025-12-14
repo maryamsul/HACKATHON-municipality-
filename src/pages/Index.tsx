@@ -42,36 +42,18 @@ const Index = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-teal-50 to-background pb-24" dir="rtl">
+    <div className="min-h-screen bg-gradient-to-b from-primary/5 via-background to-accent/10 pb-24" dir="rtl">
       <Header />
       
-      {/* Hero Section with Arabic Text */}
-      <motion.section 
-        className="px-6 pt-6 pb-4"
+      {/* Premium Message Rotator - Between Header and Categories */}
+      <motion.section
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6 }}
+        transition={{ delay: 0.2 }}
       >
-        <motion.h1 
-          className="text-2xl md:text-3xl font-bold text-foreground leading-relaxed"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.2 }}
-        >
-          شاهد. صوّر. بلّغ.
-          <br />
-          <span className="text-primary">مدينتك أفضل</span>
-        </motion.h1>
-        <motion.p 
-          className="text-muted-foreground mt-2 text-sm"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.3 }}
-        >
-          ساهم في تحسين مدينتك من خلال الإبلاغ عن المشاكل
-        </motion.p>
+        <PremiumMessageRotator />
       </motion.section>
-      
+
       {/* Hero Carousel */}
       <HeroCarousel />
 
@@ -133,16 +115,6 @@ const Index = () => {
             <CategoryItem key={category.label} {...category} index={index} />
           ))}
         </div>
-      </motion.section>
-
-      {/* Premium Message Rotator */}
-      <motion.section
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.6 }}
-        className="mt-8"
-      >
-        <PremiumMessageRotator />
       </motion.section>
 
       <BottomNav />
