@@ -26,6 +26,7 @@ const AddIssue = () => {
   const [location, setLocation] = useState("");
   const [description, setDescription] = useState("");
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [coordinates, setCoordinates] = useState<{ lat: number; lng: number } | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
@@ -62,6 +63,7 @@ const AddIssue = () => {
     if (file) {
       const previewUrl = URL.createObjectURL(file);
       setPhotoPreview(previewUrl);
+      setPhotoFile(file);
     }
   };
 
@@ -128,6 +130,28 @@ const AddIssue = () => {
     setIsSubmitting(true);
 
     try {
+      let thumbnailUrl: string | null = null;
+
+      // Upload image if provided
+      if (photoFile) {
+        const fileExt = photoFile.name.split('.').pop();
+        const fileName = `${user.id}-${Date.now()}.${fileExt}`;
+        const filePath = `issue-images/${fileName}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from('issues')
+          .upload(filePath, photoFile);
+
+        if (uploadError) {
+          console.error("Upload error:", uploadError);
+        } else {
+          const { data: urlData } = supabase.storage
+            .from('issues')
+            .getPublicUrl(filePath);
+          thumbnailUrl = urlData.publicUrl;
+        }
+      }
+
       const { error } = await supabase.from("issues").insert({
         title: `${category} issue`,
         description,
@@ -136,6 +160,7 @@ const AddIssue = () => {
         longitude: coordinates.lng,
         reported_by: user.id,
         status: "pending",
+        thumbnail: thumbnailUrl,
       });
 
       if (error) {
