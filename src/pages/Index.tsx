@@ -4,6 +4,7 @@ import HeroCarousel from "@/components/HeroCarousel";
 import StatsCard from "@/components/StatsCard";
 import CategoryItem from "@/components/CategoryItem";
 import BottomNav from "@/components/BottomNav";
+import PremiumMessageRotator from "@/components/PremiumMessageRotator";
 import { useIssues } from "@/context/IssuesContext";
 import { Circle, Trash2, Droplets, Lightbulb, TrafficCone, FileText, Clock, Settings, CheckCircle } from "lucide-react";
 
@@ -132,6 +133,16 @@ const Index = () => {
             <CategoryItem key={category.label} {...category} index={index} />
           ))}
         </div>
+      </motion.section>
+
+      {/* Premium Message Rotator */}
+      <motion.section
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.6 }}
+        className="mt-8"
+      >
+        <PremiumMessageRotator />
       </motion.section>
 
       <BottomNav />
