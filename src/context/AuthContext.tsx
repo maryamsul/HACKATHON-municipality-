@@ -2,8 +2,10 @@ import { createContext, useContext, useState, useEffect, ReactNode } from "react
 import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 
+// Define possible user roles
 export type UserRole = "employee" | "citizen";
 
+// Define the structure of the user's profile
 export interface UserProfile {
   id: string;
   full_name: string;
@@ -11,6 +13,7 @@ export interface UserProfile {
   role: UserRole;
 }
 
+// Define the context type
 interface AuthContextType {
   user: User | null;
   session: Session | null;
@@ -22,16 +25,20 @@ interface AuthContextType {
   signOut: () => Promise<void>;
 }
 
+// Create the context
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// Define the AuthProvider component
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+
+  // Function to fetch user profile
   const fetchProfile = async (userId: string, userEmail?: string) => {
     try {
-      // Get profile
+      // Fetch profile data
       const { data: profileData, error: profileError } = await supabase
         .from("profiles")
         .select("*")
@@ -40,9 +47,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       if (profileError) {
         console.error("Error fetching profile:", profileError);
+        return; // Exit early if profile fetch fails
       }
 
-      // Get role from user_roles table
+      // Fetch role data from user_roles table
       const { data: roleData, error: roleError } = await supabase
         .from("user_roles")
         .select("role")
@@ -51,12 +59,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       if (roleError) {
         console.error("Error fetching role:", roleError);
+        return; // Exit early if role fetch fails
       }
 
+      // Log the fetched data for debugging
+      console.log("Fetched profile data:", profileData);
       console.log("Fetched role data:", roleData);
 
+      // Assign role based on the fetched data
       const role = roleData?.role === "employee" ? "employee" : "citizen";
 
+      // Set profile state
       setProfile({
         id: userId,
         full_name: profileData?.full_name || "",
@@ -69,7 +82,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   useEffect(() => {
-    // Set up auth state listener FIRST
+    // Set up auth state listener for session changes
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, session) => {
@@ -77,7 +90,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setUser(session?.user ?? null);
 
       if (session?.user) {
-        // Defer profile fetch to avoid deadlock
+        // Fetch the profile after session change
         setTimeout(() => {
           fetchProfile(session.user.id, session.user.email);
         }, 0);
@@ -87,7 +100,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setIsLoading(false);
     });
 
-    // THEN check for existing session
+    // Check for existing session when the app loads
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
@@ -97,9 +110,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setIsLoading(false);
     });
 
+    // Cleanup the subscription on unmount
     return () => subscription.unsubscribe();
   }, []);
 
+  // Send a custom email via Supabase Functions (e.g., welcome, security alert)
   const sendAuthEmail = async (email: string, type: "security_alert" | "welcome", name?: string) => {
     try {
       await supabase.functions.invoke("send-auth-email", {
@@ -110,6 +125,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  // Sign up new user
   const signUp = async (
     fullName: string,
     email: string,
@@ -133,27 +149,24 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       return { error: error.message };
     }
 
-    // Check if user already exists (Supabase returns user but with empty identities or existing created_at)
+    // Check if the user already exists
     if (data.user) {
       const identities = data.user.identities;
-      // If identities is empty, email already exists
       if (!identities || identities.length === 0) {
-        // Send security alert email for existing account
         sendAuthEmail(email, "security_alert");
         return { error: "This email is already registered. Please sign in instead." };
       }
 
-      // Check if user was created more than 10 seconds ago (meaning it's an existing user)
+      // Check if the user was created more than 10 seconds ago
       const createdAt = new Date(data.user.created_at);
       const now = new Date();
       const diffSeconds = (now.getTime() - createdAt.getTime()) / 1000;
       if (diffSeconds > 10) {
-        // Send security alert email for existing account
         sendAuthEmail(email, "security_alert");
         return { error: "This email is already registered. Please sign in instead." };
       }
 
-      // New user - insert profile and role
+      // New user - insert profile and role into the database
       await supabase.from("profiles").insert({
         id: data.user.id,
         full_name: fullName,
@@ -164,13 +177,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         role: role,
       });
 
-      // Send welcome email for new account
+      // Send welcome email to the new user
       sendAuthEmail(email, "welcome", fullName);
     }
 
     return { error: null };
   };
 
+  // Sign in an existing user
   const signIn = async (email: string, password: string): Promise<{ error: string | null }> => {
     const { error } = await supabase.auth.signInWithPassword({
       email,
@@ -184,6 +198,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return { error: null };
   };
 
+  // Sign out the user
   const signOut = async () => {
     await supabase.auth.signOut();
     setUser(null);
@@ -209,6 +224,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   );
 };
 
+// Custom hook to access the authentication context
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (!context) {
