@@ -15,4 +15,5 @@ export interface Issue {
   reported_by: string;
   assigned_to?: string;
   created_at: string;
+  thumbnail?: string;
 }

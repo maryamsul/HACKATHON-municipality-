@@ -74,13 +74,17 @@ const IssueCard = ({ issue, index = 0 }: IssueCardProps) => {
     >
       <motion.button
         onClick={() => navigate(`/issue/${issue.id}`)}
-        className="w-20 h-20 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0 text-3xl"
+        className="w-20 h-20 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0 text-3xl overflow-hidden"
         initial={{ scale: 0.8, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         transition={{ delay: index * 0.08 + 0.1 }}
         whileTap={{ scale: 0.98 }}
       >
-        {categoryIcons[issue.category] || "📋"}
+        {issue.thumbnail ? (
+          <img src={issue.thumbnail} alt={issue.category} className="w-full h-full object-cover" />
+        ) : (
+          categoryIcons[issue.category] || "📋"
+        )}
       </motion.button>
       <div className="flex-1 min-w-0" onClick={() => navigate(`/issue/${issue.id}`)}>
         <div className="flex items-start justify-between gap-2 mb-2">
