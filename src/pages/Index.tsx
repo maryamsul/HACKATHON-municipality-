@@ -32,12 +32,12 @@ const Index = () => {
   ];
 
   const categories = [
-    { icon: Circle, label: "حفر", iconColor: "text-blue-700", iconBgColor: "bg-blue-100" },
-    { icon: Trash2, label: "نفايات", iconColor: "text-amber-600", iconBgColor: "bg-amber-50" },
-    { icon: Droplets, label: "تسرب مياه", iconColor: "text-cyan-500", iconBgColor: "bg-cyan-50" },
-    { icon: Lightbulb, label: "إنارة", iconColor: "text-yellow-500", iconBgColor: "bg-yellow-50" },
-    { icon: TrafficCone, label: "مرور", iconColor: "text-red-500", iconBgColor: "bg-red-50" },
-    { icon: FileText, label: "أخرى", iconColor: "text-gray-600", iconBgColor: "bg-gray-100" },
+    { icon: Circle, label: "Pothole", iconColor: "text-blue-700", iconBgColor: "bg-blue-100" },
+    { icon: Trash2, label: "Garbage", iconColor: "text-amber-600", iconBgColor: "bg-amber-50" },
+    { icon: Droplets, label: "Water Leak", iconColor: "text-cyan-500", iconBgColor: "bg-cyan-50" },
+    { icon: Lightbulb, label: "Lighting", iconColor: "text-yellow-500", iconBgColor: "bg-yellow-50" },
+    { icon: TrafficCone, label: "Traffic", iconColor: "text-red-500", iconBgColor: "bg-red-50" },
+    { icon: FileText, label: "Other", iconColor: "text-gray-600", iconBgColor: "bg-gray-100" },
   ];
 
   return (
