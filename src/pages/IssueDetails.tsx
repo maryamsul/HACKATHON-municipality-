@@ -3,16 +3,26 @@ import { ArrowLeft, MapPin, Calendar } from "lucide-react";
 import { useIssues } from "@/context/IssuesContext";
 import BottomNav from "@/components/BottomNav";
 
-const statusStyles = {
+const statusStyles: Record<string, string> = {
   pending: "bg-orange-100 text-orange-700 border-orange-200",
   "in-progress": "bg-blue-100 text-blue-700 border-blue-200",
   resolved: "bg-green-100 text-green-700 border-green-200",
 };
 
-const statusLabels = {
+const statusLabels: Record<string, string> = {
   pending: "Pending",
   "in-progress": "In Progress",
   resolved: "Resolved",
+};
+
+const categoryIcons: Record<string, string> = {
+  "Roads & Infrastructure": "🛣️",
+  "Water & Sewage": "💧",
+  "Electricity": "⚡",
+  "Waste Management": "🗑️",
+  "Public Safety": "🚨",
+  "Parks & Recreation": "🌳",
+  "Other": "📋",
 };
 
 const IssueDetails = () => {
@@ -48,8 +58,8 @@ const IssueDetails = () => {
       <div className="relative bg-gradient-to-br from-primary/20 to-primary/10">
         <div className="h-64 flex items-center justify-center">
           {/* Display Image if available, else fallback to icon */}
-          {issue.categoryImageUrl ? (
-            <img src={issue.categoryImageUrl} alt={issue.category} className="h-48 object-cover rounded-xl" />
+          {issue.thumbnail ? (
+            <img src={issue.thumbnail} alt={issue.category} className="h-full w-full object-cover" />
           ) : (
             <span className="text-8xl">{categoryIcons[issue.category] || "📋"}</span>
           )}
