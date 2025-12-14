@@ -1,5 +1,5 @@
 // Define the API URL for the Supabase Edge Function
-const API_URL = "https://your-supabase-url.supabase.co/functions/v1/api/issues"; // Replace with your actual Supabase Edge Function URL
+const API_URL = "https://ypgoodjdxcnjysrsortp.supabase.co/functions/v1/api/issues"; // Replace with your actual Supabase Edge Function URL
 
 // This function will make the request to the backend
 export const createIssue = async (issueData: {
@@ -16,7 +16,7 @@ export const createIssue = async (issueData: {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+        Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
       },
       body: JSON.stringify(issueData),
     });
