@@ -30,7 +30,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  const fetchProfile = async (userId: string) => {
+  const fetchProfile = async (userId: string, userEmail?: string) => {
     try {
       // Get profile
       const { data: profileData } = await supabase
@@ -46,14 +46,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         .eq("user_id", userId)
         .maybeSingle();
 
-      if (profileData) {
-        setProfile({
-          id: profileData.id,
-          full_name: profileData.full_name || "",
-          email: profileData.email || "",
-          role: (roleData?.role as UserRole) || "citizen",
-        });
-      }
+      setProfile({
+        id: userId,
+        full_name: profileData?.full_name || "",
+        email: userEmail || "",
+        role: (roleData?.role as UserRole) || "citizen",
+      });
     } catch (error) {
       console.error("Error fetching profile:", error);
     }
@@ -69,11 +67,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         if (session?.user) {
           // Defer profile fetch to avoid deadlock
           setTimeout(() => {
-            fetchProfile(session.user.id);
+            fetchProfile(session.user.id, session.user.email);
           }, 0);
         } else {
           setProfile(null);
         }
+        setIsLoading(false);
       }
     );
 
@@ -82,7 +81,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) {
-        fetchProfile(session.user.id);
+        fetchProfile(session.user.id, session.user.email);
       }
       setIsLoading(false);
     });
@@ -109,14 +108,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
 
     if (data.user) {
-      // Insert profile
+      // Insert profile (without email since column doesn't exist)
       await supabase.from("profiles").insert({
         id: data.user.id,
         full_name: fullName,
-        email: email,
       });
 
-      // Insert role
+      // Insert role - using user_id referencing auth.users
       await supabase.from("user_roles").insert({
         user_id: data.user.id,
         role: role,
