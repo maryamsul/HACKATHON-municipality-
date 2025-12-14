@@ -111,11 +111,16 @@ const Header = ({ onFilter, showSearch = true }: HeaderProps) => {
   };
 
   return (
-    <header className="bg-gradient-to-br from-blue-600 to-blue-700 text-white p-6 pb-8 rounded-b-3xl">
-      <div className="flex items-start justify-between mb-6">
+    <header className="bg-gradient-to-br from-teal-500 to-teal-600 text-white p-6 pb-8 rounded-b-3xl">
+      <div className="flex items-start justify-between mb-6" dir="rtl">
         <div>
-          <h1 className="text-2xl font-bold">CityReport</h1>
-          <p className="text-blue-100 text-sm">Make your city better</p>
+          <h1 className="text-2xl font-bold flex items-center gap-2">
+            <span className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center">
+              <span className="text-lg">🏛️</span>
+            </span>
+            CityConnect
+          </h1>
+          <p className="text-teal-100 text-sm mt-1">خدمة المواطن</p>
         </div>
         
         {isAuthenticated && user ? (
