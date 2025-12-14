@@ -1,7 +1,7 @@
 // Supabase configuration
 const SUPABASE_URL = "https://ypgoodjdxcnjysrsortp.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_rs58HjDUbtkp9QvD7Li4VA_fqtAUF2u";
-const API_URL = `${SUPABASE_URL}/functions/v1/api/issues`;
+const API_URL = `${SUPABASE_URL}/functions/v1/super-task`;
 
 // This function will make the request to the backend
 export const createIssue = async (issueData: {
