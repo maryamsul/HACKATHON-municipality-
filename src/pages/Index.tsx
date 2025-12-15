@@ -5,6 +5,7 @@ import StatsCard from "@/components/StatsCard";
 import CategoryItem from "@/components/CategoryItem";
 import BottomNav from "@/components/BottomNav";
 import PremiumMessageRotator from "@/components/PremiumMessageRotator";
+import MunicipalitiesShowcase from "@/components/MunicipalitiesShowcase";
 import { useIssues } from "@/context/IssuesContext";
 import { Circle, Trash2, Droplets, Lightbulb, TrafficCone, FileText, Clock, Settings, CheckCircle } from "lucide-react";
 
@@ -114,6 +115,9 @@ const Index = () => {
           ))}
         </div>
       </motion.section>
+
+      {/* Municipalities Showcase */}
+      <MunicipalitiesShowcase />
 
       {/* Hero Section - Call to Action at the End */}
       <HeroSection />
