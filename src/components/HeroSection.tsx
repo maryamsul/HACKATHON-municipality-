@@ -121,6 +121,9 @@ const HeroSection = () => {
           <Button
             variant="outline"
             size="lg"
+            onClick={() => {
+              document.getElementById('categories-section')?.scrollIntoView({ behavior: 'smooth' });
+            }}
             className="w-full sm:w-auto border-2 border-primary/30 text-primary hover:bg-primary/10 px-8 py-6 text-lg font-semibold rounded-xl transition-all duration-300"
           >
             Learn More

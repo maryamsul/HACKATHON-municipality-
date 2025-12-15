@@ -54,9 +54,6 @@ const Index = () => {
         <PremiumMessageRotator />
       </motion.section>
 
-      {/* Hero Section */}
-      <HeroSection />
-
       {/* Dashboard Section */}
       <motion.section 
         className="px-6 py-6"
@@ -97,6 +94,7 @@ const Index = () => {
 
       {/* Categories Section */}
       <motion.section 
+        id="categories-section"
         className="px-6"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -116,6 +114,9 @@ const Index = () => {
           ))}
         </div>
       </motion.section>
+
+      {/* Hero Section - Call to Action at the End */}
+      <HeroSection />
 
       <BottomNav />
     </div>
