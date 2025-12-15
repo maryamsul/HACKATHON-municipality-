@@ -1,4 +1,5 @@
-import { motion } from "framer-motion";
+import { useState, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 
 import beirutImg from "@/assets/municipalities/beirut.jpg";
 import hazmiehImg from "@/assets/municipalities/hazmieh.gif";
@@ -17,43 +18,56 @@ const municipalities = [
 ];
 
 const MunicipalitiesShowcase = () => {
+  const [currentIndex, setCurrentIndex] = useState(0);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentIndex((prev) => (prev + 1) % municipalities.length);
+    }, 4000);
+    return () => clearInterval(interval);
+  }, []);
+
   return (
     <motion.section
-      className="px-6 py-8"
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: 0.6 }}
+      className="relative w-full h-48 overflow-hidden"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ delay: 0.2 }}
     >
-      <h2 className="text-lg font-semibold text-foreground mb-4 text-center">
-        البلديات الشريكة
-      </h2>
-      <p className="text-sm text-muted-foreground text-center mb-6">
-        Partner Municipalities
-      </p>
-      
-      <div className="grid grid-cols-2 gap-3">
-        {municipalities.map((municipality, index) => (
-          <motion.div
-            key={municipality.nameEn}
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 0.7 + index * 0.1 }}
-            whileHover={{ y: -4, scale: 1.02 }}
-            className="relative group overflow-hidden rounded-xl border border-border/50 bg-card shadow-sm"
-          >
-            <div className="aspect-[16/10] overflow-hidden">
-              <img
-                src={municipality.image}
-                alt={municipality.nameEn}
-                className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
-              />
-            </div>
-            <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
-            <div className="absolute bottom-0 left-0 right-0 p-3 text-center">
-              <p className="text-white font-semibold text-sm">{municipality.name}</p>
-              <p className="text-white/80 text-xs">{municipality.nameEn}</p>
-            </div>
-          </motion.div>
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={currentIndex}
+          initial={{ opacity: 0, x: 100 }}
+          animate={{ opacity: 1, x: 0 }}
+          exit={{ opacity: 0, x: -100 }}
+          transition={{ duration: 0.5 }}
+          className="absolute inset-0"
+        >
+          <img
+            src={municipalities[currentIndex].image}
+            alt={municipalities[currentIndex].nameEn}
+            className="w-full h-full object-cover"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
+          <div className="absolute bottom-4 left-0 right-0 text-center">
+            <p className="text-white font-bold text-lg">{municipalities[currentIndex].name}</p>
+            <p className="text-white/80 text-sm">{municipalities[currentIndex].nameEn}</p>
+          </div>
+        </motion.div>
+      </AnimatePresence>
+
+      {/* Progress dots */}
+      <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1.5 z-10">
+        {municipalities.map((_, index) => (
+          <button
+            key={index}
+            onClick={() => setCurrentIndex(index)}
+            className={`w-2 h-2 rounded-full transition-all duration-300 ${
+              index === currentIndex 
+                ? "bg-white w-4" 
+                : "bg-white/50 hover:bg-white/70"
+            }`}
+          />
         ))}
       </div>
     </motion.section>

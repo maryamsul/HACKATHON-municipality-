@@ -55,6 +55,9 @@ const Index = () => {
         <PremiumMessageRotator />
       </motion.section>
 
+      {/* Municipalities Showcase - Full width carousel */}
+      <MunicipalitiesShowcase />
+
       {/* Dashboard Section */}
       <motion.section 
         className="px-6 py-6"
@@ -115,9 +118,6 @@ const Index = () => {
           ))}
         </div>
       </motion.section>
-
-      {/* Municipalities Showcase */}
-      <MunicipalitiesShowcase />
 
       {/* Hero Section - Call to Action at the End */}
       <HeroSection />
