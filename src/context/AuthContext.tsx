@@ -100,15 +100,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return () => subscription.unsubscribe();
   }, []);
 
-  const sendAuthEmail = async (email: string, type: "security_alert" | "welcome", name?: string) => {
-    try {
-      await supabase.functions.invoke("send-auth-email", {
-        body: { email, type, name },
-      });
-    } catch (error) {
-      console.error("Failed to send email:", error);
-    }
-  };
 
   const signUp = async (
     fullName: string,
@@ -138,8 +129,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const identities = data.user.identities;
       // If identities is empty, email already exists
       if (!identities || identities.length === 0) {
-        // Send security alert email for existing account
-        sendAuthEmail(email, "security_alert");
         return { error: "This email is already registered. Please sign in instead." };
       }
 
@@ -148,8 +137,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const now = new Date();
       const diffSeconds = (now.getTime() - createdAt.getTime()) / 1000;
       if (diffSeconds > 10) {
-        // Send security alert email for existing account
-        sendAuthEmail(email, "security_alert");
         return { error: "This email is already registered. Please sign in instead." };
       }
 
@@ -163,9 +150,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         user_id: data.user.id,
         role: role,
       });
-
-      // Send welcome email for new account
-      sendAuthEmail(email, "welcome", fullName);
     }
 
     return { error: null };
