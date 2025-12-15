@@ -18,11 +18,11 @@ const statusLabels: Record<string, string> = {
 const categoryIcons: Record<string, string> = {
   "Roads & Infrastructure": "🛣️",
   "Water & Sewage": "💧",
-  "Electricity": "⚡",
+  Electricity: "⚡",
   "Waste Management": "🗑️",
   "Public Safety": "🚨",
   "Parks & Recreation": "🌳",
-  "Other": "📋",
+  Other: "📋",
 };
 
 const IssueDetails = () => {
@@ -69,8 +69,9 @@ const IssueDetails = () => {
           onClick={() => navigate(-1)}
           className="absolute top-12 left-6 w-10 h-10 bg-white/90 backdrop-blur rounded-full flex items-center justify-center shadow-lg"
         >
-          <ArrowLeft className="w-5 h-5 text-foreground" />
+          <ArrowLeft className="w-5 h-5 text-gray-800" /> {/* Changed to dark color */}
         </button>
+
         <div className="absolute bottom-4 left-6 right-6">
           <span className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${statusStyles[issue.status]}`}>
             {statusLabels[issue.status]}
@@ -86,13 +87,13 @@ const IssueDetails = () => {
           <div className="flex flex-col gap-2">
             <div className="flex items-center gap-2 text-muted-foreground">
               <MapPin className="w-4 h-4" />
-              <span className="text-sm">
+              <span className="text-sm text-gray-800">
                 {issue.latitude.toFixed(4)}, {issue.longitude.toFixed(4)}
               </span>
             </div>
             <div className="flex items-center gap-2 text-muted-foreground">
               <Calendar className="w-4 h-4" />
-              <span className="text-sm">
+              <span className="text-sm text-gray-800">
                 Reported on{" "}
                 {new Date(issue.created_at).toLocaleDateString("en-US", {
                   weekday: "long",
