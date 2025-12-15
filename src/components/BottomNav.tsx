@@ -85,11 +85,7 @@ const BottomNav = () => {
                     {item.label}
                   </span>
                   {isActive && (
-                    <motion.div
-                      className="absolute -bottom-1 w-1 h-1 rounded-full bg-primary"
-                      layoutId="activeIndicator"
-                      transition={{ type: "spring", stiffness: 500, damping: 30 }}
-                    />
+                    <div className="absolute -bottom-1 w-1 h-1 rounded-full bg-primary" />
                   )}
                 </>
               )}
