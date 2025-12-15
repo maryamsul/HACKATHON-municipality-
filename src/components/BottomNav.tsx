@@ -25,14 +25,14 @@ const BottomNav = () => {
             <motion.button
               key={item.label}
               onClick={() => navigate(item.path)}
-              className={`relative flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-2xl transition-all ${
+              className={`relative flex-1 flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-2xl transition-colors duration-200 ${
                 item.isCenter
                   ? ""
                   : isActive
                   ? "text-primary"
                   : "text-muted-foreground hover:text-foreground"
               }`}
-              whileTap={{ scale: 0.9 }}
+              whileTap={{ scale: 0.95 }}
             >
               {item.isCenter ? (
                 <motion.div 
