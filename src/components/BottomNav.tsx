@@ -15,11 +15,8 @@ const BottomNav = () => {
   ];
 
   return (
-    <motion.nav 
+    <nav 
       className="fixed bottom-0 left-0 right-0 bg-background/95 backdrop-blur-xl border-t border-border px-2 py-3 safe-area-pb z-50"
-      initial={{ y: 100 }}
-      animate={{ y: 0 }}
-      transition={{ type: "spring", stiffness: 300, damping: 30 }}
     >
       <div className="flex items-center justify-around max-w-lg mx-auto">
         {navItems.map((item, index) => {
@@ -35,9 +32,6 @@ const BottomNav = () => {
                   ? "text-primary"
                   : "text-muted-foreground hover:text-foreground"
               }`}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.05, type: "spring", stiffness: 300 }}
               whileTap={{ scale: 0.9 }}
             >
               {item.isCenter ? (
@@ -103,7 +97,7 @@ const BottomNav = () => {
           );
         })}
       </div>
-    </motion.nav>
+    </nav>
   );
 };
 

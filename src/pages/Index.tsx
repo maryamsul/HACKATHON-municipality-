@@ -1,6 +1,6 @@
 import { motion } from "framer-motion";
 import Header from "@/components/Header";
-import HeroCarousel from "@/components/HeroCarousel";
+import HeroSection from "@/components/HeroSection";
 import StatsCard from "@/components/StatsCard";
 import CategoryItem from "@/components/CategoryItem";
 import BottomNav from "@/components/BottomNav";
@@ -54,8 +54,8 @@ const Index = () => {
         <PremiumMessageRotator />
       </motion.section>
 
-      {/* Hero Carousel */}
-      <HeroCarousel />
+      {/* Hero Section */}
+      <HeroSection />
 
       {/* Dashboard Section */}
       <motion.section 
