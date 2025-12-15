@@ -109,7 +109,7 @@ const IssueDetails = () => {
         {/* Description */}
         <div>
           <h2 className="text-lg font-semibold text-foreground mb-2">Description</h2>
-          <p className="text-muted-foreground leading-relaxed">{issue.description}</p>
+          <p className="text-muted-foreground leading-relaxed  text-gray-800">{issue.description}</p>
         </div>
 
         {/* Map with Google Maps Link */}
