@@ -115,16 +115,16 @@ const IssueDetails = () => {
         {/* Map with Google Maps Link */}
         <div>
           <h2 className="text-lg font-semibold text-foreground mb-2">Location</h2>
+          <div className="rounded-2xl overflow-hidden shadow-sm border border-border">
+            <iframe src={openStreetMapUrl} className="w-full h-48 border-0" title="Issue location map" />
+          </div>
           <a
             href={`https://www.google.com/maps?q=${issue.latitude},${issue.longitude}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="block"
+            className="text-sm text-primary mt-2 underline inline-block"
           >
-            <div className="rounded-2xl overflow-hidden shadow-sm border border-border">
-              <iframe src={openStreetMapUrl} className="w-full h-48 border-0" title="Issue location map" />
-            </div>
-            <p className="text-sm text-primary mt-2 underline">Open in Google Maps →</p>
+            Open in Google Maps →
           </a>
           <p className="text-sm text-muted-foreground mt-1">
             Coordinates: {issue.latitude.toFixed(4)}, {issue.longitude.toFixed(4)}
