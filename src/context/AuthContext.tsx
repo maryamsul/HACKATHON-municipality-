@@ -116,6 +116,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         emailRedirectTo: redirectUrl,
         data: {
           full_name: fullName,
+          role: role, // Store role in user metadata for trigger to use
         },
       },
     });
@@ -124,15 +125,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       return { error: error.message };
     }
 
-    // Check if user already exists (Supabase returns user but with empty identities or existing created_at)
+    // Check if user already exists
     if (data.user) {
       const identities = data.user.identities;
-      // If identities is empty, email already exists
       if (!identities || identities.length === 0) {
         return { error: "This email is already registered. Please sign in instead." };
       }
 
-      // Check if user was created more than 10 seconds ago (meaning it's an existing user)
       const createdAt = new Date(data.user.created_at);
       const now = new Date();
       const diffSeconds = (now.getTime() - createdAt.getTime()) / 1000;
@@ -140,16 +139,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         return { error: "This email is already registered. Please sign in instead." };
       }
 
-      // New user - insert profile and role
-      await supabase.from("profiles").insert({
+      // Insert profile
+      await supabase.from("profiles").upsert({
         id: data.user.id,
         full_name: fullName,
       });
 
-      await supabase.from("user_roles").insert({
+      // Insert role - use upsert to handle any existing records
+      const { error: roleError } = await supabase.from("user_roles").upsert({
         user_id: data.user.id,
         role: role,
-      });
+      }, { onConflict: 'user_id' });
+
+      if (roleError) {
+        console.error("Error inserting role:", roleError);
+      }
     }
 
     return { error: null };
