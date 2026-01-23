@@ -1,29 +1,28 @@
 import { motion } from "framer-motion";
 import Header from "@/components/Header";
 import HeroSection from "@/components/HeroSection";
-import StatsCard from "@/components/StatsCard";
 import CategoryItem from "@/components/CategoryItem";
 import BottomNav from "@/components/BottomNav";
 import PremiumMessageRotator from "@/components/PremiumMessageRotator";
 import MunicipalitiesShowcase from "@/components/MunicipalitiesShowcase";
 import { useIssues } from "@/context/IssuesContext";
-import { Circle, Trash2, Droplets, Lightbulb, TrafficCone, FileText, Clock, Settings, CheckCircle } from "lucide-react";
+import { Circle, Trash2, Droplets, Lightbulb, TrafficCone, FileText, Clock, Wrench, CheckCircle } from "lucide-react";
 
 const Index = () => {
   const { issues } = useIssues();
 
   const stats = [
     { 
-      count: issues.filter(i => i.status === "pending").length, 
-      label: "قيد الانتظار", 
+      count: issues.filter(i => i.status === "under_review").length, 
+      label: "قيد المراجعة", 
       color: "orange" as const,
       icon: Clock
     },
     { 
-      count: issues.filter(i => i.status === "in-progress").length, 
-      label: "قيد التنفيذ", 
+      count: issues.filter(i => i.status === "under_maintenance").length, 
+      label: "قيد الصيانة", 
       color: "blue" as const,
-      icon: Settings
+      icon: Wrench
     },
     { 
       count: issues.filter(i => i.status === "resolved").length, 

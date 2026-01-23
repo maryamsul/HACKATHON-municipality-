@@ -3,6 +3,7 @@ import { ArrowLeft } from "lucide-react";
 import { useIssues } from "@/context/IssuesContext";
 import IssueCard from "@/components/IssueCard";
 import BottomNav from "@/components/BottomNav";
+import { ISSUE_STATUSES, IssueStatus } from "@/types/issue";
 
 const CategoryIssues = () => {
   const { category } = useParams<{ category: string }>();
@@ -14,8 +15,8 @@ const CategoryIssues = () => {
     (issue) => issue.category.toLowerCase() === decodedCategory.toLowerCase()
   );
 
-  const pendingCount = filteredIssues.filter((i) => i.status === "pending").length;
-  const inProgressCount = filteredIssues.filter((i) => i.status === "in-progress").length;
+  const underReviewCount = filteredIssues.filter((i) => i.status === "under_review").length;
+  const underMaintenanceCount = filteredIssues.filter((i) => i.status === "under_maintenance").length;
   const resolvedCount = filteredIssues.filter((i) => i.status === "resolved").length;
 
   return (
@@ -36,14 +37,14 @@ const CategoryIssues = () => {
         </div>
 
         {/* Mini Stats */}
-        <div className="flex gap-4 mt-4">
+        <div className="flex gap-4 mt-4 flex-wrap">
           <div className="flex items-center gap-2 px-3 py-1.5 bg-orange-100 rounded-full">
             <span className="w-2 h-2 bg-orange-500 rounded-full" />
-            <span className="text-sm font-medium text-orange-700">{pendingCount} Pending</span>
+            <span className="text-sm font-medium text-orange-700">{underReviewCount} Under Review</span>
           </div>
           <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-100 rounded-full">
             <span className="w-2 h-2 bg-blue-500 rounded-full" />
-            <span className="text-sm font-medium text-blue-700">{inProgressCount} In Progress</span>
+            <span className="text-sm font-medium text-blue-700">{underMaintenanceCount} Under Maintenance</span>
           </div>
           <div className="flex items-center gap-2 px-3 py-1.5 bg-green-100 rounded-full">
             <span className="w-2 h-2 bg-green-500 rounded-full" />
