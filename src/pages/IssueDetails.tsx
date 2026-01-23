@@ -1,19 +1,12 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, MapPin, Calendar } from "lucide-react";
 import { useIssues } from "@/context/IssuesContext";
+import { useAuth } from "@/context/AuthContext";
+import { ISSUE_STATUSES, IssueStatus } from "@/types/issue";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 import BottomNav from "@/components/BottomNav";
-
-const statusStyles: Record<string, string> = {
-  pending: "bg-orange-100 text-orange-700 border-orange-200",
-  "in-progress": "bg-blue-100 text-blue-700 border-blue-200",
-  resolved: "bg-green-100 text-green-700 border-green-200",
-};
-
-const statusLabels: Record<string, string> = {
-  pending: "Pending",
-  "in-progress": "In Progress",
-  resolved: "Resolved",
-};
 
 const categoryIcons: Record<string, string> = {
   "Roads & Infrastructure": "🛣️",
@@ -28,9 +21,32 @@ const categoryIcons: Record<string, string> = {
 const IssueDetails = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { issues, loading } = useIssues();
+  const { issues, loading, refetchIssues } = useIssues();
+  const { profile } = useAuth();
+  const { toast } = useToast();
+  const isEmployee = profile?.role === "employee";
 
   const issue = issues.find((i) => i.id === Number(id));
+
+  const handleStatusChange = async (newStatus: string) => {
+    if (!issue) return;
+    try {
+      const { error } = await supabase
+        .from("issues")
+        .update({ status: newStatus })
+        .eq("id", issue.id);
+      
+      if (error) throw error;
+      
+      await refetchIssues();
+      toast({ 
+        title: "Status updated", 
+        description: `Issue marked as ${ISSUE_STATUSES[newStatus as IssueStatus]?.label || newStatus}` 
+      });
+    } catch (error) {
+      toast({ title: "Error", description: "Failed to update status", variant: "destructive" });
+    }
+  };
 
   if (loading) {
     return (
@@ -48,8 +64,7 @@ const IssueDetails = () => {
     );
   }
 
-  // Google Maps and OpenStreetMap URLs
-  const googleMapUrl = `https://maps.googleapis.com/maps/api/staticmap?center=${issue.latitude},${issue.longitude}&zoom=15&size=400x200&scale=2&markers=color:red%7C${issue.latitude},${issue.longitude}&key=AIzaSyBEXdBSvU7f8aNCe_t_Z-6hW5_JwAGV8Hs`;
+  const currentStatus = ISSUE_STATUSES[issue.status as IssueStatus] || ISSUE_STATUSES.under_review;
   const openStreetMapUrl = `https://www.openstreetmap.org/export/embed.html?bbox=${issue.longitude - 0.01},${issue.latitude - 0.01},${issue.longitude + 0.01},${issue.latitude + 0.01}&layer=mapnik&marker=${issue.latitude},${issue.longitude}`;
 
   return (
@@ -57,7 +72,6 @@ const IssueDetails = () => {
       {/* Header with Category Image */}
       <div className="relative bg-gradient-to-br from-primary/20 to-primary/10">
         <div className="h-64 flex items-center justify-center">
-          {/* Display Image if available, else fallback to icon */}
           {issue.thumbnail ? (
             <img src={issue.thumbnail} alt={issue.category} className="h-full w-full object-cover" />
           ) : (
@@ -69,13 +83,31 @@ const IssueDetails = () => {
           onClick={() => navigate(-1)}
           className="absolute top-12 left-6 w-10 h-10 bg-white/90 backdrop-blur rounded-full flex items-center justify-center shadow-lg"
         >
-          <ArrowLeft className="w-5 h-5 text-gray-800" /> {/* Changed to dark color */}
+          <ArrowLeft className="w-5 h-5 text-gray-800" />
         </button>
 
-        <div className="absolute bottom-4 left-6 right-6">
-          <span className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${statusStyles[issue.status]}`}>
-            {statusLabels[issue.status]}
-          </span>
+        <div className="absolute bottom-4 left-6 right-6 flex items-center justify-between">
+          {isEmployee ? (
+            <Select value={issue.status} onValueChange={handleStatusChange}>
+              <SelectTrigger className={`w-44 h-9 text-sm font-medium border-0 ${currentStatus.color}`}>
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent className="bg-popover border border-border shadow-lg z-50">
+                <SelectItem value="under_review">Under Review</SelectItem>
+                <SelectItem value="under_maintenance">Under Maintenance</SelectItem>
+                <SelectItem value="resolved">Resolved</SelectItem>
+              </SelectContent>
+            </Select>
+          ) : (
+            <span className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${currentStatus.color}`}>
+              {currentStatus.label}
+            </span>
+          )}
+          {isEmployee && (
+            <span className="px-2 py-1 bg-primary text-primary-foreground rounded-full text-xs font-medium">
+              Employee View
+            </span>
+          )}
         </div>
       </div>
 
@@ -109,7 +141,7 @@ const IssueDetails = () => {
         {/* Description */}
         <div>
           <h2 className="text-lg font-semibold text-foreground mb-2">Description</h2>
-          <p className="text-muted-foreground leading-relaxed  text-gray-800">{issue.description}</p>
+          <p className="text-muted-foreground leading-relaxed text-gray-800">{issue.description}</p>
         </div>
 
         {/* Map with Google Maps Link */}

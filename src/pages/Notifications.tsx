@@ -1,8 +1,9 @@
-import { ArrowLeft, Bell, CheckCircle2, Clock, AlertCircle } from "lucide-react";
+import { ArrowLeft, Bell, CheckCircle2, Clock, Wrench } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import BottomNav from "@/components/BottomNav";
 import { useIssues } from "@/context/IssuesContext";
+import { ISSUE_STATUSES, IssueStatus } from "@/types/issue";
 
 const Notifications = () => {
   const navigate = useNavigate();
@@ -18,15 +19,15 @@ const Notifications = () => {
     title:
       issue.status === "resolved"
         ? `Issue Resolved: ${issue.category}`
-        : issue.status === "in-progress"
-        ? `Update: ${issue.category} issue is being addressed`
-        : `New Report: ${issue.category}`,
+        : issue.status === "under_maintenance"
+        ? `Update: ${issue.category} issue is under maintenance`
+        : `Under Review: ${issue.category}`,
     message:
       issue.status === "resolved"
         ? `The issue at ${formatLocation(issue.latitude, issue.longitude)} has been resolved.`
-        : issue.status === "in-progress"
-        ? `Work has started on the issue at ${formatLocation(issue.latitude, issue.longitude)}.`
-        : `A new issue has been reported at ${formatLocation(issue.latitude, issue.longitude)}.`,
+        : issue.status === "under_maintenance"
+        ? `Work is in progress on the issue at ${formatLocation(issue.latitude, issue.longitude)}.`
+        : `The issue at ${formatLocation(issue.latitude, issue.longitude)} is being reviewed.`,
     time: new Date(issue.created_at).toLocaleDateString(),
     status: issue.status,
     issueId: issue.id,
@@ -36,10 +37,10 @@ const Notifications = () => {
     switch (status) {
       case "resolved":
         return <CheckCircle2 className="w-5 h-5 text-green-500" />;
-      case "in-progress":
-        return <Clock className="w-5 h-5 text-blue-500" />;
+      case "under_maintenance":
+        return <Wrench className="w-5 h-5 text-blue-500" />;
       default:
-        return <AlertCircle className="w-5 h-5 text-orange-500" />;
+        return <Clock className="w-5 h-5 text-orange-500" />;
     }
   };
 

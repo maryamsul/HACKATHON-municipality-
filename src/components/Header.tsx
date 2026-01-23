@@ -251,14 +251,14 @@ const Header = ({ onFilter, showSearch = true }: HeaderProps) => {
                           </div>
                           <span
                             className={`text-xs px-2 py-1 rounded-full flex-shrink-0 ${
-                              issue.status === "pending"
+                              issue.status === "under_review"
                                 ? "bg-orange-100 text-orange-700"
-                                : issue.status === "in-progress"
+                                : issue.status === "under_maintenance"
                                 ? "bg-blue-100 text-blue-700"
                                 : "bg-green-100 text-green-700"
                             }`}
                           >
-                            {issue.status}
+                            {issue.status === "under_review" ? "Under Review" : issue.status === "under_maintenance" ? "Under Maintenance" : "Resolved"}
                           </span>
                         </button>
                       ))}
@@ -308,12 +308,12 @@ const Header = ({ onFilter, showSearch = true }: HeaderProps) => {
                       <Label htmlFor="status-all" className="text-sm">All</Label>
                     </div>
                     <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="pending" id="status-pending" />
-                      <Label htmlFor="status-pending" className="text-sm">Pending</Label>
+                      <RadioGroupItem value="under_review" id="status-under-review" />
+                      <Label htmlFor="status-under-review" className="text-sm">Under Review</Label>
                     </div>
                     <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="in-progress" id="status-in-progress" />
-                      <Label htmlFor="status-in-progress" className="text-sm">In Progress</Label>
+                      <RadioGroupItem value="under_maintenance" id="status-under-maintenance" />
+                      <Label htmlFor="status-under-maintenance" className="text-sm">Under Maintenance</Label>
                     </div>
                     <div className="flex items-center space-x-2">
                       <RadioGroupItem value="resolved" id="status-resolved" />

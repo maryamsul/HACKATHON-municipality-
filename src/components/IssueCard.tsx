@@ -1,4 +1,4 @@
-import { Issue } from "@/types/issue";
+import { Issue, ISSUE_STATUSES, IssueStatus } from "@/types/issue";
 import { MapPin, Calendar } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
@@ -12,18 +12,6 @@ interface IssueCardProps {
   issue: Issue;
   index?: number;
 }
-
-const statusStyles = {
-  pending: "bg-orange-100 text-orange-700",
-  "in-progress": "bg-blue-100 text-blue-700",
-  resolved: "bg-green-100 text-green-700",
-};
-
-const statusLabels = {
-  pending: "Pending",
-  "in-progress": "In Progress",
-  resolved: "Resolved",
-};
 
 const categoryIcons: Record<string, string> = {
   Pothole: "🕳️",
@@ -45,6 +33,8 @@ const IssueCard = ({ issue, index = 0 }: IssueCardProps) => {
     return `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
   };
 
+  const currentStatus = ISSUE_STATUSES[issue.status as IssueStatus] || ISSUE_STATUSES.under_review;
+
   const handleStatusChange = async (newStatus: string) => {
     try {
       const { error } = await supabase
@@ -55,7 +45,10 @@ const IssueCard = ({ issue, index = 0 }: IssueCardProps) => {
       if (error) throw error;
       
       await refetchIssues();
-      toast({ title: "Status updated", description: `Issue marked as ${statusLabels[newStatus as keyof typeof statusLabels]}` });
+      toast({ 
+        title: "Status updated", 
+        description: `Issue marked as ${ISSUE_STATUSES[newStatus as IssueStatus]?.label || newStatus}` 
+      });
     } catch (error) {
       toast({ title: "Error", description: "Failed to update status", variant: "destructive" });
     }
@@ -86,7 +79,7 @@ const IssueCard = ({ issue, index = 0 }: IssueCardProps) => {
           categoryIcons[issue.category] || "📋"
         )}
       </motion.button>
-      <div className="flex-1 min-w-0" onClick={() => navigate(`/issue/${issue.id}`)}>
+      <div className="flex-1 min-w-0 cursor-pointer" onClick={() => navigate(`/issue/${issue.id}`)}>
         <div className="flex items-start justify-between gap-2 mb-2">
           <h3 className="font-semibold text-foreground truncate">{issue.title || issue.category}</h3>
           {isEmployee ? (
@@ -96,25 +89,25 @@ const IssueCard = ({ issue, index = 0 }: IssueCardProps) => {
                 onValueChange={handleStatusChange}
               >
                 <SelectTrigger 
-                  className={`w-28 h-7 text-xs font-medium border-0 ${statusStyles[issue.status as keyof typeof statusStyles]}`}
+                  className={`w-36 h-7 text-xs font-medium border-0 ${currentStatus.color}`}
                 >
                   <SelectValue placeholder="Status" />
                 </SelectTrigger>
                 <SelectContent className="bg-popover border border-border shadow-lg z-50">
-                  <SelectItem value="pending">Pending</SelectItem>
-                  <SelectItem value="in-progress">In Progress</SelectItem>
+                  <SelectItem value="under_review">Under Review</SelectItem>
+                  <SelectItem value="under_maintenance">Under Maintenance</SelectItem>
                   <SelectItem value="resolved">Resolved</SelectItem>
                 </SelectContent>
               </Select>
             </div>
           ) : (
             <motion.span 
-              className={`px-2 py-1 rounded-full text-xs font-medium flex-shrink-0 ${statusStyles[issue.status]}`}
+              className={`px-2 py-1 rounded-full text-xs font-medium flex-shrink-0 ${currentStatus.color}`}
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
               transition={{ delay: index * 0.08 + 0.15 }}
             >
-              {statusLabels[issue.status]}
+              {currentStatus.label}
             </motion.span>
           )}
         </div>
