@@ -2,6 +2,7 @@ import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { ArrowRight, FileCheck, ThumbsUp, Headphones } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import DonorTicker from "@/components/DonorTicker";
 
 const HeroSection = () => {
   const navigate = useNavigate();
@@ -160,6 +161,16 @@ const HeroSection = () => {
               </div>
             </motion.div>
           ))}
+        </motion.div>
+
+        {/* Donor Appreciation Ticker */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.6 }}
+          className="mt-8 pt-6 border-t border-border/30"
+        >
+          <DonorTicker />
         </motion.div>
       </div>
     </section>
