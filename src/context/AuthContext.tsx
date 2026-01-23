@@ -31,12 +31,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isLoading, setIsLoading] = useState(true);
 
   // Fetch profile and role from Supabase
-  const fetchProfile = async (userId: string, userEmail?: string) => {
+  const fetchProfile = async (user: User) => {
     try {
       const { data: profileData, error: profileError } = await supabase
         .from("profiles")
         .select("*")
-        .eq("id", userId)
+        .eq("id", user.id)
         .maybeSingle();
 
       if (profileError) console.error("Error fetching profile:", profileError);
@@ -45,17 +45,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const { data: roleData, error: roleError } = await supabase
         .from("user_roles")
         .select("role")
-        .eq("user_id", userId)
+        .eq("user_id", user.id)
         .maybeSingle();
 
       if (roleError) console.error("Error fetching role:", roleError);
 
-      const role = roleData?.role === "employee" ? "employee" : "citizen";
+      // Use database role first, then metadata fallback, then default to citizen
+      const role =
+        roleData?.role ??
+        (user.user_metadata?.role as UserRole) ??
+        "citizen";
 
       setProfile({
-        id: userId,
-        full_name: profileData?.full_name || "",
-        email: userEmail || "",
+        id: user.id,
+        full_name: profileData?.full_name || user.user_metadata?.full_name || "",
+        email: user.email || "",
         role,
       });
     } catch (error) {
@@ -71,7 +75,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setUser(session?.user ?? null);
 
       if (session?.user) {
-        setTimeout(() => fetchProfile(session.user.id, session.user.email), 0);
+        setTimeout(() => fetchProfile(session.user), 0);
       } else {
         setProfile(null);
       }
@@ -81,7 +85,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
-      if (session?.user) fetchProfile(session.user.id, session.user.email);
+      if (session?.user) fetchProfile(session.user);
       setIsLoading(false);
     });
 
