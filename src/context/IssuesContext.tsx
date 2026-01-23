@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
-import { Issue } from "@/types/issue";
+import { Issue, IssueStatus } from "@/types/issue";
 import { supabase } from "@/integrations/supabase/client";
 
 interface IssuesContextType {
@@ -9,6 +9,19 @@ interface IssuesContextType {
 }
 
 const IssuesContext = createContext<IssuesContextType | undefined>(undefined);
+
+// Normalize legacy status values to current enum values
+const normalizeStatus = (status: string): IssueStatus => {
+  const statusMap: Record<string, IssueStatus> = {
+    "pending": "under_review",
+    "in-progress": "under_maintenance",
+    "in_progress": "under_maintenance",
+    "under_review": "under_review",
+    "under_maintenance": "under_maintenance",
+    "resolved": "resolved",
+  };
+  return statusMap[status] || "under_review";
+};
 
 export const IssuesProvider = ({ children }: { children: ReactNode }) => {
   const [issues, setIssues] = useState<Issue[]>([]);
@@ -24,7 +37,12 @@ export const IssuesProvider = ({ children }: { children: ReactNode }) => {
     if (error) {
       console.error("Error fetching issues:", error);
     } else {
-      setIssues(data as Issue[]);
+      // Normalize status values from legacy formats
+      const normalizedIssues = (data || []).map((issue) => ({
+        ...issue,
+        status: normalizeStatus(issue.status),
+      })) as Issue[];
+      setIssues(normalizedIssues);
     }
     setLoading(false);
   };
