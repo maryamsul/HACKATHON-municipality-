@@ -82,18 +82,7 @@ const DonorTicker = () => {
 
   const formatMessage = (donation: Donation) => {
     const locationText = donation.location ? ` on ${donation.location}` : "";
-    return (
-      <>
-        <span className="font-bold text-primary">{donation.donor_name}</span>
-        {" donated "}
-        <span className="font-bold text-primary">${donation.amount.toLocaleString()}</span>
-        {" to "}
-        <span className="font-medium">{donation.municipality}</span>
-        {" for "}
-        <span className="italic">{donation.purpose}</span>
-        {locationText}.
-      </>
-    );
+    return `${donation.donor_name} donated $${donation.amount.toLocaleString()} to ${donation.municipality} for ${donation.purpose}${locationText}.`;
   };
 
   return (
