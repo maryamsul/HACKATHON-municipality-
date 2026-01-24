@@ -2,6 +2,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
@@ -32,7 +33,14 @@ console.info("send-phone-otp function started");
 Deno.serve(async (req: Request) => {
   // Handle CORS preflight
   if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
+    return new Response(null, { status: 204, headers: corsHeaders });
+  }
+
+  if (req.method !== "POST") {
+    return new Response(
+      JSON.stringify({ success: false, error: "Method not allowed" }),
+      { status: 405, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
   }
 
   try {
@@ -40,7 +48,7 @@ Deno.serve(async (req: Request) => {
 
     if (!phone) {
       return new Response(
-        JSON.stringify({ error: "Phone number is required" }),
+        JSON.stringify({ success: false, error: "Phone number is required" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -81,7 +89,7 @@ Deno.serve(async (req: Request) => {
     if (insertError) {
       console.error("Error saving OTP:", insertError);
       return new Response(
-        JSON.stringify({ error: "Failed to generate OTP", details: insertError.message }),
+        JSON.stringify({ success: false, error: "Failed to generate OTP", details: insertError.message }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -151,7 +159,7 @@ Deno.serve(async (req: Request) => {
         .eq("otp", otp);
 
       return new Response(
-        JSON.stringify({ error: "Failed to send SMS. Please try again." }),
+        JSON.stringify({ success: false, error: "Failed to send SMS. Please try again." }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -170,7 +178,7 @@ Deno.serve(async (req: Request) => {
   } catch (error) {
     console.error("Error in send-phone-otp:", error);
     return new Response(
-      JSON.stringify({ error: "Internal server error", details: String(error) }),
+      JSON.stringify({ success: false, error: "Internal server error", details: String(error) }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }

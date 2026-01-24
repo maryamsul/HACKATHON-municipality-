@@ -2,6 +2,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
@@ -25,7 +26,14 @@ console.info("verify-phone-otp function started");
 Deno.serve(async (req: Request) => {
   // Handle CORS preflight
   if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
+    return new Response(null, { status: 204, headers: corsHeaders });
+  }
+
+  if (req.method !== "POST") {
+    return new Response(
+      JSON.stringify({ success: false, error: "Method not allowed" }),
+      { status: 405, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
   }
 
   try {
@@ -33,7 +41,7 @@ Deno.serve(async (req: Request) => {
 
     if (!phone || !otp) {
       return new Response(
-        JSON.stringify({ error: "Phone number and OTP are required" }),
+        JSON.stringify({ success: false, error: "Phone number and OTP are required" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -60,7 +68,7 @@ Deno.serve(async (req: Request) => {
     if (otpError) {
       console.error("Error fetching OTP:", otpError);
       return new Response(
-        JSON.stringify({ error: "Failed to verify OTP" }),
+        JSON.stringify({ success: false, error: "Failed to verify OTP" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -69,7 +77,7 @@ Deno.serve(async (req: Request) => {
     if (!otpRecord) {
       console.log("OTP not found or already used");
       return new Response(
-        JSON.stringify({ error: "Invalid verification code" }),
+        JSON.stringify({ success: false, error: "Invalid verification code" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -84,7 +92,7 @@ Deno.serve(async (req: Request) => {
         .eq("id", otpRecord.id);
 
       return new Response(
-        JSON.stringify({ error: "Verification code has expired. Please request a new one." }),
+        JSON.stringify({ success: false, error: "Verification code has expired. Please request a new one." }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -121,7 +129,7 @@ Deno.serve(async (req: Request) => {
       if (createError) {
         console.error("Error creating phone user:", createError);
         return new Response(
-          JSON.stringify({ error: "Failed to create user account" }),
+          JSON.stringify({ success: false, error: "Failed to create user account" }),
           { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
@@ -168,7 +176,7 @@ Deno.serve(async (req: Request) => {
   } catch (error) {
     console.error("Error in verify-phone-otp:", error);
     return new Response(
-      JSON.stringify({ error: "Internal server error", details: String(error) }),
+      JSON.stringify({ success: false, error: "Internal server error", details: String(error) }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
