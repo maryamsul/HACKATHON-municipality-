@@ -9,6 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useBuildings } from "@/context/BuildingsContext";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
+import { createBuildingReport } from "@/api/buildingApi";
 import SuccessAnimation from "@/components/SuccessAnimation";
 
 interface AddBuildingAtRiskFormProps {
@@ -110,11 +111,11 @@ const AddBuildingAtRiskForm = ({ onClose }: AddBuildingAtRiskFormProps) => {
     try {
       let thumbnailUrl: string | null = null;
 
-      // Upload photo if provided
+      // Upload photo if provided (use same path pattern as Issues)
       if (photoFile) {
-        const fileExt = photoFile.name.split(".").pop();
+        const fileExt = photoFile.name.split(".").pop() || "jpg";
         const fileName = `${user.id}-${Date.now()}.${fileExt}`;
-        const filePath = `building-images/${fileName}`;
+        const filePath = `issue-images/${fileName}`;
 
         const { error: uploadError } = await supabase.storage
           .from("issues")
@@ -130,20 +131,20 @@ const AddBuildingAtRiskForm = ({ onClose }: AddBuildingAtRiskFormProps) => {
         }
       }
 
-      // Insert with correct column names matching public.buildings_at_risk schema
-      const { error } = await supabase.from("buildings_at_risk").insert({
+      // Use the API function for consistent field mapping
+      const result = await createBuildingReport({
         title: buildingName.trim(),
         description: description.trim(),
-        reported_by: user.id,
-        status: "pending",
-        latitude: coordinates?.lat || null,
-        longitude: coordinates?.lng || null,
+        reportedBy: user.id,
+        assignedTo: null,
+        latitude: coordinates?.lat ?? null,
+        longitude: coordinates?.lng ?? null,
         thumbnail: thumbnailUrl,
       });
 
-      if (error) {
-        console.error("Error inserting building at risk:", error);
-        throw error;
+      if (!result.success) {
+        console.error("API error:", result.error, result.details);
+        throw new Error(result.details ? `${result.error}: ${result.details}` : result.error);
       }
 
       await refetchBuildings();
