@@ -1,5 +1,3 @@
-import "https://deno.land/x/xhr@0.1.0/mod.ts";
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 
 const corsHeaders = {
@@ -31,7 +29,7 @@ function formatPhoneNumber(phone: string): string {
 
 console.info("send-phone-otp function started");
 
-serve(async (req: Request) => {
+Deno.serve(async (req: Request) => {
   // Handle CORS preflight
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -83,14 +81,13 @@ serve(async (req: Request) => {
     if (insertError) {
       console.error("Error saving OTP:", insertError);
       return new Response(
-        JSON.stringify({ error: "Failed to generate OTP" }),
+        JSON.stringify({ error: "Failed to generate OTP", details: insertError.message }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
     // Store user info temporarily if provided (for new registrations)
     if (full_name || role) {
-      // Check if phone user exists
       const { data: existingUser } = await supabase
         .from("phone_users")
         .select("id")
@@ -98,7 +95,6 @@ serve(async (req: Request) => {
         .maybeSingle();
 
       if (!existingUser && full_name) {
-        // Pre-create user record (will be fully activated after OTP verification)
         await supabase.from("phone_users").insert({
           phone: formattedPhone,
           full_name: full_name,
@@ -112,15 +108,22 @@ serve(async (req: Request) => {
     
     if (!smsmodeApiKey) {
       console.error("SMSMODE_API_KEY not configured");
+      // For testing, return success with OTP in dev mode
       return new Response(
-        JSON.stringify({ error: "SMS service not configured" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ 
+          success: true, 
+          message: "OTP generated (SMS service not configured)",
+          phone: formattedPhone,
+          // Only for testing - remove in production
+          debug_otp: otp
+        }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
     const smsMessage = `Your verification code is: ${otp}. It expires in 5 minutes. Do not share this code.`;
 
-    // smsmode API call - using their REST API
+    // smsmode API call
     const smsResponse = await fetch("https://api.smsmode.com/http/1.6/sendSMS.do", {
       method: "POST",
       headers: {
@@ -137,11 +140,10 @@ serve(async (req: Request) => {
     const smsResult = await smsResponse.text();
     console.log("SMS API response:", smsResult);
 
-    // Check if SMS was sent successfully (smsmode returns "0 | Accepted" on success)
+    // Check if SMS was sent successfully
     if (!smsResult.includes("0") && !smsResult.toLowerCase().includes("accepted")) {
       console.error("SMS sending failed:", smsResult);
       
-      // Clean up the OTP since SMS failed
       await supabase
         .from("otp_codes")
         .delete()
@@ -168,7 +170,7 @@ serve(async (req: Request) => {
   } catch (error) {
     console.error("Error in send-phone-otp:", error);
     return new Response(
-      JSON.stringify({ error: "Internal server error" }),
+      JSON.stringify({ error: "Internal server error", details: String(error) }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }

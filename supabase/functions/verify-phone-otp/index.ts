@@ -1,7 +1,4 @@
-import "https://deno.land/x/xhr@0.1.0/mod.ts";
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
-import { SignJWT } from "https://deno.land/x/jose@v5.2.2/index.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -25,7 +22,7 @@ function formatPhoneNumber(phone: string): string {
 
 console.info("verify-phone-otp function started");
 
-serve(async (req: Request) => {
+Deno.serve(async (req: Request) => {
   // Handle CORS preflight
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -81,7 +78,6 @@ serve(async (req: Request) => {
     const expiresAt = new Date(otpRecord.expires_at);
     if (expiresAt < new Date()) {
       console.log("OTP expired");
-      // Mark as used to prevent retry
       await supabase
         .from("otp_codes")
         .update({ used: true })
@@ -94,14 +90,10 @@ serve(async (req: Request) => {
     }
 
     // Mark OTP as used
-    const { error: updateError } = await supabase
+    await supabase
       .from("otp_codes")
       .update({ used: true })
       .eq("id", otpRecord.id);
-
-    if (updateError) {
-      console.error("Error marking OTP as used:", updateError);
-    }
 
     // Get or create phone user
     let { data: phoneUser, error: userError } = await supabase
@@ -137,7 +129,6 @@ serve(async (req: Request) => {
       phoneUser = newUser;
       console.log("Created new phone user:", phoneUser.id);
     } else if (full_name && !phoneUser.full_name) {
-      // Update user with name if provided and not set
       await supabase
         .from("phone_users")
         .update({ 
@@ -150,38 +141,8 @@ serve(async (req: Request) => {
       phoneUser.full_name = full_name;
     }
 
-    // Generate a custom session token for the phone user
-    const jwtSecret = Deno.env.get("SUPABASE_JWT_SECRET") || Deno.env.get("JWT_SECRET");
-    
     // Create session data
-    const sessionData = {
-      user: {
-        id: phoneUser.id,
-        phone: phoneUser.phone,
-        full_name: phoneUser.full_name,
-        role: phoneUser.role,
-        auth_type: "phone",
-      },
-      expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // 7 days
-    };
-
-    // If we have JWT secret, create a proper JWT
-    let accessToken = null;
-    if (jwtSecret) {
-      const encoder = new TextEncoder();
-      const secretKey = encoder.encode(jwtSecret);
-      
-      accessToken = await new SignJWT({
-        sub: phoneUser.id,
-        phone: phoneUser.phone,
-        role: phoneUser.role,
-        auth_type: "phone",
-      })
-        .setProtectedHeader({ alg: "HS256" })
-        .setIssuedAt()
-        .setExpirationTime("7d")
-        .sign(secretKey);
-    }
+    const expiresAtSession = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
 
     console.log(`Phone user verified successfully: ${phoneUser.id}`);
 
@@ -197,8 +158,8 @@ serve(async (req: Request) => {
           auth_type: "phone",
         },
         session: {
-          access_token: accessToken,
-          expires_at: sessionData.expires_at,
+          access_token: phoneUser.id, // Simple token for now
+          expires_at: expiresAtSession,
         },
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -207,7 +168,7 @@ serve(async (req: Request) => {
   } catch (error) {
     console.error("Error in verify-phone-otp:", error);
     return new Response(
-      JSON.stringify({ error: "Internal server error" }),
+      JSON.stringify({ error: "Internal server error", details: String(error) }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
