@@ -1,17 +1,19 @@
 import { Home, FileText, Plus, Bell, Settings } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
+import { useTranslation } from "react-i18next";
 
 const BottomNav = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { t } = useTranslation();
 
   const navItems = [
-    { icon: Home, label: "Home", path: "/" },
-    { icon: FileText, label: "Issues", path: "/issues" },
-    { icon: Plus, label: "Report", isCenter: true, path: "/add" },
-    { icon: Bell, label: "Alerts", path: "/notifications" },
-    { icon: Settings, label: "Settings", path: "/settings" },
+    { icon: Home, labelKey: "nav.home", path: "/" },
+    { icon: FileText, labelKey: "nav.issues", path: "/issues" },
+    { icon: Plus, labelKey: "nav.add", isCenter: true, path: "/add" },
+    { icon: Bell, labelKey: "nav.notifications", path: "/notifications" },
+    { icon: Settings, labelKey: "nav.settings", path: "/settings" },
   ];
 
   return (
@@ -19,11 +21,11 @@ const BottomNav = () => {
       className="fixed bottom-0 left-0 right-0 bg-background/95 backdrop-blur-xl border-t border-border px-2 py-3 safe-area-pb z-50"
     >
       <div className="flex items-center justify-around max-w-lg mx-auto">
-        {navItems.map((item, index) => {
+        {navItems.map((item) => {
           const isActive = location.pathname === item.path;
           return (
             <motion.button
-              key={item.label}
+              key={item.labelKey}
               onClick={() => navigate(item.path)}
               className={`relative flex-1 flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-2xl transition-colors duration-200 ${
                 item.isCenter
@@ -82,7 +84,7 @@ const BottomNav = () => {
                   <span className={`text-[10px] font-medium transition-all ${
                     isActive ? "text-primary" : ""
                   }`}>
-                    {item.label}
+                    {t(item.labelKey)}
                   </span>
                   {isActive && (
                     <div className="absolute -bottom-1 w-1 h-1 rounded-full bg-primary" />

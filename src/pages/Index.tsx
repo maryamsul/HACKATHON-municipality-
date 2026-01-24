@@ -1,4 +1,5 @@
 import { motion } from "framer-motion";
+import { useTranslation } from "react-i18next";
 import Header from "@/components/Header";
 import HeroSection from "@/components/HeroSection";
 import CategoryItem from "@/components/CategoryItem";
@@ -10,39 +11,41 @@ import { Circle, Trash2, Droplets, Lightbulb, TrafficCone, FileText, Clock, Wren
 
 const Index = () => {
   const { issues } = useIssues();
+  const { t, i18n } = useTranslation();
+  const isRTL = i18n.language === 'ar';
 
   const stats = [
     { 
       count: issues.filter(i => i.status === "under_review").length, 
-      label: "قيد المراجعة", 
+      labelKey: "dashboard.underReview", 
       color: "orange" as const,
       icon: Clock
     },
     { 
       count: issues.filter(i => i.status === "under_maintenance").length, 
-      label: "قيد الصيانة", 
+      labelKey: "dashboard.underMaintenance", 
       color: "blue" as const,
       icon: Wrench
     },
     { 
       count: issues.filter(i => i.status === "resolved").length, 
-      label: "تم الحل", 
+      labelKey: "dashboard.resolved", 
       color: "green" as const,
       icon: CheckCircle
     },
   ];
 
   const categories = [
-    { icon: Circle, label: "Pothole", iconColor: "text-blue-700", iconBgColor: "bg-blue-100" },
-    { icon: Trash2, label: "Garbage", iconColor: "text-amber-600", iconBgColor: "bg-amber-50" },
-    { icon: Droplets, label: "Water Leak", iconColor: "text-cyan-500", iconBgColor: "bg-cyan-50" },
-    { icon: Lightbulb, label: "Lighting", iconColor: "text-yellow-500", iconBgColor: "bg-yellow-50" },
-    { icon: TrafficCone, label: "Traffic", iconColor: "text-red-500", iconBgColor: "bg-red-50" },
-    { icon: FileText, label: "Other", iconColor: "text-gray-600", iconBgColor: "bg-gray-100" },
+    { icon: Circle, label: "Pothole", labelKey: "categories.pothole", iconColor: "text-blue-700", iconBgColor: "bg-blue-100" },
+    { icon: Trash2, label: "Garbage", labelKey: "categories.garbage", iconColor: "text-amber-600", iconBgColor: "bg-amber-50" },
+    { icon: Droplets, label: "Water Leak", labelKey: "categories.waterLeak", iconColor: "text-cyan-500", iconBgColor: "bg-cyan-50" },
+    { icon: Lightbulb, label: "Lighting", labelKey: "categories.lighting", iconColor: "text-yellow-500", iconBgColor: "bg-yellow-50" },
+    { icon: TrafficCone, label: "Traffic", labelKey: "categories.traffic", iconColor: "text-red-500", iconBgColor: "bg-red-50" },
+    { icon: FileText, label: "Other", labelKey: "categories.other", iconColor: "text-gray-600", iconBgColor: "bg-gray-100" },
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-primary/5 via-background to-accent/10 pb-24" dir="rtl">
+    <div className={`min-h-screen bg-gradient-to-b from-primary/5 via-background to-accent/10 pb-24`}>
       <Header />
       
       {/* Premium Message Rotator - Between Header and Categories */}
@@ -64,11 +67,13 @@ const Index = () => {
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.3, duration: 0.5 }}
       >
-        <h2 className="text-lg font-semibold text-foreground mb-4">لوحة المتابعة</h2>
+        <h2 className={`text-lg font-semibold text-foreground mb-4 ${isRTL ? 'text-right' : ''}`}>
+          {t('dashboard.title')}
+        </h2>
         <div className="grid grid-cols-3 gap-3">
           {stats.map((stat, index) => (
             <motion.div
-              key={stat.label}
+              key={stat.labelKey}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.4 + index * 0.1 }}
@@ -88,7 +93,7 @@ const Index = () => {
                 stat.color === "orange" ? "text-orange-600" : 
                 stat.color === "blue" ? "text-blue-600" : "text-green-600"
               }`}>
-                {stat.count} {stat.label}
+                {stat.count} {t(stat.labelKey)}
               </span>
             </motion.div>
           ))}
@@ -104,16 +109,21 @@ const Index = () => {
         transition={{ delay: 0.5 }}
       >
         <motion.h2 
-          className="text-lg font-semibold text-foreground mb-4"
-          initial={{ opacity: 0, x: 20 }}
+          className={`text-lg font-semibold text-foreground mb-4 ${isRTL ? 'text-right' : ''}`}
+          initial={{ opacity: 0, x: isRTL ? -20 : 20 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ delay: 0.4 }}
         >
-          الفئات
+          {t('categories.title')}
         </motion.h2>
         <div className="grid grid-cols-3 gap-3">
           {categories.map((category, index) => (
-            <CategoryItem key={category.label} {...category} index={index} />
+            <CategoryItem 
+              key={category.label} 
+              {...category} 
+              displayLabel={t(category.labelKey)}
+              index={index} 
+            />
           ))}
         </div>
       </motion.section>

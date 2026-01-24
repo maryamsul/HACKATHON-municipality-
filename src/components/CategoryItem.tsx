@@ -5,6 +5,8 @@ import { motion } from "framer-motion";
 interface CategoryItemProps {
   icon: LucideIcon;
   label: string;
+  displayLabel?: string;
+  labelKey?: string;
   iconColor?: string;
   iconBgColor?: string;
   index?: number;
@@ -13,6 +15,7 @@ interface CategoryItemProps {
 const CategoryItem = ({ 
   icon: Icon, 
   label, 
+  displayLabel,
   iconColor = "text-blue-600", 
   iconBgColor = "bg-blue-100",
   index = 0 
@@ -69,7 +72,7 @@ const CategoryItem = ({
           <Icon className="w-full h-full" />
         </motion.div>
       </motion.div>
-      <span className="text-sm font-medium text-foreground">{label}</span>
+      <span className="text-sm font-medium text-foreground">{displayLabel || label}</span>
     </motion.button>
   );
 };
