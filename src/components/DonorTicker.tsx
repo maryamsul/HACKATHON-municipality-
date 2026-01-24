@@ -84,14 +84,14 @@ const DonorTicker = () => {
     const locationText = donation.location ? ` on ${donation.location}` : "";
     return (
       <>
-        <span className="font-bold text-foreground">{donation.donor_name}</span>
+        <span className="font-bold text-primary">{donation.donor_name}</span>
         {" donated "}
-        <span className="font-bold text-foreground">${donation.amount.toLocaleString()}</span>
+        <span className="font-bold text-primary">${donation.amount.toLocaleString()}</span>
         {" to "}
         {donation.municipality}
         {" for "}
         {donation.purpose}
-        {locationText}.
+        {locationText}
       </>
     );
   };
@@ -100,7 +100,7 @@ const DonorTicker = () => {
     <div className="relative overflow-hidden py-3 px-4">
       <div className="flex flex-wrap items-center justify-center gap-1.5 text-sm sm:text-base text-muted-foreground">
         <Heart className="w-4 h-4 text-primary flex-shrink-0 animate-pulse" />
-        <span className="text-foreground font-medium">Thanks to our donors:</span>
+        <span className="text-foreground font-medium">Thanks to our donors</span>
         <AnimatePresence mode="wait">
           <motion.span
             key={currentDonation.id}
