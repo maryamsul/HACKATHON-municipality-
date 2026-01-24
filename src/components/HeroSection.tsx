@@ -80,58 +80,6 @@ const HeroSection = () => {
 
       {/* Content */}
       <div className="relative z-10 max-w-2xl mx-auto text-center">
-        {/* Clickable Donate Badge with Dropdown */}
-        <div className="relative inline-block mb-6" ref={dropdownRef}>
-          <motion.button
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-            onClick={() => setShowDropdown(!showDropdown)}
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-destructive hover:bg-destructive/90 border border-destructive cursor-pointer transition-all duration-300 hover:scale-105 shadow-lg hover:shadow-destructive/25"
-          >
-            <span className="w-2 h-2 rounded-full bg-destructive-foreground animate-pulse" />
-            <span className="text-sm font-bold text-destructive-foreground">Ready to Make a Difference</span>
-          </motion.button>
-
-          {/* Dropdown Menu */}
-          {showDropdown && (
-            <motion.div
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              transition={{ duration: 0.2 }}
-              className="absolute left-1/2 -translate-x-1/2 mt-2 w-56 bg-card border border-border rounded-xl shadow-xl z-50 overflow-hidden"
-            >
-              <button
-                onClick={() => {
-                  setShowDropdown(false);
-                  setShowQRModal(true);
-                }}
-                className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-muted transition-colors"
-              >
-                <QrCode className="w-5 h-5 text-primary" />
-                <div>
-                  <p className="font-medium text-foreground">Scan QR Code</p>
-                  <p className="text-xs text-muted-foreground">Use your phone camera</p>
-                </div>
-              </button>
-              <div className="border-t border-border" />
-              <a
-                href={DONATION_LINK}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={() => setShowDropdown(false)}
-                className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-muted transition-colors"
-              >
-                <ExternalLink className="w-5 h-5 text-primary" />
-                <div>
-                  <p className="font-medium text-foreground">Open Donation Link</p>
-                  <p className="text-xs text-muted-foreground">Direct payment page</p>
-                </div>
-              </a>
-            </motion.div>
-          )}
-        </div>
 
         {/* Main heading */}
         <motion.h1
@@ -223,12 +171,69 @@ const HeroSection = () => {
           ))}
         </motion.div>
 
+        {/* Ready to Make a Difference Button - directly above donors */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.5 }}
+          className="mt-10 pt-6 border-t border-border/30 flex justify-center"
+        >
+          <div className="relative inline-block" ref={dropdownRef}>
+            <motion.button
+              onClick={() => setShowDropdown(!showDropdown)}
+              className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-destructive hover:bg-destructive/90 border border-destructive cursor-pointer transition-all duration-300 hover:scale-105 shadow-lg hover:shadow-destructive/25"
+            >
+              <span className="w-2 h-2 rounded-full bg-destructive-foreground animate-pulse" />
+              <span className="text-base font-bold text-destructive-foreground">Ready to Make a Difference</span>
+            </motion.button>
+
+            {/* Dropdown Menu */}
+            {showDropdown && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.2 }}
+                className="absolute left-1/2 -translate-x-1/2 mt-2 w-56 bg-card border border-border rounded-xl shadow-xl z-50 overflow-hidden"
+              >
+                <button
+                  onClick={() => {
+                    setShowDropdown(false);
+                    setShowQRModal(true);
+                  }}
+                  className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-muted transition-colors"
+                >
+                  <QrCode className="w-5 h-5 text-primary" />
+                  <div>
+                    <p className="font-medium text-foreground">Scan QR Code</p>
+                    <p className="text-xs text-muted-foreground">Use your phone camera</p>
+                  </div>
+                </button>
+                <div className="border-t border-border" />
+                <a
+                  href={DONATION_LINK}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={() => setShowDropdown(false)}
+                  className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-muted transition-colors"
+                >
+                  <ExternalLink className="w-5 h-5 text-primary" />
+                  <div>
+                    <p className="font-medium text-foreground">Open Donation Link</p>
+                    <p className="text-xs text-muted-foreground">Direct payment page</p>
+                  </div>
+                </a>
+              </motion.div>
+            )}
+          </div>
+        </motion.div>
+
         {/* Donor Ticker - at the bottom */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.6 }}
-          className="mt-10 pt-6 border-t border-border/30"
+          className="mt-6"
         >
           <DonorTicker />
         </motion.div>
