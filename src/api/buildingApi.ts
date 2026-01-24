@@ -1,4 +1,7 @@
-import { supabase } from "@/integrations/supabase/client";
+// Supabase configuration - same as Issues API
+const SUPABASE_URL = "https://ypgoodjdxcnjysrsortp.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlwZ29vZGpkeGNuanlzcnNvcnRwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU2NTI5NTIsImV4cCI6MjA4MTIyODk1Mn0.4xlx81jHjv3OcvSE1oJlv1ZPjQUOMIJigTGhvikDfvw";
+const API_URL = `${SUPABASE_URL}/functions/v1/create-building-report`;
 
 export interface BuildingReportData {
   title: string;
@@ -13,110 +16,78 @@ export interface BuildingReportData {
 export interface BuildingApiResponse {
   success: boolean;
   data?: unknown;
+  message?: string;
   error?: string;
   details?: string;
 }
 
 /**
- * Creates a new building at risk report in the database.
- * Maps form fields to public.buildings_at_risk table columns.
+ * Creates a new building at risk report via the edge function.
+ * The edge function uses service role to bypass RLS.
+ * Maps form fields to public.buildings_at_risk table columns:
+ * - title → title
+ * - description → description
+ * - reportedBy → reported_by
+ * - assignedTo → assigned_to (optional)
+ * - latitude → latitude (optional)
+ * - longitude → longitude (optional)
+ * - thumbnail → thumbnail (optional)
+ * - status → default 'pending'
  */
 export const createBuildingReport = async (
   reportData: BuildingReportData
 ): Promise<BuildingApiResponse> => {
   try {
-    // Validate required fields
-    if (!reportData.title?.trim()) {
+    console.log("Calling building report API:", reportData);
+
+    const response = await fetch(API_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        apikey: SUPABASE_ANON_KEY,
+      },
+      body: JSON.stringify(reportData),
+    });
+
+    const result = await response.json();
+    console.log("API response:", result);
+
+    // Check if the response indicates success
+    if (!response.ok || !result.success) {
       return {
         success: false,
-        error: "Title is required",
-        details: "The building name/title field cannot be empty",
+        error: result.error || "Failed to create building report",
+        details: result.details || `HTTP ${response.status}`,
       };
     }
-
-    if (!reportData.description?.trim()) {
-      return {
-        success: false,
-        error: "Description is required",
-        details: "Please provide a description of the building risk",
-      };
-    }
-
-    if (!reportData.reportedBy) {
-      return {
-        success: false,
-        error: "Reporter ID is required",
-        details: "User must be authenticated to submit a report",
-      };
-    }
-
-    // Map form fields to database columns
-    const insertData = {
-      title: reportData.title.trim(),
-      description: reportData.description.trim(),
-      reported_by: reportData.reportedBy,
-      assigned_to: reportData.assignedTo || null,
-      status: "pending" as const,
-      latitude: reportData.latitude ?? null,
-      longitude: reportData.longitude ?? null,
-      thumbnail: reportData.thumbnail || null,
-    };
-
-    console.log("Inserting building report:", insertData);
-
-    // Insert into public.buildings_at_risk table
-    const { data, error } = await supabase
-      .from("buildings_at_risk")
-      .insert(insertData)
-      .select()
-      .single();
-
-    if (error) {
-      console.error("Database error creating building report:", error);
-      
-      // Parse Postgres/PostgREST error for descriptive message
-      const errorMessage = error.message || "Database insertion failed";
-      const errorDetails = [
-        error.details,
-        error.hint,
-        error.code ? `Code: ${error.code}` : null,
-      ]
-        .filter(Boolean)
-        .join(" | ");
-
-      return {
-        success: false,
-        error: errorMessage,
-        details: errorDetails || "Check database constraints and RLS policies",
-      };
-    }
-
-    console.log("Building report created successfully:", data);
 
     return {
       success: true,
-      data,
+      data: result.data,
+      message: result.message,
     };
-  } catch (err) {
-    console.error("Unexpected error in createBuildingReport:", err);
-    
+  } catch (error) {
+    console.error("Error calling building report API:", error);
     return {
       success: false,
-      error: err instanceof Error ? err.message : "Unknown error occurred",
-      details: "An unexpected error occurred while creating the report",
+      error: error instanceof Error ? error.message : "Network error",
+      details: "Unable to reach the server. Please try again.",
     };
   }
 };
 
 /**
- * Updates the status of an existing building report.
- * Only employees should be able to call this.
+ * Updates the status of an existing building report via direct Supabase call.
+ * Note: This requires appropriate RLS policies or should be converted to edge function.
  */
 export const updateBuildingStatus = async (
   buildingId: string,
   newStatus: "pending" | "under_inspection" | "resolved"
 ): Promise<BuildingApiResponse> => {
   try {
+    // Import supabase client dynamically to avoid circular dependencies
+    const { supabase } = await import("@/integrations/supabase/client");
+    
     const { data, error } = await supabase
       .from("buildings_at_risk")
       .update({ status: newStatus })
