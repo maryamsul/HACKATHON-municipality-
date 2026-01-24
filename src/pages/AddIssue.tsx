@@ -9,10 +9,16 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { useIssues } from "@/context/IssuesContext";
+import { useBuildings } from "@/context/BuildingsContext";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import BottomNav from "../components/BottomNav";
 import SuccessAnimation from "@/components/SuccessAnimation";
+
+// Helper function to check if report should be routed to buildings_at_risk
+const shouldRouteToBuildings = (category: string, description: string): boolean => {
+  return category === "Other" && description.toLowerCase().includes("building at risk");
+};
 
 const AddIssue = () => {
   const navigate = useNavigate();
@@ -20,6 +26,7 @@ const AddIssue = () => {
   const isRTL = i18n.language === 'ar';
   const { toast } = useToast();
   const { refetchIssues } = useIssues();
+  const { refetchBuildings } = useBuildings();
   const { user, profile, isAuthenticated, isLoading } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -162,22 +169,50 @@ const AddIssue = () => {
         }
       }
 
-      const { error } = await supabase.from("issues").insert({
-        title: `${category} issue`,
-        description,
-        category,
-        latitude: coordinates.lat,
-        longitude: coordinates.lng,
-        reported_by: user.id,
-        status: "pending",
-        thumbnail: thumbnailUrl,
-      });
+      // Check if this should be routed to buildings_at_risk
+      const isBuilding = shouldRouteToBuildings(category, description);
+      
+      if (isBuilding) {
+        // Route to buildings_at_risk table
+        const reporterType = profile?.role === "employee" ? "employee" : "citizen";
+        const buildingName = `${category} issue`; // Could be enhanced to extract from description
+        
+        const { error } = await supabase.from("buildings_at_risk").insert({
+          building_name: buildingName || "Unknown Building",
+          address: location || null,
+          latitude: coordinates.lat,
+          longitude: coordinates.lng,
+          reported_by: user.id,
+          reporter_type: reporterType,
+          description,
+          status: "pending",
+        });
 
-      if (error) {
-        throw error;
+        if (error) {
+          throw error;
+        }
+
+        await refetchBuildings();
+      } else {
+        // Normal issue flow
+        const { error } = await supabase.from("issues").insert({
+          title: `${category} issue`,
+          description,
+          category,
+          latitude: coordinates.lat,
+          longitude: coordinates.lng,
+          reported_by: user.id,
+          status: "pending",
+          thumbnail: thumbnailUrl,
+        });
+
+        if (error) {
+          throw error;
+        }
+
+        await refetchIssues();
       }
-
-      await refetchIssues();
+      
       setShowSuccess(true);
     } catch (error) {
       console.error("Error creating issue:", error);
