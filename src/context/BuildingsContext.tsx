@@ -36,9 +36,11 @@ export const BuildingsProvider = ({ children }: { children: ReactNode }) => {
     if (error) {
       console.error("Error fetching buildings at risk:", error);
     } else {
+      // Map database columns to BuildingAtRisk type with UI-friendly building_name
       const normalizedBuildings = (data || []).map((building) => ({
         ...building,
         status: normalizeStatus(building.status),
+        building_name: building.title || "Unknown Building",
       })) as BuildingAtRisk[];
       setBuildings(normalizedBuildings);
     }
