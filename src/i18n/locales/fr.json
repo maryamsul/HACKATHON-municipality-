@@ -32,9 +32,35 @@
   "nav": {
     "home": "Accueil",
     "issues": "Problèmes",
+    "buildings": "Risque",
     "add": "Signaler",
-    "notifications": "Notifications",
+    "donors": "Donateurs",
+    "notifications": "Alertes",
     "settings": "Paramètres"
+  },
+  "donors": {
+    "title": "Nos Donateurs",
+    "totalDonors": "donateurs",
+    "raised": "collectés",
+    "searchPlaceholder": "Rechercher donateurs...",
+    "donatedTo": "Don à",
+    "for": "pour",
+    "noDonors": "Aucun donateur"
+  },
+  "buildings": {
+    "title": "Bâtiments à Risque",
+    "totalBuildings": "bâtiments signalés",
+    "searchPlaceholder": "Rechercher bâtiments...",
+    "statusReported": "Signalé",
+    "statusInspection": "En Inspection",
+    "statusCritical": "Critique",
+    "statusResolved": "Résolu",
+    "critical": "Critique",
+    "reported": "Signalé",
+    "inspecting": "Inspection",
+    "employee": "Employé",
+    "citizen": "Citoyen",
+    "noBuildings": "Aucun bâtiment signalé"
   },
   "dashboard": {
     "title": "Tableau de bord",

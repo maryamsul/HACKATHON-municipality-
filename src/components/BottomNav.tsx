@@ -1,4 +1,4 @@
-import { Home, FileText, Plus, Bell, Settings } from "lucide-react";
+import { Home, FileText, Plus, Bell, Settings, Heart, Building2 } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
 import { useTranslation } from "react-i18next";
@@ -11,7 +11,9 @@ const BottomNav = () => {
   const navItems = [
     { icon: Home, labelKey: "nav.home", path: "/" },
     { icon: FileText, labelKey: "nav.issues", path: "/issues" },
+    { icon: Building2, labelKey: "nav.buildings", path: "/buildings-at-risk" },
     { icon: Plus, labelKey: "nav.add", isCenter: true, path: "/add" },
+    { icon: Heart, labelKey: "nav.donors", path: "/donors" },
     { icon: Bell, labelKey: "nav.notifications", path: "/notifications" },
     { icon: Settings, labelKey: "nav.settings", path: "/settings" },
   ];

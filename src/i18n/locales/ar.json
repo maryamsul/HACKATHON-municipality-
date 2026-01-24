@@ -32,9 +32,35 @@
   "nav": {
     "home": "الرئيسية",
     "issues": "المشاكل",
+    "buildings": "خطر",
     "add": "إبلاغ",
-    "notifications": "الإشعارات",
+    "donors": "المتبرعون",
+    "notifications": "تنبيهات",
     "settings": "الإعدادات"
+  },
+  "donors": {
+    "title": "المتبرعون",
+    "totalDonors": "متبرع",
+    "raised": "تم جمعها",
+    "searchPlaceholder": "البحث عن متبرعين...",
+    "donatedTo": "تبرع لـ",
+    "for": "من أجل",
+    "noDonors": "لا يوجد متبرعون"
+  },
+  "buildings": {
+    "title": "مباني معرضة للخطر",
+    "totalBuildings": "مباني مُبلغ عنها",
+    "searchPlaceholder": "البحث عن مباني...",
+    "statusReported": "تم الإبلاغ",
+    "statusInspection": "قيد الفحص",
+    "statusCritical": "حرج",
+    "statusResolved": "تم الحل",
+    "critical": "حرج",
+    "reported": "مُبلغ",
+    "inspecting": "فحص",
+    "employee": "موظف",
+    "citizen": "مواطن",
+    "noBuildings": "لا توجد مباني مُبلغ عنها"
   },
   "dashboard": {
     "title": "لوحة المتابعة",
