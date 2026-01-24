@@ -97,38 +97,22 @@ const DonorTicker = () => {
   };
 
   return (
-    <div className="relative overflow-hidden py-4 px-4">
-      <div className="flex items-center justify-center gap-2 text-sm sm:text-base text-muted-foreground">
+    <div className="relative overflow-hidden py-3 px-4">
+      <div className="flex flex-wrap items-center justify-center gap-1.5 text-sm sm:text-base text-muted-foreground">
         <Heart className="w-4 h-4 text-primary flex-shrink-0 animate-pulse" />
         <span className="text-foreground font-medium">Thanks to our donors:</span>
         <AnimatePresence mode="wait">
           <motion.span
             key={currentDonation.id}
-            initial={{ opacity: 0, y: 10 }}
+            initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            transition={{ duration: 0.4, ease: "easeInOut" }}
-            className="inline-block"
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.3, ease: "easeInOut" }}
+            className="inline"
           >
             {formatMessage(currentDonation)}
           </motion.span>
         </AnimatePresence>
-      </div>
-      
-      {/* Progress dots */}
-      <div className="flex justify-center gap-1.5 mt-3">
-        {donations.map((_, index) => (
-          <button
-            key={index}
-            onClick={() => setCurrentIndex(index)}
-            className={`w-1.5 h-1.5 rounded-full transition-all duration-300 ${
-              index === currentIndex
-                ? "bg-primary w-4"
-                : "bg-muted-foreground/30 hover:bg-muted-foreground/50"
-            }`}
-            aria-label={`View donation ${index + 1}`}
-          />
-        ))}
       </div>
     </div>
   );
