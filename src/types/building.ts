@@ -7,18 +7,18 @@ export const BUILDING_STATUSES: Record<BuildingStatus, { label: string; color: s
   resolved: { label: "Resolved", color: "bg-green-100 text-green-700" },
 };
 
-export type ReporterType = "citizen" | "employee";
-
+// BuildingAtRisk now matches the same structure as issues table
 export interface BuildingAtRisk {
   id: string;
-  building_name: string;
-  address: string | null;
+  title: string;
+  description: string;
+  reported_by: string;
+  assigned_to: string | null;
+  status: BuildingStatus;
   latitude: number | null;
   longitude: number | null;
-  reported_by: string;
-  reporter_type: ReporterType;
-  status: BuildingStatus;
-  description: string;
   created_at: string;
-  updated_at?: string;
+  thumbnail: string | null;
+  // Derived field for UI compatibility
+  building_name?: string;
 }

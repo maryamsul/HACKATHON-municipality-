@@ -108,18 +108,37 @@ const AddBuildingAtRiskForm = ({ onClose }: AddBuildingAtRiskFormProps) => {
     setIsSubmitting(true);
 
     try {
-      // reporter_type must be 'user' or 'employee' per database constraint
-      const reporterType = profile?.role === "employee" ? "employee" : "user";
+      let thumbnailUrl: string | null = null;
 
+      // Upload photo if provided
+      if (photoFile) {
+        const fileExt = photoFile.name.split(".").pop();
+        const fileName = `${user.id}-${Date.now()}.${fileExt}`;
+        const filePath = `building-images/${fileName}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from("issues")
+          .upload(filePath, photoFile);
+
+        if (uploadError) {
+          console.error("Error uploading image:", uploadError);
+        } else {
+          const { data: publicUrlData } = supabase.storage
+            .from("issues")
+            .getPublicUrl(filePath);
+          thumbnailUrl = publicUrlData.publicUrl;
+        }
+      }
+
+      // Insert with correct column names matching public.buildings_at_risk schema
       const { error } = await supabase.from("buildings_at_risk").insert({
-        building_name: buildingName.trim(),
-        address: address.trim() || null,
+        title: buildingName.trim(),
+        description: description.trim(),
+        reported_by: user.id,
+        status: "pending",
         latitude: coordinates?.lat || null,
         longitude: coordinates?.lng || null,
-        reported_by: user.id,
-        reporter_type: reporterType,
-        description: description.trim(),
-        status: "pending",
+        thumbnail: thumbnailUrl,
       });
 
       if (error) {

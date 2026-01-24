@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { ArrowLeft, Building2, Search, MapPin, Calendar, AlertTriangle, User, Plus } from "lucide-react";
+import { ArrowLeft, Building2, Search, MapPin, Calendar, AlertTriangle, Plus } from "lucide-react";
 import { motion } from "framer-motion";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -41,8 +41,7 @@ const BuildingsAtRisk = () => {
 
   const filteredBuildings = buildings.filter(
     (building) =>
-      building.building_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (building.address?.toLowerCase() || "").includes(searchQuery.toLowerCase()) ||
+      (building.building_name || building.title || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
       building.description.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
@@ -76,7 +75,7 @@ const BuildingsAtRisk = () => {
     try {
       const { error } = await supabase
         .from("buildings_at_risk")
-        .update({ status: newStatus, updated_at: new Date().toISOString() })
+        .update({ status: newStatus })
         .eq("id", buildingId);
 
       if (error) throw error;
@@ -181,9 +180,7 @@ const BuildingsAtRisk = () => {
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between gap-2 mb-1">
-                      <h3 className="font-semibold text-foreground">{building.building_name}</h3>
-                      
-                      {/* Employee Status Select or Badge */}
+                      <h3 className="font-semibold text-foreground">{building.building_name || building.title}</h3>
                       {isEmployee ? (
                         <Select
                           value={building.status}
@@ -207,10 +204,10 @@ const BuildingsAtRisk = () => {
                       )}
                     </div>
                     
-                    {building.address && (
+                    {building.latitude && building.longitude && (
                       <div className="flex items-center gap-1 text-sm text-muted-foreground mb-1">
                         <MapPin className="w-3.5 h-3.5" />
-                        <span className="truncate">{building.address}</span>
+                        <span className="truncate">{building.latitude.toFixed(4)}, {building.longitude.toFixed(4)}</span>
                       </div>
                     )}
                     
@@ -218,13 +215,7 @@ const BuildingsAtRisk = () => {
                       {building.description}
                     </p>
                     
-                    <div className="flex items-center justify-between text-xs text-muted-foreground">
-                      <div className="flex items-center gap-1">
-                        <User className="w-3 h-3" />
-                        <span>
-                          {building.reporter_type === 'employee' ? t('buildings.employee') : t('buildings.citizen')}
-                        </span>
-                      </div>
+                    <div className="flex items-center justify-end text-xs text-muted-foreground">
                       <div className="flex items-center gap-1">
                         <Calendar className="w-3 h-3" />
                         <span>
