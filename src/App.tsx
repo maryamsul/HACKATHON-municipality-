@@ -18,6 +18,8 @@ import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 import Auth from "./pages/Auth";
 import AuthCallback from "./pages/AuthCallback";
+import Donors from "./pages/Donors";
+import BuildingsAtRisk from "./pages/BuildingsAtRisk";
 
 const queryClient = new QueryClient();
 
@@ -41,6 +43,8 @@ const App = () => {
                     <Route path="/search" element={<SearchResults />} />
                     <Route path="/notifications" element={<Notifications />} />
                     <Route path="/settings" element={<Settings />} />
+                    <Route path="/donors" element={<Donors />} />
+                    <Route path="/buildings-at-risk" element={<BuildingsAtRisk />} />
                     <Route path="/category/:category" element={<CategoryIssues />} />
                     <Route path="/issue/:id" element={<IssueDetails />} />
                     {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

@@ -32,9 +32,35 @@
   "nav": {
     "home": "Home",
     "issues": "Issues",
+    "buildings": "Risk",
     "add": "Report",
-    "notifications": "Notifications",
+    "donors": "Donors",
+    "notifications": "Alerts",
     "settings": "Settings"
+  },
+  "donors": {
+    "title": "Our Donors",
+    "totalDonors": "donors",
+    "raised": "raised",
+    "searchPlaceholder": "Search donors...",
+    "donatedTo": "Donated to",
+    "for": "for",
+    "noDonors": "No donors yet"
+  },
+  "buildings": {
+    "title": "Buildings at Risk",
+    "totalBuildings": "buildings reported",
+    "searchPlaceholder": "Search buildings...",
+    "statusReported": "Reported",
+    "statusInspection": "Under Inspection",
+    "statusCritical": "Critical",
+    "statusResolved": "Resolved",
+    "critical": "Critical",
+    "reported": "Reported",
+    "inspecting": "Inspecting",
+    "employee": "Employee",
+    "citizen": "Citizen",
+    "noBuildings": "No buildings reported"
   },
   "dashboard": {
     "title": "Dashboard",
