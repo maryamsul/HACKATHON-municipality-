@@ -1,7 +1,7 @@
 // Supabase configuration - same as Issues API
-const SUPABASE_URL = "https://ypgoodjdxcnjysrsortp.supabase.co/functions/v1/quick-endpoint";
+const SUPABASE_URL = "https://ypgoodjdxcnjysrsortp.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_rs58HjDUbtkp9QvD7Li4VA_fqtAUF2u";
-const API_URL = `${SUPABASE_URL}/functions/v1/create-building-report`;
+const API_URL = `${SUPABASE_URL}/functions/v1/quick-endpoint`;
 
 export interface BuildingReportData {
   title: string;
