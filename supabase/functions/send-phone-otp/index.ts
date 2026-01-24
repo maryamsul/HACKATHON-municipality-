@@ -1,3 +1,5 @@
+import "https://deno.land/x/xhr@0.1.0/mod.ts";
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 
 const corsHeaders = {
@@ -27,7 +29,9 @@ function formatPhoneNumber(phone: string): string {
   return cleaned;
 }
 
-Deno.serve(async (req) => {
+console.info("send-phone-otp function started");
+
+serve(async (req: Request) => {
   // Handle CORS preflight
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
