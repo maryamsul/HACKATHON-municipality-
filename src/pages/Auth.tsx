@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth, UserRole } from "@/context/AuthContext";
+import { usePhoneAuth } from "@/context/PhoneAuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -31,14 +32,15 @@ const Auth = () => {
   const [resetEmail, setResetEmail] = useState("");
   
   const { signUp, signIn, isAuthenticated } = useAuth();
+  const { sendOtp, verifyOtp, isPhoneAuthenticated } = usePhoneAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
   useEffect(() => {
-    if (isAuthenticated) {
+    if (isAuthenticated || isPhoneAuthenticated) {
       navigate("/");
     }
-  }, [isAuthenticated, navigate]);
+  }, [isAuthenticated, isPhoneAuthenticated, navigate]);
 
   // Format phone number for Supabase (must include country code)
   const formatPhoneNumber = (phone: string): string => {
@@ -58,28 +60,29 @@ const Auth = () => {
     return cleaned;
   };
 
-  // Handle sending OTP
+  // Handle sending OTP using custom backend
   const handleSendOtp = async () => {
     if (!phoneNumber) {
       toast({ title: "Error", description: "Please enter your phone number", variant: "destructive" });
       return;
     }
 
-    const formattedPhone = formatPhoneNumber(phoneNumber);
-    
+    if (isSignUp && !fullName) {
+      toast({ title: "Error", description: "Please enter your full name", variant: "destructive" });
+      return;
+    }
+
     setIsLoading(true);
     try {
-      const { error } = await supabase.auth.signInWithOtp({
-        phone: formattedPhone,
-      });
+      const { error } = await sendOtp(phoneNumber, isSignUp ? fullName : undefined, isSignUp ? role : undefined);
 
       if (error) {
-        toast({ title: "Error", description: error.message, variant: "destructive" });
+        toast({ title: "Error", description: error, variant: "destructive" });
       } else {
         setShowOtpInput(true);
         toast({ 
           title: "OTP Sent", 
-          description: `A verification code has been sent to ${formattedPhone}. It expires in 5 minutes.` 
+          description: `A verification code has been sent to your phone. It expires in 5 minutes.` 
         });
       }
     } catch (error) {
@@ -89,39 +92,25 @@ const Auth = () => {
     }
   };
 
-  // Handle verifying OTP
+  // Handle verifying OTP using custom backend
   const handleVerifyOtp = async () => {
     if (!otp || otp.length !== 6) {
       toast({ title: "Error", description: "Please enter the 6-digit verification code", variant: "destructive" });
       return;
     }
 
-    const formattedPhone = formatPhoneNumber(phoneNumber);
-    
     setIsLoading(true);
     try {
-      const { data, error } = await supabase.auth.verifyOtp({
-        phone: formattedPhone,
-        token: otp,
-        type: 'sms',
-      });
+      const { error, user } = await verifyOtp(
+        phoneNumber, 
+        otp, 
+        isSignUp ? fullName : undefined, 
+        isSignUp ? role : undefined
+      );
 
       if (error) {
-        toast({ title: "Error", description: error.message, variant: "destructive" });
-      } else if (data.user) {
-        // If signing up, update profile with name and role
-        if (isSignUp && fullName) {
-          await supabase.from("profiles").upsert({
-            id: data.user.id,
-            full_name: fullName,
-          });
-
-          await supabase.from("user_roles").upsert(
-            { user_id: data.user.id, role },
-            { onConflict: "user_id" }
-          );
-        }
-
+        toast({ title: "Error", description: error, variant: "destructive" });
+      } else if (user) {
         toast({ title: "Success", description: "Signed in successfully!" });
         navigate("/");
       }
