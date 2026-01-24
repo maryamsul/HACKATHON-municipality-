@@ -1,11 +1,14 @@
+import { useState } from "react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
-import { ArrowRight, FileCheck, ThumbsUp, Headphones } from "lucide-react";
+import { ArrowRight, FileCheck, ThumbsUp, Headphones, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import DonorTicker from "@/components/DonorTicker";
+import qrCode from "@/assets/qr.jpeg";
 
 const HeroSection = () => {
   const navigate = useNavigate();
+  const [showQRModal, setShowQRModal] = useState(false);
 
   const stats = [
     { icon: FileCheck, value: "5K+", label: "Active Reports" },
@@ -62,26 +65,17 @@ const HeroSection = () => {
 
       {/* Content */}
       <div className="relative z-10 max-w-2xl mx-auto text-center">
-        {/* Badge */}
-        <motion.div
+        {/* Clickable Donate Badge */}
+        <motion.button
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 mb-4"
+          onClick={() => setShowQRModal(true)}
+          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-destructive hover:bg-destructive/90 border border-destructive mb-6 cursor-pointer transition-all duration-300 hover:scale-105 shadow-lg hover:shadow-destructive/25"
         >
-          <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-          <span className="text-sm font-medium text-primary">Ready to Make a Difference</span>
-        </motion.div>
-
-        {/* Donor Ticker - directly under badge */}
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.15 }}
-          className="mb-6"
-        >
-          <DonorTicker />
-        </motion.div>
+          <span className="w-2 h-2 rounded-full bg-destructive-foreground animate-pulse" />
+          <span className="text-sm font-bold text-destructive-foreground">Ready to Make a Difference</span>
+        </motion.button>
 
         {/* Main heading */}
         <motion.h1
@@ -173,7 +167,51 @@ const HeroSection = () => {
           ))}
         </motion.div>
 
+        {/* Donor Ticker - at the bottom */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.6 }}
+          className="mt-10 pt-6 border-t border-border/30"
+        >
+          <DonorTicker />
+        </motion.div>
+
       </div>
+
+      {/* QR Code Modal */}
+      {showQRModal && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+          onClick={() => setShowQRModal(false)}
+        >
+          <motion.div
+            initial={{ scale: 0.8, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.8, opacity: 0 }}
+            transition={{ duration: 0.3 }}
+            className="relative bg-card rounded-2xl p-6 shadow-2xl max-w-sm w-full"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={() => setShowQRModal(false)}
+              className="absolute top-3 right-3 p-2 rounded-full hover:bg-muted transition-colors"
+            >
+              <X className="w-5 h-5 text-muted-foreground" />
+            </button>
+            <h3 className="text-xl font-bold text-foreground mb-4 text-center">Scan to Donate</h3>
+            <div className="bg-white rounded-xl p-4">
+              <img src={qrCode} alt="Donation QR Code" className="w-full h-auto rounded-lg" />
+            </div>
+            <p className="text-sm text-muted-foreground mt-4 text-center">
+              Scan this QR code with your phone to make a donation
+            </p>
+          </motion.div>
+        </motion.div>
+      )}
     </section>
   );
 };
