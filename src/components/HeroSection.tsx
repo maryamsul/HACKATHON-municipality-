@@ -1,14 +1,29 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
-import { ArrowRight, FileCheck, ThumbsUp, Headphones, X } from "lucide-react";
+import { ArrowRight, FileCheck, ThumbsUp, Headphones, X, QrCode, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import DonorTicker from "@/components/DonorTicker";
 import qrCode from "@/assets/qr.jpeg";
 
+const DONATION_LINK = "https://whish.money/invoice/pay/?q=BI6PCagnO";
+
 const HeroSection = () => {
   const navigate = useNavigate();
   const [showQRModal, setShowQRModal] = useState(false);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setShowDropdown(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   const stats = [
     { icon: FileCheck, value: "5K+", label: "Active Reports" },
@@ -65,17 +80,58 @@ const HeroSection = () => {
 
       {/* Content */}
       <div className="relative z-10 max-w-2xl mx-auto text-center">
-        {/* Clickable Donate Badge */}
-        <motion.button
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          onClick={() => setShowQRModal(true)}
-          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-destructive hover:bg-destructive/90 border border-destructive mb-6 cursor-pointer transition-all duration-300 hover:scale-105 shadow-lg hover:shadow-destructive/25"
-        >
-          <span className="w-2 h-2 rounded-full bg-destructive-foreground animate-pulse" />
-          <span className="text-sm font-bold text-destructive-foreground">Ready to Make a Difference</span>
-        </motion.button>
+        {/* Clickable Donate Badge with Dropdown */}
+        <div className="relative inline-block mb-6" ref={dropdownRef}>
+          <motion.button
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+            onClick={() => setShowDropdown(!showDropdown)}
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-destructive hover:bg-destructive/90 border border-destructive cursor-pointer transition-all duration-300 hover:scale-105 shadow-lg hover:shadow-destructive/25"
+          >
+            <span className="w-2 h-2 rounded-full bg-destructive-foreground animate-pulse" />
+            <span className="text-sm font-bold text-destructive-foreground">Ready to Make a Difference</span>
+          </motion.button>
+
+          {/* Dropdown Menu */}
+          {showDropdown && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.2 }}
+              className="absolute left-1/2 -translate-x-1/2 mt-2 w-56 bg-card border border-border rounded-xl shadow-xl z-50 overflow-hidden"
+            >
+              <button
+                onClick={() => {
+                  setShowDropdown(false);
+                  setShowQRModal(true);
+                }}
+                className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-muted transition-colors"
+              >
+                <QrCode className="w-5 h-5 text-primary" />
+                <div>
+                  <p className="font-medium text-foreground">Scan QR Code</p>
+                  <p className="text-xs text-muted-foreground">Use your phone camera</p>
+                </div>
+              </button>
+              <div className="border-t border-border" />
+              <a
+                href={DONATION_LINK}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => setShowDropdown(false)}
+                className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-muted transition-colors"
+              >
+                <ExternalLink className="w-5 h-5 text-primary" />
+                <div>
+                  <p className="font-medium text-foreground">Open Donation Link</p>
+                  <p className="text-xs text-muted-foreground">Direct payment page</p>
+                </div>
+              </a>
+            </motion.div>
+          )}
+        </div>
 
         {/* Main heading */}
         <motion.h1
