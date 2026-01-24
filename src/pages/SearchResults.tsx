@@ -1,4 +1,5 @@
 import { useSearchParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { ArrowLeft } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useIssues } from "@/context/IssuesContext";
@@ -7,6 +8,8 @@ import BottomNav from "@/components/BottomNav";
 
 const SearchResults = () => {
   const [searchParams] = useSearchParams();
+  const { t, i18n } = useTranslation();
+  const isRTL = i18n.language === 'ar';
   const query = searchParams.get("q") || "";
   const navigate = useNavigate();
   const { issues } = useIssues();
@@ -19,7 +22,7 @@ const SearchResults = () => {
   );
 
   return (
-    <div className="min-h-screen bg-background pb-24">
+    <div className="min-h-screen bg-background pb-24" dir={isRTL ? 'rtl' : 'ltr'}>
       <header className="bg-gradient-to-br from-blue-600 to-blue-700 text-white p-4">
         <div className="flex items-center gap-3">
           <button
@@ -29,9 +32,9 @@ const SearchResults = () => {
             <ArrowLeft className="w-6 h-6" />
           </button>
           <div>
-            <h1 className="text-xl font-bold">Search Results</h1>
+            <h1 className="text-xl font-bold">{t('common.searchResults')}</h1>
             <p className="text-blue-100 text-sm">
-              {filteredIssues.length} results for "{query}"
+              {filteredIssues.length} {t('common.resultsFor')} "{query}"
             </p>
           </div>
         </div>
@@ -44,7 +47,7 @@ const SearchResults = () => {
           ))
         ) : (
           <div className="text-center py-12 text-muted-foreground">
-            <p>No issues found matching "{query}"</p>
+            <p>{t('common.noResults')} "{query}"</p>
           </div>
         )}
       </div>

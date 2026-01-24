@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { useAuth, UserRole } from "@/context/AuthContext";
 import { usePhoneAuth } from "@/context/PhoneAuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -15,6 +16,9 @@ import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp
 type AuthMethod = "email" | "phone";
 
 const Auth = () => {
+  const { t, i18n } = useTranslation();
+  const isRTL = i18n.language === 'ar';
+  
   const [isSignUp, setIsSignUp] = useState(true);
   const [authMethod, setAuthMethod] = useState<AuthMethod>("email");
   const [fullName, setFullName] = useState("");
@@ -42,13 +46,9 @@ const Auth = () => {
     }
   }, [isAuthenticated, isPhoneAuthenticated, navigate]);
 
-  // Format phone number for Supabase (must include country code)
   const formatPhoneNumber = (phone: string): string => {
-    // Remove any non-digit characters except +
     let cleaned = phone.replace(/[^\d+]/g, '');
-    // Add + if not present and starts with country code
     if (!cleaned.startsWith('+')) {
-      // Assume Lebanon country code if not specified
       if (cleaned.startsWith('961')) {
         cleaned = '+' + cleaned;
       } else if (cleaned.length <= 10) {
@@ -60,15 +60,14 @@ const Auth = () => {
     return cleaned;
   };
 
-  // Handle sending OTP using custom backend
   const handleSendOtp = async () => {
     if (!phoneNumber) {
-      toast({ title: "Error", description: "Please enter your phone number", variant: "destructive" });
+      toast({ title: t('common.error'), description: t('auth.pleaseEnterPhone'), variant: "destructive" });
       return;
     }
 
     if (isSignUp && !fullName) {
-      toast({ title: "Error", description: "Please enter your full name", variant: "destructive" });
+      toast({ title: t('common.error'), description: t('auth.pleaseEnterName'), variant: "destructive" });
       return;
     }
 
@@ -77,25 +76,24 @@ const Auth = () => {
       const { error } = await sendOtp(phoneNumber, isSignUp ? fullName : undefined, isSignUp ? role : undefined);
 
       if (error) {
-        toast({ title: "Error", description: error, variant: "destructive" });
+        toast({ title: t('common.error'), description: error, variant: "destructive" });
       } else {
         setShowOtpInput(true);
         toast({ 
-          title: "OTP Sent", 
-          description: `A verification code has been sent to your phone. It expires in 5 minutes.` 
+          title: t('messages.otpSent'), 
+          description: t('auth.otpSentMessage')
         });
       }
     } catch (error) {
-      toast({ title: "Error", description: "Failed to send OTP. Please try again.", variant: "destructive" });
+      toast({ title: t('common.error'), description: t('auth.failedToSendOtp'), variant: "destructive" });
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Handle verifying OTP using custom backend
   const handleVerifyOtp = async () => {
     if (!otp || otp.length !== 6) {
-      toast({ title: "Error", description: "Please enter the 6-digit verification code", variant: "destructive" });
+      toast({ title: t('common.error'), description: t('auth.pleaseEnterOtp'), variant: "destructive" });
       return;
     }
 
@@ -109,13 +107,13 @@ const Auth = () => {
       );
 
       if (error) {
-        toast({ title: "Error", description: error, variant: "destructive" });
+        toast({ title: t('common.error'), description: error, variant: "destructive" });
       } else if (user) {
-        toast({ title: "Success", description: "Signed in successfully!" });
+        toast({ title: t('common.success'), description: t('auth.signedInSuccess') });
         navigate("/");
       }
     } catch (error) {
-      toast({ title: "Error", description: "Failed to verify OTP. Please try again.", variant: "destructive" });
+      toast({ title: t('common.error'), description: t('auth.failedToVerifyOtp'), variant: "destructive" });
     } finally {
       setIsLoading(false);
     }
@@ -128,17 +126,17 @@ const Auth = () => {
     try {
       if (isSignUp) {
         if (!fullName || !email || !password) {
-          toast({ title: "Error", description: "Please fill all fields", variant: "destructive" });
+          toast({ title: t('common.error'), description: t('auth.pleaseFillFields'), variant: "destructive" });
           setIsLoading(false);
           return;
         }
         const { error } = await signUp(fullName, email, password, role);
         if (error) {
           if (error.toLowerCase().includes("already registered") || error.toLowerCase().includes("already exists")) {
-            toast({ title: "Email Already Registered", description: "This email is already in use. Please sign in instead.", variant: "destructive" });
+            toast({ title: t('auth.emailAlreadyRegistered'), description: t('auth.emailAlreadyInUse'), variant: "destructive" });
             setIsSignUp(false);
           } else {
-            toast({ title: "Error", description: error, variant: "destructive" });
+            toast({ title: t('common.error'), description: error, variant: "destructive" });
           }
         } else {
           setRegisteredEmail(email);
@@ -146,20 +144,20 @@ const Auth = () => {
         }
       } else {
         if (!email || !password) {
-          toast({ title: "Error", description: "Please fill all fields", variant: "destructive" });
+          toast({ title: t('common.error'), description: t('auth.pleaseFillFields'), variant: "destructive" });
           setIsLoading(false);
           return;
         }
         const { error } = await signIn(email, password);
         if (error) {
-          toast({ title: "Error", description: error, variant: "destructive" });
+          toast({ title: t('common.error'), description: error, variant: "destructive" });
         } else {
-          toast({ title: "Success", description: "Signed in successfully!" });
+          toast({ title: t('common.success'), description: t('auth.signedInSuccess') });
           navigate("/");
         }
       }
     } catch (error) {
-      toast({ title: "Error", description: "Something went wrong", variant: "destructive" });
+      toast({ title: t('common.error'), description: t('auth.somethingWentWrong'), variant: "destructive" });
     } finally {
       setIsLoading(false);
     }
@@ -168,7 +166,7 @@ const Auth = () => {
   const handleForgotPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!resetEmail) {
-      toast({ title: "Error", description: "Please enter your email address", variant: "destructive" });
+      toast({ title: t('common.error'), description: t('auth.pleaseEnterEmail'), variant: "destructive" });
       return;
     }
 
@@ -180,12 +178,12 @@ const Auth = () => {
       });
 
       if (error) {
-        toast({ title: "Error", description: error.message, variant: "destructive" });
+        toast({ title: t('common.error'), description: error.message, variant: "destructive" });
       } else {
         setShowResetConfirmation(true);
       }
     } catch (error) {
-      toast({ title: "Error", description: "Something went wrong. Please try again.", variant: "destructive" });
+      toast({ title: t('common.error'), description: t('auth.somethingWentWrong'), variant: "destructive" });
     } finally {
       setIsLoading(false);
     }
@@ -200,26 +198,26 @@ const Auth = () => {
   // Show password reset confirmation screen
   if (showResetConfirmation) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+      <div className="min-h-screen bg-background flex items-center justify-center p-4" dir={isRTL ? 'rtl' : 'ltr'}>
         <Card className="w-full max-w-md text-center">
           <CardHeader>
             <div className="mx-auto mb-4 w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center">
               <Mail className="w-8 h-8 text-primary" />
             </div>
             <CardTitle className="text-2xl font-bold text-primary">
-              Check Your Email
+              {t('auth.checkEmail')}
             </CardTitle>
             <CardDescription className="text-base">
-              We've sent a password reset link to
+              {t('auth.resetEmailSent')}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <p className="font-medium text-foreground">{resetEmail}</p>
             <p className="text-sm text-muted-foreground">
-              Don't worry! Click the link in your email to reset your password and get back to your account quickly.
+              {t('auth.resetEmailNote')}
             </p>
             <p className="text-xs text-muted-foreground">
-              The link will expire in 1 hour for security purposes.
+              {t('auth.resetExpiry')}
             </p>
             <Button 
               onClick={() => {
@@ -230,7 +228,7 @@ const Auth = () => {
               }} 
               className="w-full"
             >
-              Back to Sign In
+              {t('auth.backToSignIn')}
             </Button>
           </CardContent>
         </Card>
@@ -241,38 +239,38 @@ const Auth = () => {
   // Show forgot password form
   if (showForgotPassword) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+      <div className="min-h-screen bg-background flex items-center justify-center p-4" dir={isRTL ? 'rtl' : 'ltr'}>
         <Card className="w-full max-w-md">
           <CardHeader className="text-center">
             <div className="mx-auto mb-4 w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center">
               <KeyRound className="w-8 h-8 text-primary" />
             </div>
             <CardTitle className="text-2xl font-bold text-primary">
-              Reset Password
+              {t('auth.resetPassword')}
             </CardTitle>
             <CardDescription>
-              Enter your email and we'll send you a link to reset your password
+              {t('auth.resetPasswordDesc')}
             </CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleForgotPassword} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="resetEmail">Email</Label>
+                <Label htmlFor="resetEmail">{t('auth.email')}</Label>
                 <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Mail className={`absolute ${isRTL ? 'right-3' : 'left-3'} top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground`} />
                   <Input
                     id="resetEmail"
                     type="email"
-                    placeholder="Enter your email"
+                    placeholder={t('auth.enterEmail')}
                     value={resetEmail}
                     onChange={(e) => setResetEmail(e.target.value)}
-                    className="pl-10"
+                    className={isRTL ? 'pr-10' : 'pl-10'}
                   />
                 </div>
               </div>
 
               <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading ? "Sending..." : "Send Reset Link"}
+                {isLoading ? t('auth.sending') : t('auth.sendResetLink')}
               </Button>
             </form>
 
@@ -286,7 +284,7 @@ const Auth = () => {
                 className="text-sm text-primary hover:underline flex items-center justify-center gap-1 mx-auto"
               >
                 <ArrowLeft className="w-4 h-4" />
-                Back to Sign In
+                {t('auth.backToSignIn')}
               </button>
             </div>
           </CardContent>
@@ -298,23 +296,23 @@ const Auth = () => {
   // Show email confirmation screen after successful signup
   if (showEmailConfirmation) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+      <div className="min-h-screen bg-background flex items-center justify-center p-4" dir={isRTL ? 'rtl' : 'ltr'}>
         <Card className="w-full max-w-md text-center">
           <CardHeader>
             <div className="mx-auto mb-4 w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center">
               <CheckCircle className="w-8 h-8 text-primary" />
             </div>
             <CardTitle className="text-2xl font-bold text-primary">
-              Check Your Email
+              {t('auth.checkEmail')}
             </CardTitle>
             <CardDescription className="text-base">
-              We've sent a welcome email to
+              {t('auth.emailSent')}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <p className="font-medium text-foreground">{registeredEmail}</p>
             <p className="text-sm text-muted-foreground">
-              Your account has been created successfully. You can now sign in with your credentials.
+              {t('auth.accountCreated')}
             </p>
             <Button 
               onClick={() => {
@@ -324,7 +322,7 @@ const Auth = () => {
               }} 
               className="w-full"
             >
-              Continue to Sign In
+              {t('auth.continueToSignIn')}
             </Button>
           </CardContent>
         </Card>
@@ -335,23 +333,23 @@ const Auth = () => {
   // Show OTP verification screen
   if (showOtpInput) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+      <div className="min-h-screen bg-background flex items-center justify-center p-4" dir={isRTL ? 'rtl' : 'ltr'}>
         <Card className="w-full max-w-md text-center">
           <CardHeader>
             <div className="mx-auto mb-4 w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center">
               <Smartphone className="w-8 h-8 text-primary" />
             </div>
             <CardTitle className="text-2xl font-bold text-primary">
-              Verify Your Phone
+              {t('auth.verifyPhone')}
             </CardTitle>
             <CardDescription className="text-base">
-              Enter the 6-digit code sent to
+              {t('auth.enterOtp')}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
             <p className="font-medium text-foreground">{formatPhoneNumber(phoneNumber)}</p>
             
-            <div className="flex justify-center">
+            <div className="flex justify-center" dir="ltr">
               <InputOTP
                 maxLength={6}
                 value={otp}
@@ -369,7 +367,7 @@ const Auth = () => {
             </div>
 
             <p className="text-xs text-muted-foreground">
-              Code expires in 5 minutes for security purposes.
+              {t('auth.otpExpiry')}
             </p>
 
             <div className="space-y-3">
@@ -378,7 +376,7 @@ const Auth = () => {
                 className="w-full" 
                 disabled={isLoading || otp.length !== 6}
               >
-                {isLoading ? "Verifying..." : "Verify Code"}
+                {isLoading ? t('auth.verifying') : t('auth.verifyCode')}
               </Button>
               
               <Button 
@@ -387,7 +385,7 @@ const Auth = () => {
                 className="w-full" 
                 disabled={isLoading}
               >
-                Resend Code
+                {t('auth.resendCode')}
               </Button>
             </div>
 
@@ -397,7 +395,7 @@ const Auth = () => {
               className="text-sm text-primary hover:underline flex items-center justify-center gap-1 mx-auto"
             >
               <ArrowLeft className="w-4 h-4" />
-              Change Phone Number
+              {t('auth.changePhone')}
             </button>
           </CardContent>
         </Card>
@@ -406,20 +404,20 @@ const Auth = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
+    <div className="min-h-screen bg-background flex items-center justify-center p-4" dir={isRTL ? 'rtl' : 'ltr'}>
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <CardTitle className="text-2xl font-bold text-primary">
-            {isSignUp ? "Create Account" : "Welcome Back"}
+            {isSignUp ? t('auth.createAccount') : t('auth.welcomeBack')}
           </CardTitle>
           <CardDescription>
-            {isSignUp ? "Sign up to report city issues" : "Sign in to continue"}
+            {isSignUp ? t('auth.signUpSubtitle') : t('auth.signInSubtitle')}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           {/* Auth Method Selector */}
           <div className="space-y-2">
-            <Label>Sign {isSignUp ? "up" : "in"} with</Label>
+            <Label>{isSignUp ? t('auth.signUpWith') : t('auth.signInWith')}</Label>
             <RadioGroup 
               value={authMethod} 
               onValueChange={(value) => setAuthMethod(value as AuthMethod)} 
@@ -429,14 +427,14 @@ const Auth = () => {
                 <RadioGroupItem value="email" id="auth-email" />
                 <Label htmlFor="auth-email" className="flex items-center gap-1.5 cursor-pointer">
                   <Mail className="h-4 w-4" />
-                  Email
+                  {t('auth.email')}
                 </Label>
               </div>
               <div className="flex items-center space-x-2">
                 <RadioGroupItem value="phone" id="auth-phone" />
                 <Label htmlFor="auth-phone" className="flex items-center gap-1.5 cursor-pointer">
                   <Phone className="h-4 w-4" />
-                  Phone
+                  {t('auth.phone')}
                 </Label>
               </div>
             </RadioGroup>
@@ -447,67 +445,67 @@ const Auth = () => {
             <form onSubmit={handleSubmit} className="space-y-4">
               {isSignUp && (
                 <div className="space-y-2">
-                  <Label htmlFor="fullName">Full Name</Label>
+                  <Label htmlFor="fullName">{t('auth.fullName')}</Label>
                   <div className="relative">
-                    <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <User className={`absolute ${isRTL ? 'right-3' : 'left-3'} top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground`} />
                     <Input
                       id="fullName"
                       type="text"
-                      placeholder="Enter your full name"
+                      placeholder={t('auth.enterFullName')}
                       value={fullName}
                       onChange={(e) => setFullName(e.target.value)}
-                      className="pl-10"
+                      className={isRTL ? 'pr-10' : 'pl-10'}
                     />
                   </div>
                 </div>
               )}
 
               <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
+                <Label htmlFor="email">{t('auth.email')}</Label>
                 <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Mail className={`absolute ${isRTL ? 'right-3' : 'left-3'} top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground`} />
                   <Input
                     id="email"
                     type="email"
-                    placeholder="Enter your email"
+                    placeholder={t('auth.enterEmail')}
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="pl-10"
+                    className={isRTL ? 'pr-10' : 'pl-10'}
                   />
                 </div>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
+                <Label htmlFor="password">{t('auth.password')}</Label>
                 <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Lock className={`absolute ${isRTL ? 'right-3' : 'left-3'} top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground`} />
                   <Input
                     id="password"
                     type="password"
-                    placeholder="Enter your password"
+                    placeholder={t('auth.enterPassword')}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="pl-10"
+                    className={isRTL ? 'pr-10' : 'pl-10'}
                   />
                 </div>
               </div>
 
               {isSignUp && (
                 <div className="space-y-2">
-                  <Label>Role</Label>
+                  <Label>{t('auth.role')}</Label>
                   <RadioGroup value={role} onValueChange={(value) => setRole(value as UserRole)} className="flex gap-4">
                     <div className="flex items-center space-x-2">
                       <RadioGroupItem value="citizen" id="citizen" />
                       <Label htmlFor="citizen" className="flex items-center gap-1 cursor-pointer">
                         <Users className="h-4 w-4" />
-                        Citizen
+                        {t('auth.citizen')}
                       </Label>
                     </div>
                     <div className="flex items-center space-x-2">
                       <RadioGroupItem value="employee" id="employee" />
                       <Label htmlFor="employee" className="flex items-center gap-1 cursor-pointer">
                         <User className="h-4 w-4" />
-                        Employee
+                        {t('auth.employee')}
                       </Label>
                     </div>
                   </RadioGroup>
@@ -515,7 +513,7 @@ const Auth = () => {
               )}
 
               <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading ? "Loading..." : isSignUp ? "Sign Up" : "Sign In"}
+                {isLoading ? t('common.loading') : isSignUp ? t('auth.signUp') : t('common.signIn')}
               </Button>
             </form>
           ) : (
@@ -523,55 +521,56 @@ const Auth = () => {
             <div className="space-y-4">
               {isSignUp && (
                 <div className="space-y-2">
-                  <Label htmlFor="phoneFullName">Full Name</Label>
+                  <Label htmlFor="phoneFullName">{t('auth.fullName')}</Label>
                   <div className="relative">
-                    <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <User className={`absolute ${isRTL ? 'right-3' : 'left-3'} top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground`} />
                     <Input
                       id="phoneFullName"
                       type="text"
-                      placeholder="Enter your full name"
+                      placeholder={t('auth.enterFullName')}
                       value={fullName}
                       onChange={(e) => setFullName(e.target.value)}
-                      className="pl-10"
+                      className={isRTL ? 'pr-10' : 'pl-10'}
                     />
                   </div>
                 </div>
               )}
 
               <div className="space-y-2">
-                <Label htmlFor="phone">Phone Number</Label>
+                <Label htmlFor="phone">{t('auth.phone')}</Label>
                 <div className="relative">
-                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Phone className={`absolute ${isRTL ? 'right-3' : 'left-3'} top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground`} />
                   <Input
                     id="phone"
                     type="tel"
                     placeholder="+961 XX XXX XXX"
                     value={phoneNumber}
                     onChange={(e) => setPhoneNumber(e.target.value)}
-                    className="pl-10"
+                    className={isRTL ? 'pr-10' : 'pl-10'}
+                    dir="ltr"
                   />
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Include country code (e.g., +961 for Lebanon)
+                  {t('auth.enterPhone')}
                 </p>
               </div>
 
               {isSignUp && (
                 <div className="space-y-2">
-                  <Label>Role</Label>
+                  <Label>{t('auth.role')}</Label>
                   <RadioGroup value={role} onValueChange={(value) => setRole(value as UserRole)} className="flex gap-4">
                     <div className="flex items-center space-x-2">
                       <RadioGroupItem value="citizen" id="phone-citizen" />
                       <Label htmlFor="phone-citizen" className="flex items-center gap-1 cursor-pointer">
                         <Users className="h-4 w-4" />
-                        Citizen
+                        {t('auth.citizen')}
                       </Label>
                     </div>
                     <div className="flex items-center space-x-2">
                       <RadioGroupItem value="employee" id="phone-employee" />
                       <Label htmlFor="phone-employee" className="flex items-center gap-1 cursor-pointer">
                         <User className="h-4 w-4" />
-                        Employee
+                        {t('auth.employee')}
                       </Label>
                     </div>
                   </RadioGroup>
@@ -584,7 +583,7 @@ const Auth = () => {
                 disabled={isLoading || !phoneNumber}
                 onClick={handleSendOtp}
               >
-                {isLoading ? "Sending..." : "Send Verification Code"}
+                {isLoading ? t('auth.sendingOtp') : t('auth.sendOtp')}
               </Button>
             </div>
           )}
@@ -595,7 +594,7 @@ const Auth = () => {
               onClick={() => setIsSignUp(!isSignUp)}
               className="text-sm text-primary hover:underline block w-full"
             >
-              {isSignUp ? "Already have an account? Sign In" : "Don't have an account? Sign Up"}
+              {isSignUp ? `${t('auth.hasAccount')} ${t('common.signIn')}` : `${t('auth.noAccount')} ${t('auth.signUp')}`}
             </button>
             {!isSignUp && authMethod === "email" && (
               <button
@@ -603,7 +602,7 @@ const Auth = () => {
                 onClick={() => setShowForgotPassword(true)}
                 className="text-sm text-muted-foreground hover:text-primary hover:underline block w-full"
               >
-                Forgotten password? Click here
+                {t('auth.forgotPassword')}
               </button>
             )}
           </div>

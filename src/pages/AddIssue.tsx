@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { ArrowLeft, Camera, MapPin, Navigation } from "lucide-react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
@@ -13,14 +14,24 @@ import { supabase } from "@/integrations/supabase/client";
 import BottomNav from "../components/BottomNav";
 import SuccessAnimation from "@/components/SuccessAnimation";
 
-const categories = ["Pothole", "Garbage", "Water Leak", "Lighting", "Traffic", "Other"];
-
 const AddIssue = () => {
   const navigate = useNavigate();
+  const { t, i18n } = useTranslation();
+  const isRTL = i18n.language === 'ar';
   const { toast } = useToast();
   const { refetchIssues } = useIssues();
   const { user, profile, isAuthenticated, isLoading } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Category keys for translation
+  const categoryKeys = [
+    { key: "pothole", label: "Pothole" },
+    { key: "garbage", label: "Garbage" },
+    { key: "waterLeak", label: "Water Leak" },
+    { key: "lighting", label: "Lighting" },
+    { key: "traffic", label: "Traffic" },
+    { key: "other", label: "Other" },
+  ];
 
   const [category, setCategory] = useState("");
   const [location, setLocation] = useState("");
@@ -35,24 +46,24 @@ const AddIssue = () => {
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
       toast({
-        title: "Authentication required",
-        description: "Please sign in to report an issue",
+        title: t('addIssue.authRequired'),
+        description: t('addIssue.pleaseSignIn'),
         variant: "destructive",
       });
       navigate("/auth");
     }
-  }, [isAuthenticated, isLoading, navigate, toast]);
+  }, [isAuthenticated, isLoading, navigate, toast, t]);
 
   useEffect(() => {
     if (!isLoading && isAuthenticated && profile && profile.role !== "citizen") {
       toast({
-        title: "Access denied",
-        description: "Only citizens can report issues",
+        title: t('addIssue.accessDenied'),
+        description: t('addIssue.onlyCitizens'),
         variant: "destructive",
       });
       navigate("/");
     }
-  }, [profile, isAuthenticated, isLoading, navigate, toast]);
+  }, [profile, isAuthenticated, isLoading, navigate, toast, t]);
 
   const handlePhotoClick = () => {
     fileInputRef.current?.click();
@@ -70,8 +81,8 @@ const AddIssue = () => {
   const handleGetLocation = () => {
     if (!navigator.geolocation) {
       toast({
-        title: "Geolocation not supported",
-        description: "Your browser does not support geolocation",
+        title: t('addIssue.geolocationNotSupported'),
+        description: t('addIssue.browserNoSupport'),
         variant: "destructive",
       });
       return;
@@ -86,18 +97,18 @@ const AddIssue = () => {
         setLocation(`${latitude.toFixed(5)}, ${longitude.toFixed(5)}`);
         setIsGettingLocation(false);
         toast({
-          title: "Location found",
+          title: t('addIssue.locationFound'),
           description: `Lat: ${latitude.toFixed(4)}, Lng: ${longitude.toFixed(4)}`,
         });
       },
       (error) => {
         setIsGettingLocation(false);
-        let message = "Unable to get your location";
+        let message = t('addIssue.unableToGetLocation');
         if (error.code === error.PERMISSION_DENIED) {
-          message = "Location permission denied. Please enable it in your browser settings.";
+          message = t('addIssue.locationPermissionDenied');
         }
         toast({
-          title: "Location error",
+          title: t('addIssue.locationError'),
           description: message,
           variant: "destructive",
         });
@@ -110,8 +121,8 @@ const AddIssue = () => {
 
     if (!category || !description || !coordinates) {
       toast({
-        title: "Missing fields",
-        description: "Please select category, description, and location",
+        title: t('addIssue.missingFields'),
+        description: t('addIssue.pleaseFillRequired'),
         variant: "destructive",
       });
       return;
@@ -119,8 +130,8 @@ const AddIssue = () => {
 
     if (!user) {
       toast({
-        title: "Not authenticated",
-        description: "Please sign in to submit an issue",
+        title: t('addIssue.notAuthenticated'),
+        description: t('addIssue.pleaseSignInSubmit'),
         variant: "destructive",
       });
       navigate("/auth");
@@ -132,7 +143,6 @@ const AddIssue = () => {
     try {
       let thumbnailUrl: string | null = null;
 
-      // Upload image if provided
       if (photoFile) {
         const fileExt = photoFile.name.split('.').pop();
         const fileName = `${user.id}-${Date.now()}.${fileExt}`;
@@ -167,15 +177,13 @@ const AddIssue = () => {
         throw error;
       }
 
-      // Refetch issues to update the list
       await refetchIssues();
-
       setShowSuccess(true);
     } catch (error) {
       console.error("Error creating issue:", error);
       toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "An error occurred while creating the issue.",
+        title: t('common.error'),
+        description: error instanceof Error ? error.message : t('addIssue.errorCreatingIssue'),
         variant: "destructive",
       });
     } finally {
@@ -191,7 +199,7 @@ const AddIssue = () => {
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <p>Loading...</p>
+        <p>{t('common.loading')}</p>
       </div>
     );
   }
@@ -201,20 +209,20 @@ const AddIssue = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background pb-20">
+    <div className="min-h-screen bg-background pb-20" dir={isRTL ? 'rtl' : 'ltr'}>
       <header className="sticky top-0 z-10 bg-background/95 backdrop-blur border-b border-border">
         <div className="flex items-center gap-3 p-4">
           <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
             <ArrowLeft className="h-5 w-5" />
           </Button>
-          <h1 className="text-lg font-semibold">Report Issue</h1>
+          <h1 className="text-lg font-semibold">{t('addIssue.title')}</h1>
         </div>
       </header>
 
       <form onSubmit={handleSubmit} className="p-4 space-y-6">
         {/* Photo Upload */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-2">
-          <label className="text-sm font-medium text-foreground">Photo (optional)</label>
+          <label className="text-sm font-medium text-foreground">{t('addIssue.photo')}</label>
           <div
             onClick={handlePhotoClick}
             className="relative h-48 rounded-xl border-2 border-dashed border-muted-foreground/30 bg-muted/50 flex items-center justify-center cursor-pointer hover:border-primary/50 transition-colors overflow-hidden"
@@ -224,7 +232,7 @@ const AddIssue = () => {
             ) : (
               <div className="text-center">
                 <Camera className="h-10 w-10 mx-auto text-muted-foreground" />
-                <p className="mt-2 text-sm text-muted-foreground">Tap to add photo</p>
+                <p className="mt-2 text-sm text-muted-foreground">{t('addIssue.tapToAddPhoto')}</p>
               </div>
             )}
           </div>
@@ -238,15 +246,15 @@ const AddIssue = () => {
           transition={{ delay: 0.1 }}
           className="space-y-2"
         >
-          <label className="text-sm font-medium text-foreground">Category</label>
+          <label className="text-sm font-medium text-foreground">{t('addIssue.category')}</label>
           <Select value={category} onValueChange={setCategory}>
             <SelectTrigger>
-              <SelectValue placeholder="Select a category" />
+              <SelectValue placeholder={t('addIssue.selectCategory')} />
             </SelectTrigger>
-            <SelectContent>
-              {categories.map((cat) => (
-                <SelectItem key={cat} value={cat}>
-                  {cat}
+            <SelectContent className="bg-popover border border-border shadow-lg z-50">
+              {categoryKeys.map((cat) => (
+                <SelectItem key={cat.label} value={cat.label}>
+                  {t(`categories.${cat.key}`)}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -260,15 +268,16 @@ const AddIssue = () => {
           transition={{ delay: 0.2 }}
           className="space-y-2"
         >
-          <label className="text-sm font-medium text-foreground">Location</label>
+          <label className="text-sm font-medium text-foreground">{t('addIssue.location')}</label>
           <div className="flex gap-2">
             <div className="relative flex-1">
-              <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <MapPin className={`absolute ${isRTL ? 'right-3' : 'left-3'} top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground`} />
               <Input
                 value={location}
                 onChange={(e) => setLocation(e.target.value)}
-                placeholder="Enter location or use GPS"
-                className="pl-9"
+                placeholder={t('addIssue.locationPlaceholder')}
+                className={isRTL ? 'pr-9' : 'pl-9'}
+                dir="ltr"
               />
             </div>
             <Button
@@ -290,11 +299,11 @@ const AddIssue = () => {
           transition={{ delay: 0.3 }}
           className="space-y-2"
         >
-          <label className="text-sm font-medium text-foreground">Description</label>
+          <label className="text-sm font-medium text-foreground">{t('addIssue.description')}</label>
           <Textarea
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            placeholder="Describe the issue..."
+            placeholder={t('addIssue.descriptionPlaceholder')}
             rows={4}
           />
         </motion.div>
@@ -302,7 +311,7 @@ const AddIssue = () => {
         {/* Submit Button */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>
           <Button type="submit" className="w-full" disabled={isSubmitting}>
-            {isSubmitting ? "Submitting..." : "Submit Report"}
+            {isSubmitting ? t('addIssue.submitting') : t('addIssue.submit')}
           </Button>
         </motion.div>
       </form>
