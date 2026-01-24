@@ -17,7 +17,7 @@ import SuccessAnimation from "@/components/SuccessAnimation";
 
 // Helper function to check if report should be routed to buildings_at_risk
 const shouldRouteToBuildings = (category: string, description: string): boolean => {
-  return category === "Other" && description.toLowerCase().includes("building at risk");
+  return category === "Other" && description.trim().toLowerCase().includes("building at risk");
 };
 
 const AddIssue = () => {
@@ -174,17 +174,18 @@ const AddIssue = () => {
       
       if (isBuilding) {
         // Route to buildings_at_risk table
-        const reporterType = profile?.role === "employee" ? "employee" : "citizen";
-        const buildingName = `${category} issue`; // Could be enhanced to extract from description
+        // reporter_type must be 'user' or 'employee' per database constraint
+        const reporterType = profile?.role === "employee" ? "employee" : "user";
+        const buildingName = description.trim().substring(0, 100) || "Unknown Building";
         
         const { error } = await supabase.from("buildings_at_risk").insert({
-          building_name: buildingName || "Unknown Building",
+          building_name: buildingName,
           address: location || null,
           latitude: coordinates.lat,
           longitude: coordinates.lng,
           reported_by: user.id,
           reporter_type: reporterType,
-          description,
+          description: description.trim(),
           status: "pending",
         });
 
