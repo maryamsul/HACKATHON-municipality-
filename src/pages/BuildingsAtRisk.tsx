@@ -29,66 +29,66 @@ const STATUS_STYLES: Record<BuildingStatus, { label: string; color: string }> = 
   resolved: { label: "Resolved", color: "bg-green-100 text-green-700" },
 };
 
-// Mock data - will be replaced with real database fetch
-const mockBuildings: BuildingReport[] = [
+// Mock data with translation keys - will be replaced with real database fetch
+const getMockBuildings = (t: (key: string) => string): BuildingReport[] => [
   {
     id: "1",
-    building_name: "Old Market Building",
-    address: "123 Downtown Street, Beirut",
+    building_name: t('buildings.building1Name'),
+    address: t('buildings.building1Address'),
     latitude: 33.8938,
     longitude: 35.5018,
-    reported_by: "Ahmad",
+    reported_by: t('buildings.reporterAhmad'),
     reporter_type: "citizen",
     status: "critical",
-    description: "Visible cracks in foundation, tilting structure",
+    description: t('buildings.building1Desc'),
     created_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
   },
   {
     id: "2",
-    building_name: "Heritage Tower",
-    address: "45 Historic District, Tripoli",
+    building_name: t('buildings.building2Name'),
+    address: t('buildings.building2Address'),
     latitude: 34.4367,
     longitude: 35.8497,
-    reported_by: "Municipality Inspector",
+    reported_by: t('buildings.reporterInspector'),
     reporter_type: "employee",
     status: "under_inspection",
-    description: "Water damage weakening walls, scheduled for inspection",
+    description: t('buildings.building2Desc'),
     created_at: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
   },
   {
     id: "3",
-    building_name: "Coastal Warehouse",
-    address: "78 Port Road, Saida",
+    building_name: t('buildings.building3Name'),
+    address: t('buildings.building3Address'),
     latitude: 33.5572,
     longitude: 35.3729,
-    reported_by: "Layla",
+    reported_by: t('buildings.reporterLayla'),
     reporter_type: "citizen",
     status: "reported",
-    description: "Roof partially collapsed after storm",
+    description: t('buildings.building3Desc'),
     created_at: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
   },
   {
     id: "4",
-    building_name: "Abandoned Factory",
-    address: "90 Industrial Zone, Zahle",
+    building_name: t('buildings.building4Name'),
+    address: t('buildings.building4Address'),
     latitude: 33.8463,
     longitude: 35.9020,
-    reported_by: "Safety Officer",
+    reported_by: t('buildings.reporterSafetyOfficer'),
     reporter_type: "employee",
     status: "resolved",
-    description: "Demolished and cleared",
+    description: t('buildings.building4Desc'),
     created_at: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
   },
   {
     id: "5",
-    building_name: "Corner Apartment Block",
-    address: "12 Residential Area, Sour",
+    building_name: t('buildings.building5Name'),
+    address: t('buildings.building5Address'),
     latitude: 33.2705,
     longitude: 35.2038,
-    reported_by: "Omar",
+    reported_by: t('buildings.reporterOmar'),
     reporter_type: "citizen",
     status: "critical",
-    description: "Multiple floors showing structural damage",
+    description: t('buildings.building5Desc'),
     created_at: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
   },
 ];
@@ -97,10 +97,9 @@ const BuildingsAtRisk = () => {
   const navigate = useNavigate();
   const { t, i18n } = useTranslation();
   const isRTL = i18n.language === 'ar';
-  const [buildings, setBuildings] = useState<BuildingReport[]>(mockBuildings);
+  const buildings = getMockBuildings(t);
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(false);
-
   const filteredBuildings = buildings.filter(
     (building) =>
       building.building_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
