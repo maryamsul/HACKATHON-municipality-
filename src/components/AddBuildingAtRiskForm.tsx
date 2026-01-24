@@ -1,40 +1,30 @@
-import { useState, useRef, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { ArrowLeft, Camera, MapPin, Navigation } from "lucide-react";
+import { Camera, MapPin, Navigation, X } from "lucide-react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { useIssues } from "@/context/IssuesContext";
+import { useBuildings } from "@/context/BuildingsContext";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
-import BottomNav from "../components/BottomNav";
 import SuccessAnimation from "@/components/SuccessAnimation";
 
-const AddIssue = () => {
-  const navigate = useNavigate();
+interface AddBuildingAtRiskFormProps {
+  onClose: () => void;
+}
+
+const AddBuildingAtRiskForm = ({ onClose }: AddBuildingAtRiskFormProps) => {
   const { t, i18n } = useTranslation();
   const isRTL = i18n.language === 'ar';
   const { toast } = useToast();
-  const { refetchIssues } = useIssues();
-  const { user, profile, isAuthenticated, isLoading } = useAuth();
+  const { refetchBuildings } = useBuildings();
+  const { user, profile } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Category keys for translation
-  const categoryKeys = [
-    { key: "pothole", label: "Pothole" },
-    { key: "garbage", label: "Garbage" },
-    { key: "waterLeak", label: "Water Leak" },
-    { key: "lighting", label: "Lighting" },
-    { key: "traffic", label: "Traffic" },
-    { key: "other", label: "Other" },
-  ];
-
-  const [category, setCategory] = useState("");
-  const [location, setLocation] = useState("");
+  const [buildingName, setBuildingName] = useState("");
+  const [address, setAddress] = useState("");
   const [description, setDescription] = useState("");
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [photoFile, setPhotoFile] = useState<File | null>(null);
@@ -42,28 +32,6 @@ const AddIssue = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [isGettingLocation, setIsGettingLocation] = useState(false);
-
-  useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
-      toast({
-        title: t('addIssue.authRequired'),
-        description: t('addIssue.pleaseSignIn'),
-        variant: "destructive",
-      });
-      navigate("/auth");
-    }
-  }, [isAuthenticated, isLoading, navigate, toast, t]);
-
-  useEffect(() => {
-    if (!isLoading && isAuthenticated && profile && profile.role !== "citizen") {
-      toast({
-        title: t('addIssue.accessDenied'),
-        description: t('addIssue.onlyCitizens'),
-        variant: "destructive",
-      });
-      navigate("/");
-    }
-  }, [profile, isAuthenticated, isLoading, navigate, toast, t]);
 
   const handlePhotoClick = () => {
     fileInputRef.current?.click();
@@ -94,7 +62,7 @@ const AddIssue = () => {
       (position) => {
         const { latitude, longitude } = position.coords;
         setCoordinates({ lat: latitude, lng: longitude });
-        setLocation(`${latitude.toFixed(5)}, ${longitude.toFixed(5)}`);
+        setAddress(`${latitude.toFixed(5)}, ${longitude.toFixed(5)}`);
         setIsGettingLocation(false);
         toast({
           title: t('addIssue.locationFound'),
@@ -119,10 +87,10 @@ const AddIssue = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!category || !description || !coordinates) {
+    if (!buildingName.trim() || !description.trim()) {
       toast({
         title: t('addIssue.missingFields'),
-        description: t('addIssue.pleaseFillRequired'),
+        description: t('buildings.pleaseFillRequired'),
         variant: "destructive",
       });
       return;
@@ -134,58 +102,38 @@ const AddIssue = () => {
         description: t('addIssue.pleaseSignInSubmit'),
         variant: "destructive",
       });
-      navigate("/auth");
       return;
     }
 
     setIsSubmitting(true);
 
     try {
-      let thumbnailUrl: string | null = null;
+      // reporter_type must be 'user' or 'employee' per database constraint
+      const reporterType = profile?.role === "employee" ? "employee" : "user";
 
-      if (photoFile) {
-        const fileExt = photoFile.name.split('.').pop();
-        const fileName = `${user.id}-${Date.now()}.${fileExt}`;
-        const filePath = `issue-images/${fileName}`;
-
-        const { error: uploadError } = await supabase.storage
-          .from('issues')
-          .upload(filePath, photoFile);
-
-        if (uploadError) {
-          console.error("Upload error:", uploadError);
-        } else {
-          const { data: urlData } = supabase.storage
-            .from('issues')
-            .getPublicUrl(filePath);
-          thumbnailUrl = urlData.publicUrl;
-        }
-      }
-
-      // Insert into issues table only
-      const { error } = await supabase.from("issues").insert({
-        title: `${category} issue`,
-        description,
-        category,
-        latitude: coordinates.lat,
-        longitude: coordinates.lng,
+      const { error } = await supabase.from("buildings_at_risk").insert({
+        building_name: buildingName.trim(),
+        address: address.trim() || null,
+        latitude: coordinates?.lat || null,
+        longitude: coordinates?.lng || null,
         reported_by: user.id,
+        reporter_type: reporterType,
+        description: description.trim(),
         status: "pending",
-        thumbnail: thumbnailUrl,
       });
 
       if (error) {
+        console.error("Error inserting building at risk:", error);
         throw error;
       }
 
-      await refetchIssues();
-      
+      await refetchBuildings();
       setShowSuccess(true);
     } catch (error) {
-      console.error("Error creating issue:", error);
+      console.error("Error creating building report:", error);
       toast({
         title: t('common.error'),
-        description: error instanceof Error ? error.message : t('addIssue.errorCreatingIssue'),
+        description: error instanceof Error ? error.message : t('buildings.errorCreating'),
         variant: "destructive",
       });
     } finally {
@@ -195,33 +143,25 @@ const AddIssue = () => {
 
   const handleSuccessComplete = () => {
     setShowSuccess(false);
-    navigate("/");
+    onClose();
   };
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <p>{t('common.loading')}</p>
-      </div>
-    );
-  }
 
   if (showSuccess) {
     return <SuccessAnimation show={showSuccess} onComplete={handleSuccessComplete} />;
   }
 
   return (
-    <div className="min-h-screen bg-background pb-20" dir={isRTL ? 'rtl' : 'ltr'}>
+    <div className="fixed inset-0 z-50 bg-background overflow-y-auto" dir={isRTL ? 'rtl' : 'ltr'}>
       <header className="sticky top-0 z-10 bg-background/95 backdrop-blur border-b border-border">
-        <div className="flex items-center gap-3 p-4">
-          <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
-            <ArrowLeft className="h-5 w-5" />
+        <div className="flex items-center justify-between p-4">
+          <h1 className="text-lg font-semibold">{t('buildings.reportTitle')}</h1>
+          <Button variant="ghost" size="icon" onClick={onClose}>
+            <X className="h-5 w-5" />
           </Button>
-          <h1 className="text-lg font-semibold">{t('addIssue.title')}</h1>
         </div>
       </header>
 
-      <form onSubmit={handleSubmit} className="p-4 space-y-6">
+      <form onSubmit={handleSubmit} className="p-4 space-y-6 pb-8">
         {/* Photo Upload */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-2">
           <label className="text-sm font-medium text-foreground">{t('addIssue.photo')}</label>
@@ -241,29 +181,23 @@ const AddIssue = () => {
           <input ref={fileInputRef} type="file" accept="image/*" onChange={handlePhotoChange} className="hidden" />
         </motion.div>
 
-        {/* Category Select */}
+        {/* Building Name */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
           className="space-y-2"
         >
-          <label className="text-sm font-medium text-foreground">{t('addIssue.category')}</label>
-          <Select value={category} onValueChange={setCategory}>
-            <SelectTrigger>
-              <SelectValue placeholder={t('addIssue.selectCategory')} />
-            </SelectTrigger>
-            <SelectContent className="bg-popover border border-border shadow-lg z-50">
-              {categoryKeys.map((cat) => (
-                <SelectItem key={cat.label} value={cat.label}>
-                  {t(`categories.${cat.key}`)}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <label className="text-sm font-medium text-foreground">{t('buildings.buildingName')} *</label>
+          <Input
+            value={buildingName}
+            onChange={(e) => setBuildingName(e.target.value)}
+            placeholder={t('buildings.buildingNamePlaceholder')}
+            required
+          />
         </motion.div>
 
-        {/* Location */}
+        {/* Address / Location */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -275,8 +209,8 @@ const AddIssue = () => {
             <div className="relative flex-1">
               <MapPin className={`absolute ${isRTL ? 'right-3' : 'left-3'} top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground`} />
               <Input
-                value={location}
-                onChange={(e) => setLocation(e.target.value)}
+                value={address}
+                onChange={(e) => setAddress(e.target.value)}
                 placeholder={t('addIssue.locationPlaceholder')}
                 className={isRTL ? 'pr-9' : 'pl-9'}
                 dir="ltr"
@@ -301,26 +235,25 @@ const AddIssue = () => {
           transition={{ delay: 0.3 }}
           className="space-y-2"
         >
-          <label className="text-sm font-medium text-foreground">{t('addIssue.description')}</label>
+          <label className="text-sm font-medium text-foreground">{t('addIssue.description')} *</label>
           <Textarea
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            placeholder={t('addIssue.descriptionPlaceholder')}
+            placeholder={t('buildings.descriptionPlaceholder')}
             rows={4}
+            required
           />
         </motion.div>
 
         {/* Submit Button */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>
-          <Button type="submit" className="w-full" disabled={isSubmitting}>
-            {isSubmitting ? t('addIssue.submitting') : t('addIssue.submit')}
+          <Button type="submit" variant="destructive" className="w-full" disabled={isSubmitting}>
+            {isSubmitting ? t('addIssue.submitting') : t('buildings.submitReport')}
           </Button>
         </motion.div>
       </form>
-
-      <BottomNav />
     </div>
   );
 };
 
-export default AddIssue;
+export default AddBuildingAtRiskForm;

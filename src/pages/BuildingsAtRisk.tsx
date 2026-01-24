@@ -1,11 +1,13 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { ArrowLeft, Building2, Search, MapPin, Calendar, AlertTriangle, User } from "lucide-react";
+import { ArrowLeft, Building2, Search, MapPin, Calendar, AlertTriangle, User, Plus } from "lucide-react";
 import { motion } from "framer-motion";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import BottomNav from "@/components/BottomNav";
+import AddBuildingAtRiskForm from "@/components/AddBuildingAtRiskForm";
 import { useBuildings } from "@/context/BuildingsContext";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/hooks/use-toast";
@@ -17,11 +19,25 @@ const BuildingsAtRisk = () => {
   const { t, i18n } = useTranslation();
   const isRTL = i18n.language === 'ar';
   const { buildings, loading, refetchBuildings } = useBuildings();
-  const { profile } = useAuth();
+  const { profile, isAuthenticated } = useAuth();
   const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState("");
+  const [showReportForm, setShowReportForm] = useState(false);
   
   const isEmployee = profile?.role === "employee";
+
+  const handleReportClick = () => {
+    if (!isAuthenticated) {
+      toast({
+        title: t('addIssue.authRequired'),
+        description: t('addIssue.pleaseSignIn'),
+        variant: "destructive",
+      });
+      navigate("/auth");
+      return;
+    }
+    setShowReportForm(true);
+  };
 
   const filteredBuildings = buildings.filter(
     (building) =>
@@ -87,6 +103,10 @@ const BuildingsAtRisk = () => {
     resolved: buildings.filter(b => b.status === "resolved").length,
   };
 
+  if (showReportForm) {
+    return <AddBuildingAtRiskForm onClose={() => setShowReportForm(false)} />;
+  }
+
   return (
     <div className="min-h-screen bg-background pb-24" dir={isRTL ? 'rtl' : 'ltr'}>
       {/* Header */}
@@ -95,7 +115,7 @@ const BuildingsAtRisk = () => {
           <button onClick={() => navigate(-1)} className="p-2 hover:bg-destructive-foreground/10 rounded-full transition-colors">
             <ArrowLeft className="w-5 h-5" />
           </button>
-          <div>
+          <div className="flex-1">
             <h1 className="text-xl font-bold flex items-center gap-2">
               <AlertTriangle className="w-5 h-5" />
               {t('buildings.title')}
@@ -105,6 +125,15 @@ const BuildingsAtRisk = () => {
             </p>
           </div>
         </div>
+        
+        {/* Report Building Button - Prominent CTA */}
+        <Button 
+          onClick={handleReportClick}
+          className="w-full mb-4 bg-destructive-foreground text-destructive hover:bg-destructive-foreground/90 font-semibold"
+        >
+          <Plus className="w-4 h-4 mr-2" />
+          {t('buildings.reportButton')}
+        </Button>
         
         {/* Status Summary */}
         <div className="flex gap-2 flex-wrap mb-4">
