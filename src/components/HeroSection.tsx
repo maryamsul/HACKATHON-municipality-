@@ -67,17 +67,27 @@ const HeroSection = () => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 mb-6"
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 mb-4"
         >
           <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
           <span className="text-sm font-medium text-primary">Ready to Make a Difference</span>
+        </motion.div>
+
+        {/* Donor Ticker - directly under badge */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.15 }}
+          className="mb-6"
+        >
+          <DonorTicker />
         </motion.div>
 
         {/* Main heading */}
         <motion.h1
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.1 }}
+          transition={{ duration: 0.6, delay: 0.2 }}
           className="text-4xl sm:text-5xl lg:text-6xl font-bold text-foreground mb-6 leading-tight"
         >
           Join the{" "}
@@ -89,7 +99,7 @@ const HeroSection = () => {
               className="absolute bottom-2 left-0 right-0 h-3 bg-primary/20 rounded-full -z-0"
               initial={{ scaleX: 0 }}
               animate={{ scaleX: 1 }}
-              transition={{ duration: 0.8, delay: 0.5 }}
+              transition={{ duration: 0.8, delay: 0.6 }}
             />
           </span>
         </motion.h1>
@@ -163,15 +173,6 @@ const HeroSection = () => {
           ))}
         </motion.div>
 
-        {/* Donor Appreciation Ticker */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.6 }}
-          className="mt-8 pt-6 border-t border-border/30"
-        >
-          <DonorTicker />
-        </motion.div>
       </div>
     </section>
   );
