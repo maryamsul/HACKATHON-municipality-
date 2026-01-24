@@ -1,5 +1,6 @@
 import { ArrowLeft } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { useIssues } from "@/context/IssuesContext";
 import { useAuth } from "@/context/AuthContext";
 import IssueCard from "@/components/IssueCard";
@@ -8,6 +9,8 @@ import { ISSUE_STATUSES, IssueStatus } from "@/types/issue";
 
 const AllIssues = () => {
   const navigate = useNavigate();
+  const { t, i18n } = useTranslation();
+  const isRTL = i18n.language === 'ar';
   const { issues, loading } = useIssues();
   const { profile } = useAuth();
   const [searchParams] = useSearchParams();
@@ -30,6 +33,19 @@ const AllIssues = () => {
       return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
     });
 
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case 'under_review':
+        return t('status.underReview');
+      case 'under_maintenance':
+        return t('status.underMaintenance');
+      case 'resolved':
+        return t('status.resolved');
+      default:
+        return status;
+    }
+  };
+
   // Count issues by status
   const statusCounts = {
     under_review: issues.filter(i => i.status === "under_review").length,
@@ -38,16 +54,16 @@ const AllIssues = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background pb-24">
+    <div className="min-h-screen bg-background pb-24" dir={isRTL ? 'rtl' : 'ltr'}>
       <header className="sticky top-0 bg-background border-b border-border px-4 py-4 z-10">
         <div className="flex items-center gap-3">
           <button onClick={() => navigate(-1)} className="p-2 -ml-2 hover:bg-muted rounded-full transition-colors">
             <ArrowLeft className="w-5 h-5" />
           </button>
           <div>
-            <h1 className="text-lg font-semibold">All Issues</h1>
+            <h1 className="text-lg font-semibold">{t('common.allIssues')}</h1>
             {isEmployee && (
-              <span className="text-xs text-primary font-medium">Employee View</span>
+              <span className="text-xs text-primary font-medium">{t('common.employeeView')}</span>
             )}
           </div>
         </div>
@@ -55,7 +71,7 @@ const AllIssues = () => {
 
       <main className="p-4">
         {loading ? (
-          <p className="text-center text-muted-foreground py-8">Loading issues...</p>
+          <p className="text-center text-muted-foreground py-8">{t('common.loading')}</p>
         ) : (
           <>
             {/* Status summary for employees */}
@@ -67,14 +83,14 @@ const AllIssues = () => {
                     className={`p-3 rounded-lg text-center ${ISSUE_STATUSES[status].color}`}
                   >
                     <div className="text-lg font-bold">{statusCounts[status]}</div>
-                    <div className="text-xs">{ISSUE_STATUSES[status].label}</div>
+                    <div className="text-xs">{getStatusLabel(status)}</div>
                   </div>
                 ))}
               </div>
             )}
 
             <p className="text-sm text-muted-foreground mb-4">
-              {filteredIssues.length} issues {isEmployee ? "to manage" : "reported"}
+              {filteredIssues.length} {isEmployee ? t('common.issuesToManage') : t('common.issuesReported')}
             </p>
 
             <div className="space-y-3">
@@ -84,7 +100,7 @@ const AllIssues = () => {
             </div>
 
             {filteredIssues.length === 0 && (
-              <p className="text-center text-muted-foreground py-8">No issues found</p>
+              <p className="text-center text-muted-foreground py-8">{t('common.noResults')}</p>
             )}
           </>
         )}

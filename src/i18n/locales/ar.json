@@ -16,7 +16,18 @@
     "next": "التالي",
     "loading": "جاري التحميل...",
     "error": "خطأ",
-    "success": "نجاح"
+    "success": "نجاح",
+    "issueNotFound": "لم يتم العثور على المشكلة",
+    "totalIssues": "إجمالي المشاكل",
+    "resultsFor": "نتائج لـ",
+    "searchResults": "نتائج البحث",
+    "allIssues": "جميع المشاكل",
+    "issuesToManage": "مشاكل للإدارة",
+    "issuesReported": "مشاكل تم الإبلاغ عنها",
+    "employeeView": "عرض الموظف",
+    "reports": "البلاغات",
+    "openInGoogleMaps": "فتح في خرائط جوجل",
+    "coordinates": "الإحداثيات"
   },
   "nav": {
     "home": "الرئيسية",
@@ -40,6 +51,12 @@
     "traffic": "مرور",
     "other": "أخرى"
   },
+  "status": {
+    "underReview": "قيد المراجعة",
+    "underMaintenance": "قيد الصيانة",
+    "resolved": "تم الحل",
+    "statusPlaceholder": "الحالة"
+  },
   "filters": {
     "title": "تصفية المشاكل",
     "status": "الحالة",
@@ -54,7 +71,22 @@
   "hero": {
     "title": "أبلغ عن مشكلة",
     "subtitle": "ساعد في تحسين مدينتك بالإبلاغ عن المشاكل في حيّك",
-    "cta": "أبلغ الآن"
+    "cta": "أبلغ الآن",
+    "joinMovement": "انضم إلى",
+    "movement": "الحركة",
+    "heroDescription": "كل بلاغ مهم. كل صوت يُحسب. معاً، نبني مجتمعات أقوى وأكثر أماناً للجميع.",
+    "getStarted": "ابدأ الآن",
+    "learnMore": "اعرف المزيد",
+    "activeReports": "بلاغات نشطة",
+    "satisfactionRate": "معدل الرضا",
+    "supportAvailable": "دعم متاح",
+    "readyToMakeDifference": "مستعد لإحداث فرق",
+    "scanQrCode": "امسح رمز QR",
+    "usePhoneCamera": "استخدم كاميرا هاتفك",
+    "openDonationLink": "افتح رابط التبرع",
+    "directPaymentPage": "صفحة الدفع المباشر",
+    "scanToDonate": "امسح للتبرع",
+    "scanQrDescription": "امسح رمز QR هذا بهاتفك للتبرع"
   },
   "municipalities": {
     "title": "البلديات المشاركة",
@@ -106,24 +138,52 @@
     "backToSignIn": "العودة لتسجيل الدخول",
     "resetEmailSent": "لقد أرسلنا رابط إعادة تعيين كلمة المرور إلى",
     "resetEmailNote": "لا تقلق! انقر على الرابط في بريدك الإلكتروني لإعادة تعيين كلمة المرور.",
-    "resetExpiry": "ينتهي الرابط خلال ساعة واحدة لأسباب أمنية."
+    "resetExpiry": "ينتهي الرابط خلال ساعة واحدة لأسباب أمنية.",
+    "otpSentMessage": "تم إرسال رمز التحقق إلى هاتفك. ينتهي خلال 5 دقائق.",
+    "signedInSuccess": "تم تسجيل الدخول بنجاح!",
+    "pleaseEnterEmail": "يرجى إدخال عنوان بريدك الإلكتروني",
+    "pleaseEnterPhone": "يرجى إدخال رقم هاتفك",
+    "pleaseEnterName": "يرجى إدخال اسمك الكامل",
+    "pleaseEnterOtp": "يرجى إدخال رمز التحقق المكون من 6 أرقام",
+    "pleaseFillFields": "يرجى ملء جميع الحقول",
+    "emailAlreadyRegistered": "البريد الإلكتروني مسجل بالفعل",
+    "emailAlreadyInUse": "هذا البريد الإلكتروني مستخدم بالفعل. يرجى تسجيل الدخول.",
+    "somethingWentWrong": "حدث خطأ ما",
+    "failedToSendOtp": "فشل إرسال الرمز. يرجى المحاولة مرة أخرى.",
+    "failedToVerifyOtp": "فشل التحقق من الرمز. يرجى المحاولة مرة أخرى."
   },
   "addIssue": {
     "title": "الإبلاغ عن مشكلة",
     "issueTitle": "عنوان المشكلة",
     "issueTitlePlaceholder": "وصف موجز للمشكلة",
     "description": "الوصف",
-    "descriptionPlaceholder": "قدم المزيد من التفاصيل...",
+    "descriptionPlaceholder": "صف المشكلة...",
     "category": "الفئة",
     "selectCategory": "اختر فئة",
     "location": "الموقع",
-    "locationPlaceholder": "أدخل العنوان أو استخدم الخريطة",
+    "locationPlaceholder": "أدخل الموقع أو استخدم GPS",
     "useCurrentLocation": "استخدام موقعي الحالي",
     "photo": "صورة (اختياري)",
+    "tapToAddPhoto": "انقر لإضافة صورة",
     "takePhoto": "التقاط صورة",
     "uploadPhoto": "رفع صورة",
     "submit": "إرسال البلاغ",
-    "submitting": "جاري الإرسال..."
+    "submitting": "جاري الإرسال...",
+    "authRequired": "التحقق مطلوب",
+    "pleaseSignIn": "يرجى تسجيل الدخول للإبلاغ عن مشكلة",
+    "accessDenied": "الوصول مرفوض",
+    "onlyCitizens": "المواطنون فقط يمكنهم الإبلاغ عن المشاكل",
+    "geolocationNotSupported": "تحديد الموقع غير مدعوم",
+    "browserNoSupport": "متصفحك لا يدعم تحديد الموقع الجغرافي",
+    "locationFound": "تم العثور على الموقع",
+    "locationError": "خطأ في الموقع",
+    "unableToGetLocation": "تعذر الحصول على موقعك",
+    "locationPermissionDenied": "تم رفض إذن الموقع. يرجى تفعيله في إعدادات المتصفح.",
+    "missingFields": "حقول مفقودة",
+    "pleaseFillRequired": "يرجى اختيار الفئة والوصف والموقع",
+    "notAuthenticated": "غير مسجل الدخول",
+    "pleaseSignInSubmit": "يرجى تسجيل الدخول لإرسال مشكلة",
+    "errorCreatingIssue": "حدث خطأ أثناء إنشاء المشكلة."
   },
   "issueDetails": {
     "reportedBy": "بلّغ عنها",
@@ -132,7 +192,10 @@
     "location": "الموقع",
     "description": "الوصف",
     "updates": "التحديثات",
-    "noUpdates": "لا توجد تحديثات بعد"
+    "noUpdates": "لا توجد تحديثات بعد",
+    "statusUpdated": "تم تحديث الحالة",
+    "issueMarkedAs": "تم تحديد المشكلة كـ",
+    "failedToUpdateStatus": "فشل تحديث الحالة"
   },
   "notifications": {
     "title": "الإشعارات",

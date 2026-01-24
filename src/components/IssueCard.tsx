@@ -1,6 +1,7 @@
 import { Issue, ISSUE_STATUSES, IssueStatus } from "@/types/issue";
 import { MapPin, Calendar } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { motion } from "framer-motion";
 import { useAuth } from "@/context/AuthContext";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -24,6 +25,7 @@ const categoryIcons: Record<string, string> = {
 
 const IssueCard = ({ issue, index = 0 }: IssueCardProps) => {
   const navigate = useNavigate();
+  const { t, i18n } = useTranslation();
   const { profile } = useAuth();
   const { refetchIssues } = useIssues();
   const { toast } = useToast();
@@ -31,6 +33,19 @@ const IssueCard = ({ issue, index = 0 }: IssueCardProps) => {
 
   const formatLocation = (lat: number, lng: number) => {
     return `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+  };
+
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case 'under_review':
+        return t('status.underReview');
+      case 'under_maintenance':
+        return t('status.underMaintenance');
+      case 'resolved':
+        return t('status.resolved');
+      default:
+        return status;
+    }
   };
 
   const currentStatus = ISSUE_STATUSES[issue.status as IssueStatus] || ISSUE_STATUSES.under_review;
@@ -46,11 +61,11 @@ const IssueCard = ({ issue, index = 0 }: IssueCardProps) => {
       
       await refetchIssues();
       toast({ 
-        title: "Status updated", 
-        description: `Issue marked as ${ISSUE_STATUSES[newStatus as IssueStatus]?.label || newStatus}` 
+        title: t('issueDetails.statusUpdated'), 
+        description: `${t('issueDetails.issueMarkedAs')} ${getStatusLabel(newStatus)}` 
       });
     } catch (error) {
-      toast({ title: "Error", description: "Failed to update status", variant: "destructive" });
+      toast({ title: t('common.error'), description: t('issueDetails.failedToUpdateStatus'), variant: "destructive" });
     }
   };
 
@@ -91,12 +106,12 @@ const IssueCard = ({ issue, index = 0 }: IssueCardProps) => {
                 <SelectTrigger 
                   className={`w-36 h-7 text-xs font-medium border-0 ${currentStatus.color}`}
                 >
-                  <SelectValue placeholder="Status" />
+                  <SelectValue placeholder={t('status.statusPlaceholder')} />
                 </SelectTrigger>
                 <SelectContent className="bg-popover border border-border shadow-lg z-50">
-                  <SelectItem value="under_review">Under Review</SelectItem>
-                  <SelectItem value="under_maintenance">Under Maintenance</SelectItem>
-                  <SelectItem value="resolved">Resolved</SelectItem>
+                  <SelectItem value="under_review">{t('status.underReview')}</SelectItem>
+                  <SelectItem value="under_maintenance">{t('status.underMaintenance')}</SelectItem>
+                  <SelectItem value="resolved">{t('status.resolved')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -107,17 +122,17 @@ const IssueCard = ({ issue, index = 0 }: IssueCardProps) => {
               animate={{ scale: 1 }}
               transition={{ delay: index * 0.08 + 0.15 }}
             >
-              {currentStatus.label}
+              {getStatusLabel(issue.status)}
             </motion.span>
           )}
         </div>
         <div className="flex items-center gap-1 text-muted-foreground text-sm mb-1">
           <MapPin className="w-3.5 h-3.5" />
-          <span className="truncate">{formatLocation(issue.latitude, issue.longitude)}</span>
+          <span className="truncate" dir="ltr">{formatLocation(issue.latitude, issue.longitude)}</span>
         </div>
         <div className="flex items-center gap-1 text-muted-foreground text-sm">
           <Calendar className="w-3.5 h-3.5" />
-          <span>{new Date(issue.created_at).toLocaleDateString()}</span>
+          <span>{new Date(issue.created_at).toLocaleDateString(i18n.language === 'ar' ? 'ar-LB' : i18n.language === 'fr' ? 'fr-FR' : 'en-US')}</span>
         </div>
       </div>
     </motion.div>

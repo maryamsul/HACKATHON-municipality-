@@ -16,7 +16,18 @@
     "next": "Next",
     "loading": "Loading...",
     "error": "Error",
-    "success": "Success"
+    "success": "Success",
+    "issueNotFound": "Issue not found",
+    "totalIssues": "total issues",
+    "resultsFor": "results for",
+    "searchResults": "Search Results",
+    "allIssues": "All Issues",
+    "issuesToManage": "issues to manage",
+    "issuesReported": "issues reported",
+    "employeeView": "Employee View",
+    "reports": "Reports",
+    "openInGoogleMaps": "Open in Google Maps",
+    "coordinates": "Coordinates"
   },
   "nav": {
     "home": "Home",
@@ -40,6 +51,12 @@
     "traffic": "Traffic",
     "other": "Other"
   },
+  "status": {
+    "underReview": "Under Review",
+    "underMaintenance": "Under Maintenance",
+    "resolved": "Resolved",
+    "statusPlaceholder": "Status"
+  },
   "filters": {
     "title": "Filter Issues",
     "status": "Status",
@@ -54,7 +71,22 @@
   "hero": {
     "title": "Report an Issue",
     "subtitle": "Help improve your city by reporting issues in your neighborhood",
-    "cta": "Report Now"
+    "cta": "Report Now",
+    "joinMovement": "Join the",
+    "movement": "Movement",
+    "heroDescription": "Every report matters. Every voice counts. Together, we're building stronger, safer communities for everyone.",
+    "getStarted": "Get Started Now",
+    "learnMore": "Learn More",
+    "activeReports": "Active Reports",
+    "satisfactionRate": "Satisfaction Rate",
+    "supportAvailable": "Support Available",
+    "readyToMakeDifference": "Ready to Make a Difference",
+    "scanQrCode": "Scan QR Code",
+    "usePhoneCamera": "Use your phone camera",
+    "openDonationLink": "Open Donation Link",
+    "directPaymentPage": "Direct payment page",
+    "scanToDonate": "Scan to Donate",
+    "scanQrDescription": "Scan this QR code with your phone to make a donation"
   },
   "municipalities": {
     "title": "Participating Municipalities",
@@ -106,24 +138,52 @@
     "backToSignIn": "Back to Sign In",
     "resetEmailSent": "We've sent a password reset link to",
     "resetEmailNote": "Don't worry! Click the link in your email to reset your password and get back to your account quickly.",
-    "resetExpiry": "The link will expire in 1 hour for security purposes."
+    "resetExpiry": "The link will expire in 1 hour for security purposes.",
+    "otpSentMessage": "A verification code has been sent to your phone. It expires in 5 minutes.",
+    "signedInSuccess": "Signed in successfully!",
+    "pleaseEnterEmail": "Please enter your email address",
+    "pleaseEnterPhone": "Please enter your phone number",
+    "pleaseEnterName": "Please enter your full name",
+    "pleaseEnterOtp": "Please enter the 6-digit verification code",
+    "pleaseFillFields": "Please fill all fields",
+    "emailAlreadyRegistered": "Email Already Registered",
+    "emailAlreadyInUse": "This email is already in use. Please sign in instead.",
+    "somethingWentWrong": "Something went wrong",
+    "failedToSendOtp": "Failed to send OTP. Please try again.",
+    "failedToVerifyOtp": "Failed to verify OTP. Please try again."
   },
   "addIssue": {
-    "title": "Report an Issue",
+    "title": "Report Issue",
     "issueTitle": "Issue Title",
     "issueTitlePlaceholder": "Brief description of the issue",
     "description": "Description",
-    "descriptionPlaceholder": "Provide more details about the issue...",
+    "descriptionPlaceholder": "Describe the issue...",
     "category": "Category",
     "selectCategory": "Select a category",
     "location": "Location",
-    "locationPlaceholder": "Enter address or use map",
+    "locationPlaceholder": "Enter location or use GPS",
     "useCurrentLocation": "Use Current Location",
-    "photo": "Photo (Optional)",
+    "photo": "Photo (optional)",
+    "tapToAddPhoto": "Tap to add photo",
     "takePhoto": "Take Photo",
     "uploadPhoto": "Upload Photo",
     "submit": "Submit Report",
-    "submitting": "Submitting..."
+    "submitting": "Submitting...",
+    "authRequired": "Authentication required",
+    "pleaseSignIn": "Please sign in to report an issue",
+    "accessDenied": "Access denied",
+    "onlyCitizens": "Only citizens can report issues",
+    "geolocationNotSupported": "Geolocation not supported",
+    "browserNoSupport": "Your browser does not support geolocation",
+    "locationFound": "Location found",
+    "locationError": "Location error",
+    "unableToGetLocation": "Unable to get your location",
+    "locationPermissionDenied": "Location permission denied. Please enable it in your browser settings.",
+    "missingFields": "Missing fields",
+    "pleaseFillRequired": "Please select category, description, and location",
+    "notAuthenticated": "Not authenticated",
+    "pleaseSignInSubmit": "Please sign in to submit an issue",
+    "errorCreatingIssue": "An error occurred while creating the issue."
   },
   "issueDetails": {
     "reportedBy": "Reported by",
@@ -132,7 +192,10 @@
     "location": "Location",
     "description": "Description",
     "updates": "Updates",
-    "noUpdates": "No updates yet"
+    "noUpdates": "No updates yet",
+    "statusUpdated": "Status updated",
+    "issueMarkedAs": "Issue marked as",
+    "failedToUpdateStatus": "Failed to update status"
   },
   "notifications": {
     "title": "Notifications",

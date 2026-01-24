@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { ArrowRight, FileCheck, ThumbsUp, Headphones, X, QrCode, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import DonorTicker from "@/components/DonorTicker";
@@ -10,6 +11,8 @@ const DONATION_LINK = "https://whish.money/invoice/pay/?q=BI6PCagnO";
 
 const HeroSection = () => {
   const navigate = useNavigate();
+  const { t, i18n } = useTranslation();
+  const isRTL = i18n.language === 'ar';
   const [showQRModal, setShowQRModal] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -26,18 +29,18 @@ const HeroSection = () => {
   }, []);
 
   const stats = [
-    { icon: FileCheck, value: "5K+", label: "Active Reports" },
-    { icon: ThumbsUp, value: "98%", label: "Satisfaction Rate" },
-    { icon: Headphones, value: "24/7", label: "Support Available" },
+    { icon: FileCheck, value: "5K+", label: t('hero.activeReports') },
+    { icon: ThumbsUp, value: "98%", label: t('hero.satisfactionRate') },
+    { icon: Headphones, value: "24/7", label: t('hero.supportAvailable') },
   ];
 
   return (
-    <section className="relative overflow-hidden px-6 py-12 sm:py-16">
+    <section className="relative overflow-hidden px-6 py-12 sm:py-16" dir={isRTL ? 'rtl' : 'ltr'}>
       {/* Animated background elements */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         {/* Gradient orbs */}
         <motion.div
-          className="absolute -top-32 -right-32 w-96 h-96 rounded-full bg-gradient-to-br from-primary/30 to-accent/20 blur-3xl"
+          className={`absolute -top-32 ${isRTL ? '-left-32' : '-right-32'} w-96 h-96 rounded-full bg-gradient-to-br from-primary/30 to-accent/20 blur-3xl`}
           animate={{
             scale: [1, 1.2, 1],
             opacity: [0.3, 0.5, 0.3],
@@ -45,7 +48,7 @@ const HeroSection = () => {
           transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
         />
         <motion.div
-          className="absolute -bottom-32 -left-32 w-80 h-80 rounded-full bg-gradient-to-tr from-accent/30 to-primary/20 blur-3xl"
+          className={`absolute -bottom-32 ${isRTL ? '-right-32' : '-left-32'} w-80 h-80 rounded-full bg-gradient-to-tr from-accent/30 to-primary/20 blur-3xl`}
           animate={{
             scale: [1.2, 1, 1.2],
             opacity: [0.4, 0.2, 0.4],
@@ -88,10 +91,10 @@ const HeroSection = () => {
           transition={{ duration: 0.6, delay: 0.2 }}
           className="text-4xl sm:text-5xl lg:text-6xl font-bold text-foreground mb-6 leading-tight"
         >
-          Join the{" "}
+          {t('hero.joinMovement')}{" "}
           <span className="relative">
             <span className="relative z-10 bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent">
-              Movement
+              {t('hero.movement')}
             </span>
             <motion.span
               className="absolute bottom-2 left-0 right-0 h-3 bg-primary/20 rounded-full -z-0"
@@ -109,7 +112,7 @@ const HeroSection = () => {
           transition={{ duration: 0.6, delay: 0.2 }}
           className="text-lg sm:text-xl text-muted-foreground mb-8 leading-relaxed"
         >
-          Every report matters. Every voice counts. Together, we're building stronger, safer communities for everyone.
+          {t('hero.heroDescription')}
         </motion.p>
 
         {/* Buttons */}
@@ -124,8 +127,8 @@ const HeroSection = () => {
             size="lg"
             className="group w-full sm:w-auto bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90 text-primary-foreground px-8 py-6 text-lg font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300"
           >
-            Get Started Now
-            <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform" />
+            {t('hero.getStarted')}
+            <ArrowRight className={`${isRTL ? 'mr-2 group-hover:-translate-x-1' : 'ml-2 group-hover:translate-x-1'} w-5 h-5 transition-transform`} />
           </Button>
           <Button
             variant="outline"
@@ -135,7 +138,7 @@ const HeroSection = () => {
             }}
             className="w-full sm:w-auto border-2 border-primary/30 text-primary hover:bg-primary/10 px-8 py-6 text-lg font-semibold rounded-xl transition-all duration-300"
           >
-            Learn More
+            {t('hero.learnMore')}
           </Button>
         </motion.div>
 
@@ -161,7 +164,7 @@ const HeroSection = () => {
                   <div className="p-2.5 rounded-xl bg-primary/10">
                     <stat.icon className="w-5 h-5 text-primary" />
                   </div>
-                  <div className="text-left">
+                  <div className={isRTL ? 'text-right' : 'text-left'}>
                     <p className="text-2xl font-bold text-foreground">{stat.value}</p>
                     <p className="text-sm text-muted-foreground">{stat.label}</p>
                   </div>
@@ -184,7 +187,7 @@ const HeroSection = () => {
               className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-destructive hover:bg-destructive/90 border border-destructive cursor-pointer transition-all duration-300 hover:scale-105 shadow-lg hover:shadow-destructive/25"
             >
               <span className="w-2 h-2 rounded-full bg-destructive-foreground animate-pulse" />
-              <span className="text-base font-bold text-destructive-foreground">Ready to Make a Difference</span>
+              <span className="text-base font-bold text-destructive-foreground">{t('hero.readyToMakeDifference')}</span>
             </motion.button>
 
             {/* Dropdown Menu */}
@@ -201,12 +204,12 @@ const HeroSection = () => {
                     setShowDropdown(false);
                     setShowQRModal(true);
                   }}
-                  className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-muted transition-colors"
+                  className={`w-full flex items-center gap-3 px-4 py-3 ${isRTL ? 'text-right' : 'text-left'} hover:bg-muted transition-colors`}
                 >
                   <QrCode className="w-5 h-5 text-primary" />
                   <div>
-                    <p className="font-medium text-foreground">Scan QR Code</p>
-                    <p className="text-xs text-muted-foreground">Use your phone camera</p>
+                    <p className="font-medium text-foreground">{t('hero.scanQrCode')}</p>
+                    <p className="text-xs text-muted-foreground">{t('hero.usePhoneCamera')}</p>
                   </div>
                 </button>
                 <div className="border-t border-border" />
@@ -215,12 +218,12 @@ const HeroSection = () => {
                   target="_blank"
                   rel="noopener noreferrer"
                   onClick={() => setShowDropdown(false)}
-                  className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-muted transition-colors"
+                  className={`w-full flex items-center gap-3 px-4 py-3 ${isRTL ? 'text-right' : 'text-left'} hover:bg-muted transition-colors`}
                 >
                   <ExternalLink className="w-5 h-5 text-primary" />
                   <div>
-                    <p className="font-medium text-foreground">Open Donation Link</p>
-                    <p className="text-xs text-muted-foreground">Direct payment page</p>
+                    <p className="font-medium text-foreground">{t('hero.openDonationLink')}</p>
+                    <p className="text-xs text-muted-foreground">{t('hero.directPaymentPage')}</p>
                   </div>
                 </a>
               </motion.div>
@@ -259,16 +262,16 @@ const HeroSection = () => {
           >
             <button
               onClick={() => setShowQRModal(false)}
-              className="absolute top-3 right-3 p-2 rounded-full hover:bg-muted transition-colors"
+              className={`absolute top-3 ${isRTL ? 'left-3' : 'right-3'} p-2 rounded-full hover:bg-muted transition-colors`}
             >
               <X className="w-5 h-5 text-muted-foreground" />
             </button>
-            <h3 className="text-xl font-bold text-foreground mb-4 text-center">Scan to Donate</h3>
+            <h3 className="text-xl font-bold text-foreground mb-4 text-center">{t('hero.scanToDonate')}</h3>
             <div className="bg-white rounded-xl p-4">
               <img src={qrCode} alt="Donation QR Code" className="w-full h-auto rounded-lg" />
             </div>
             <p className="text-sm text-muted-foreground mt-4 text-center">
-              Scan this QR code with your phone to make a donation
+              {t('hero.scanQrDescription')}
             </p>
           </motion.div>
         </motion.div>
