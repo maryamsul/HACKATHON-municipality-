@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/context/AuthContext";
 import { useBuildings } from "@/context/BuildingsContext";
+import { useIssues } from "@/context/IssuesContext";
 
 const BottomNav = () => {
   const navigate = useNavigate();
@@ -11,9 +12,13 @@ const BottomNav = () => {
   const { t } = useTranslation();
   const { profile } = useAuth();
   const { buildings } = useBuildings();
+  const { issues } = useIssues();
 
   const isEmployee = profile?.role === "employee";
-  const pendingCount = buildings.filter((b) => b.status === "pending").length;
+  // Combined pending count from both buildings and issues
+  const pendingBuildingsCount = buildings.filter((b) => b.status === "pending").length;
+  const pendingIssuesCount = issues.filter((i) => i.status === "pending").length;
+  const totalPendingCount = pendingBuildingsCount + pendingIssuesCount;
 
   // Base nav items for all users
   const baseNavItems = [
@@ -28,7 +33,7 @@ const BottomNav = () => {
   const navItems = isEmployee
     ? [
         ...baseNavItems,
-        { icon: AlertTriangle, labelKey: "nav.notifications", path: "/building-alerts", badge: pendingCount },
+        { icon: AlertTriangle, labelKey: "nav.alerts", path: "/building-alerts", badge: totalPendingCount },
         { icon: Settings, labelKey: "nav.settings", path: "/settings" },
       ]
     : [
