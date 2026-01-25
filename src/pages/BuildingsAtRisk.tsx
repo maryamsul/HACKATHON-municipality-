@@ -1,10 +1,17 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { ArrowLeft, Building2, Search, AlertTriangle, Plus } from "lucide-react";
+import { ArrowLeft, Building2, Search, AlertTriangle, Plus, Filter } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import BottomNav from "@/components/BottomNav";
 import AddBuildingAtRiskForm from "@/components/AddBuildingAtRiskForm";
 import BuildingRiskCard from "@/components/buildings/BuildingRiskCard";
@@ -23,6 +30,7 @@ const BuildingsAtRisk = () => {
   const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState("");
   const [showReportForm, setShowReportForm] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<string>("all");
   
   // Employee check using database role from AuthContext
   const isEmployee = profile?.role === "employee";
@@ -40,11 +48,16 @@ const BuildingsAtRisk = () => {
     setShowReportForm(true);
   };
 
-  // Public users only see classified buildings (exclude pending)
-  // Employees see all buildings including pending
-  const visibleBuildings = isEmployee ? buildings : buildings.filter((b) => b.status !== "pending");
+  // All users see all buildings (citizens and employees)
+  const visibleBuildings = buildings;
 
-  const filteredBuildings = visibleBuildings.filter(
+  // Apply status filter
+  const statusFilteredBuildings = statusFilter === "all" 
+    ? visibleBuildings 
+    : visibleBuildings.filter((b) => b.status === statusFilter);
+
+  // Apply search filter
+  const filteredBuildings = statusFilteredBuildings.filter(
     (building) =>
       (building.building_name || building.title || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
       building.description.toLowerCase().includes(searchQuery.toLowerCase())
@@ -137,13 +150,11 @@ const BuildingsAtRisk = () => {
           {t('buildings.reportButton')}
         </Button>
         
-        {/* Status Summary - Show pending count only for employees */}
+        {/* Status Summary */}
         <div className="flex gap-2 flex-wrap mb-4">
-          {isEmployee && statusCounts.pending > 0 && (
-            <Badge variant="outline" className="bg-gray-100/20 text-destructive-foreground border-destructive-foreground/30">
-              {statusCounts.pending} {t("buildings.statusReported", "Pending")}
-            </Badge>
-          )}
+          <Badge variant="outline" className="bg-gray-100/20 text-destructive-foreground border-destructive-foreground/30">
+            {statusCounts.pending} {t("buildings.statusReported", "Pending")}
+          </Badge>
           <Badge variant="destructive" className="bg-destructive/15 text-destructive-foreground">
             {statusCounts.critical} {t("buildings.critical", "Critical")}
           </Badge>
@@ -153,6 +164,23 @@ const BuildingsAtRisk = () => {
           <Badge variant="default" className="bg-primary/15 text-destructive-foreground">
             {statusCounts.resolved} {t("buildings.statusResolved", "Resolved")}
           </Badge>
+        </div>
+        
+        {/* Status Filter */}
+        <div className="flex items-center gap-2 mb-4">
+          <Filter className="w-4 h-4" />
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="flex-1 bg-destructive-foreground/10 border-destructive-foreground/20 text-destructive-foreground">
+              <SelectValue placeholder={t("alerts.filterBy", "Filter by status")} />
+            </SelectTrigger>
+            <SelectContent className="bg-popover z-50">
+              <SelectItem value="all">{t("filters.all", "All")}</SelectItem>
+              <SelectItem value="pending">{t("buildings.statusReported", "Pending")}</SelectItem>
+              <SelectItem value="critical">{t("buildings.statusCritical", "Critical")}</SelectItem>
+              <SelectItem value="under_maintenance">{t("buildings.statusInspection", "Under Maintenance")}</SelectItem>
+              <SelectItem value="resolved">{t("buildings.statusResolved", "Resolved")}</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
         
         {/* Search */}
