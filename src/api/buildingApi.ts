@@ -45,7 +45,14 @@ export const createBuildingReport = async (reportData: BuildingReportData): Prom
         apikey: SUPABASE_ANON_KEY,
         Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
       },
-      body: JSON.stringify(reportData),
+      body: JSON.stringify({
+        title: reportData.title,
+        description: reportData.description,
+        reportedBy: reportData.reportedBy,
+        latitude: reportData.latitude,
+        longitude: reportData.longitude,
+        thumbnail: reportData.thumbnail,
+      }),
     });
 
     const result = await response.json();
