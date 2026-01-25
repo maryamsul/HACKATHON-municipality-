@@ -10,11 +10,11 @@ const corsHeaders = {
 
 type ReportType = "building" | "issue";
 
-// Database status values - EXACT match to DB constraints
-// Buildings: pending | critical | under_maintenance | resolved
-// Issues: pending | under_review | under_maintenance | resolved
-type BuildingStatus = "pending" | "critical" | "under_maintenance" | "resolved";
-type IssueStatus = "pending" | "under_review" | "under_maintenance" | "resolved";
+// Database status values - EXACT match to DB constraints (case-sensitive!)
+// Buildings: pending | Critical | Under Inspection | Resolved
+// Issues: Under Review | Under Maintenance | Resolved
+type BuildingStatus = "pending" | "Critical" | "Under Inspection" | "Resolved";
+type IssueStatus = "Under Review" | "Under Maintenance" | "Resolved";
 
 interface Payload {
   type: ReportType;
@@ -25,12 +25,12 @@ interface Payload {
 
 // Validate building status matches exact DB enum
 function isAllowedBuildingStatus(s: string): s is BuildingStatus {
-  return s === "pending" || s === "critical" || s === "under_maintenance" || s === "resolved";
+  return s === "pending" || s === "Critical" || s === "Under Inspection" || s === "Resolved";
 }
 
 // Validate issue status matches exact DB enum
 function isAllowedIssueStatus(s: string): s is IssueStatus {
-  return s === "pending" || s === "under_review" || s === "under_maintenance" || s === "resolved";
+  return s === "Under Review" || s === "Under Maintenance" || s === "Resolved";
 }
 
 serve(async (req: Request) => {
@@ -141,7 +141,7 @@ serve(async (req: Request) => {
             success: false, 
             error: "Invalid building status", 
             requestId,
-            details: `Status must be one of: pending, critical, under_maintenance, resolved. Got: ${payload.status}`
+            details: `Status must be one of: pending, Critical, Under Inspection, Resolved. Got: ${payload.status}`
           }), {
           status: 400,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -182,7 +182,7 @@ serve(async (req: Request) => {
           success: false, 
           error: "Invalid issue status", 
           requestId,
-          details: `Status must be one of: pending, under_review, under_maintenance, resolved. Got: ${payload.status}`
+          details: `Status must be one of: Under Review, Under Maintenance, Resolved. Got: ${payload.status}`
         }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },

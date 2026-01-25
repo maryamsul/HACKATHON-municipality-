@@ -10,11 +10,11 @@ interface BuildingsContextType {
 
 const BuildingsContext = createContext<BuildingsContextType | undefined>(undefined);
 
-// Database now has exact statuses: pending | critical | under_maintenance | resolved
+// Database has exact statuses: pending | Critical | Under Inspection | Resolved
 // No normalization needed - values are stored as-is
 const normalizeStatus = (status: string): BuildingStatus => {
   // Only accept exact DB values
-  if (status === "pending" || status === "critical" || status === "under_maintenance" || status === "resolved") {
+  if (status === "pending" || status === "Critical" || status === "Under Inspection" || status === "Resolved") {
     return status;
   }
   // Fallback for any unexpected legacy data

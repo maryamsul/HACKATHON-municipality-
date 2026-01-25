@@ -8,7 +8,6 @@ import {
   Wrench, 
   CheckCircle2,
   Clock,
-  FileText,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
@@ -24,6 +23,7 @@ interface BuildingRiskCardProps {
 }
 
 // Status-specific styling with colors matching requirements
+// Database statuses: pending | Critical | Under Inspection | Resolved
 const getStatusConfig = (status: BuildingStatus) => {
   switch (status) {
     case "pending":
@@ -33,21 +33,21 @@ const getStatusConfig = (status: BuildingStatus) => {
         Icon: Clock,
         dotColor: "bg-gray-500",
       };
-    case "critical":
+    case "Critical":
       return {
         badgeClass: "bg-red-100 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800",
         iconBgClass: "bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400",
         Icon: AlertTriangle,
         dotColor: "bg-red-500",
       };
-    case "under_maintenance":
+    case "Under Inspection":
       return {
         badgeClass: "bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800",
         iconBgClass: "bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400",
         Icon: Wrench,
         dotColor: "bg-amber-500",
       };
-    case "resolved":
+    case "Resolved":
       return {
         badgeClass: "bg-green-100 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800",
         iconBgClass: "bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400",
@@ -67,18 +67,18 @@ export default function BuildingRiskCard({ building, index, isEmployee, onStatus
     switch (status) {
       case "pending":
         return t("buildings.statusReported", "Pending");
-      case "critical":
+      case "Critical":
         return t("buildings.statusCritical", "Critical");
-      case "under_maintenance":
-        return t("buildings.statusInspection", "Under Maintenance");
-      case "resolved":
+      case "Under Inspection":
+        return t("buildings.statusInspection", "Under Inspection");
+      case "Resolved":
         return t("buildings.statusResolved", "Resolved");
     }
   };
 
   // Employees can change status; for pending items, show classification options
   const availableStatuses: BuildingStatus[] = isEmployee 
-    ? ["critical", "under_maintenance", "resolved"] 
+    ? ["Critical", "Under Inspection", "Resolved"] 
     : [];
 
   return (
@@ -174,9 +174,10 @@ export default function BuildingRiskCard({ building, index, isEmployee, onStatus
             {/* Status indicator dot for quick visual reference */}
             <div className="flex items-center gap-1.5">
               <span className={`w-2 h-2 rounded-full ${
-                building.status === "critical" ? "bg-red-500" :
-                building.status === "under_maintenance" ? "bg-amber-500" :
-                "bg-green-500"
+                building.status === "Critical" ? "bg-red-500" :
+                building.status === "Under Inspection" ? "bg-amber-500" :
+                building.status === "Resolved" ? "bg-green-500" :
+                "bg-gray-500"
               }`} />
               <span className="capitalize">{getStatusLabel(building.status)}</span>
             </div>

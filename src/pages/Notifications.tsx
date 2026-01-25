@@ -19,7 +19,8 @@ const Notifications = () => {
     return `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
   };
 
-  const issueItems = (user ? issues.filter((i) => i.reported_by === user.id) : []).filter((i) => i.status !== "pending");
+  // Filter user's own reports - issues don't have pending anymore, buildings do
+  const issueItems = user ? issues.filter((i) => i.reported_by === user.id) : [];
   const buildingItems = (user ? buildings.filter((b) => b.reported_by === user.id) : []).filter((b) => b.status !== "pending");
 
   const getItemTime = (item: any) => {
@@ -28,20 +29,23 @@ const Notifications = () => {
   };
 
   // Generate notifications based on the current user's reports (issues + buildings)
+  // Using exact DB status values:
+  // Issues: "Under Review", "Under Maintenance", "Resolved"
+  // Buildings: "pending", "Critical", "Under Inspection", "Resolved"
   const notifications = [...issueItems.map((issue) => ({
     kind: "issue" as const,
     key: `issue-${issue.id}`,
     status: issue.status,
     title:
-      issue.status === "resolved"
+      issue.status === "Resolved"
         ? `${t('dashboard.resolved')}: ${t(`categories.${issue.category.toLowerCase().replace(' ', '')}` as any) || issue.category}`
-        : issue.status === "under_maintenance"
+        : issue.status === "Under Maintenance"
         ? `${t('dashboard.underMaintenance')}: ${t(`categories.${issue.category.toLowerCase().replace(' ', '')}` as any) || issue.category}`
         : `${t('dashboard.underReview')}: ${t(`categories.${issue.category.toLowerCase().replace(' ', '')}` as any) || issue.category}`,
     message:
-      issue.status === "resolved"
+      issue.status === "Resolved"
         ? `${t('issueDetails.location')}: ${formatLocation(issue.latitude, issue.longitude)} - ${t('dashboard.resolved')}`
-        : issue.status === "under_maintenance"
+        : issue.status === "Under Maintenance"
         ? `${t('issueDetails.location')}: ${formatLocation(issue.latitude, issue.longitude)} - ${t('dashboard.underMaintenance')}`
         : `${t('issueDetails.location')}: ${formatLocation(issue.latitude, issue.longitude)} - ${t('dashboard.underReview')}`,
     time: new Date(issue.created_at).toLocaleDateString(i18n.language === 'ar' ? 'ar-LB' : i18n.language === 'fr' ? 'fr-FR' : 'en-US'),
@@ -53,9 +57,9 @@ const Notifications = () => {
     key: `building-${building.id}`,
     status: building.status,
     title:
-      building.status === "resolved"
+      building.status === "Resolved"
         ? `${t('buildings.statusResolved')}: ${building.building_name || building.title}`
-        : building.status === "under_maintenance"
+        : building.status === "Under Inspection"
         ? `${t('buildings.statusInspection')}: ${building.building_name || building.title}`
         : `${t('buildings.statusCritical')}: ${building.building_name || building.title}`,
     message:
@@ -70,11 +74,12 @@ const Notifications = () => {
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case "resolved":
+      case "Resolved":
         return <CheckCircle2 className="w-5 h-5 text-green-500" />;
-      case "under_maintenance":
+      case "Under Maintenance":
+      case "Under Inspection":
         return <Wrench className="w-5 h-5 text-blue-500" />;
-      case "critical":
+      case "Critical":
         return <AlertTriangle className="w-5 h-5 text-red-500" />;
       default:
         return <Clock className="w-5 h-5 text-orange-500" />;
@@ -82,112 +87,66 @@ const Notifications = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background pb-24">
-      <motion.header 
-        className="bg-gradient-to-br from-primary to-primary/80 text-primary-foreground p-4"
-        initial={{ y: -50, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ type: "spring", stiffness: 300 }}
-      >
-        <div className={`flex items-center gap-3 ${isRTL ? 'flex-row-reverse' : ''}`}>
-          <motion.button
-            onClick={() => navigate(-1)}
-            className="p-2 hover:bg-white/10 rounded-full transition-colors"
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.9 }}
+    <div className="min-h-screen bg-background pb-24" dir={isRTL ? 'rtl' : 'ltr'}>
+      <header className="sticky top-0 bg-background border-b border-border px-4 py-4 z-10">
+        <div className="flex items-center gap-3">
+          <button 
+            onClick={() => navigate(-1)} 
+            className="p-2 -ml-2 hover:bg-muted rounded-full transition-colors"
           >
-            <ArrowLeft className={`w-6 h-6 ${isRTL ? 'rotate-180' : ''}`} />
-          </motion.button>
-          <div className="flex items-center gap-2">
-            <motion.div
-              animate={{ 
-                rotate: [0, -15, 15, -15, 0],
-              }}
-              transition={{ 
-                duration: 0.5, 
-                repeat: Infinity,
-                repeatDelay: 3
-              }}
-            >
-              <Bell className="w-6 h-6" />
-            </motion.div>
-            <h1 className="text-xl font-bold">{t('notifications.title')}</h1>
+            <ArrowLeft className="w-5 h-5" />
+          </button>
+          <div className="flex-1">
+            <h1 className="text-lg font-semibold flex items-center gap-2">
+              <Bell className="w-5 h-5" />
+              {t('notifications.title')}
+            </h1>
+            <p className="text-sm text-muted-foreground">
+              {t('notifications.subtitle')}
+            </p>
           </div>
         </div>
-      </motion.header>
+      </header>
 
-      <motion.div 
-        className="p-4 space-y-3"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.2 }}
-      >
+      <main className="p-4 space-y-3">
         <AnimatePresence>
           {notifications.length > 0 ? (
             notifications.map((notification, index) => (
-              <motion.button
-                key={notification.id}
+              <motion.div
+                key={notification.key}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, x: -100 }}
+                transition={{ delay: index * 0.05 }}
+                className="bg-card rounded-xl p-4 shadow-sm border border-border hover:shadow-md transition-shadow cursor-pointer"
                 onClick={() => navigate(notification.navigateTo)}
-                className={`w-full bg-card rounded-xl p-4 shadow-sm ${isRTL ? 'text-right' : 'text-left'} hover:shadow-md transition-shadow`}
-                initial={{ opacity: 0, x: isRTL ? -50 : 50 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: index * 0.1 }}
-                whileHover={{ 
-                  scale: 1.02, 
-                  x: isRTL ? -5 : 5,
-                  boxShadow: "0 4px 20px rgba(0,0,0,0.1)"
-                }}
-                whileTap={{ scale: 0.98 }}
               >
-                <div className={`flex gap-3 ${isRTL ? 'flex-row-reverse' : ''}`}>
-                  <motion.div 
-                    className="flex-shrink-0 mt-1"
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
-                    transition={{ delay: index * 0.1 + 0.2 }}
-                  >
+                <div className="flex items-start gap-3">
+                  <div className="mt-1">
                     {getStatusIcon(notification.status)}
-                  </motion.div>
+                  </div>
                   <div className="flex-1 min-w-0">
-                    <h3 className="font-medium text-foreground text-sm">
+                    <h3 className="font-semibold text-foreground truncate">
                       {notification.title}
                     </h3>
-                    <p className="text-muted-foreground text-xs mt-1">
+                    <p className="text-sm text-muted-foreground line-clamp-2">
                       {notification.message}
                     </p>
-                    <p className="text-muted-foreground text-xs mt-2">
+                    <p className="text-xs text-muted-foreground mt-1">
                       {notification.time}
                     </p>
                   </div>
                 </div>
-              </motion.button>
+              </motion.div>
             ))
           ) : (
-            <motion.div 
-              className="text-center py-12 text-muted-foreground"
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: 0.2 }}
-            >
-              <motion.div
-                animate={{ 
-                  scale: [1, 1.1, 1],
-                  opacity: [0.5, 0.8, 0.5]
-                }}
-                transition={{ 
-                  duration: 2, 
-                  repeat: Infinity,
-                  ease: "easeInOut"
-                }}
-              >
-                <Bell className="w-12 h-12 mx-auto mb-4" />
-              </motion.div>
+            <div className="text-center py-12 text-muted-foreground">
+              <Bell className="w-12 h-12 mx-auto mb-4 text-muted-foreground/50" />
               <p>{t('notifications.empty')}</p>
-              <p className="text-sm mt-2">{t('notifications.emptyDesc')}</p>
-            </motion.div>
+            </div>
           )}
         </AnimatePresence>
-      </motion.div>
+      </main>
 
       <BottomNav />
     </div>
