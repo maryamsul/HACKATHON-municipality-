@@ -39,7 +39,7 @@ export async function updateReportStatus(
   type: ReportType,
   id: string | number,
   status: BuildingStatus | IssueStatus,
-  assigned_to: string | null = null
+  assigned_to: string | null = null,
 ): Promise<ClassifyReportResponse> {
   // Get current session for auth token
   const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
@@ -69,9 +69,8 @@ export async function updateReportStatus(
     const res = await fetch(CLASSIFY_REPORT_URL, {
       method: "POST",
       headers: {
-        "Authorization": `Bearer ${token}`,
+        Authorization: `Bearer ${token}`,
         "Content-Type": "application/json",
-        "apikey": sessionData.session.access_token,
       },
       body: JSON.stringify({
         type,
@@ -115,7 +114,7 @@ export async function updateReportStatus(
 export async function updateBuildingStatus(
   buildingId: string,
   status: BuildingStatus,
-  assigned_to: string | null = null
+  assigned_to: string | null = null,
 ): Promise<ClassifyReportResponse> {
   return updateReportStatus("building", buildingId, status, assigned_to);
 }
@@ -126,7 +125,7 @@ export async function updateBuildingStatus(
 export async function updateIssueStatus(
   issueId: number,
   status: IssueStatus,
-  assigned_to: string | null = null
+  assigned_to: string | null = null,
 ): Promise<ClassifyReportResponse> {
   return updateReportStatus("issue", issueId, status, assigned_to);
 }
