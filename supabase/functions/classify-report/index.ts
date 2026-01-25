@@ -53,46 +53,52 @@ function isAllowedIssueStatus(s: string): s is IssueStatus {
   return s === "pending" || s === "under_review" || s === "under_maintenance" || s === "resolved";
 }
 
+/**
+ * Maps UI building statuses to database-compatible values.
+ * 
+ * Database only supports: "pending" and "resolved"
+ * UI allows: "pending", "critical", "under_maintenance", "resolved"
+ * 
+ * Mapping:
+ *   - critical → pending (employees mark as critical, stored as pending for review)
+ *   - under_maintenance → pending (employees mark as under maintenance, stored as pending)
+ *   - pending → pending
+ *   - resolved → resolved
+ *   - All other legacy values → pending
+ */
 function toBuildingDbStatus(status: BuildingStatus): string {
-  // Normalize UI statuses to legacy DB statuses (most compatible)
   switch (status) {
+    case "resolved":
+      return "resolved";
+    case "pending":
     case "critical":
-      return "under_review";
     case "under_maintenance":
+    case "under_review":
+    case "under_inspection":
     case "in_progress":
     case "in-progress":
-      return "under_inspection";
     case "reported":
-      return "pending";
     default:
-      return status;
+      // All non-resolved statuses map to "pending" in the database
+      return "pending";
   }
 }
 
+/**
+ * Returns candidate status values to try when updating a building.
+ * Since the database only supports "pending" and "resolved", we only need
+ * to try those two values.
+ * 
+ * Mapping:
+ *   - resolved → try ["resolved"]
+ *   - everything else (critical, under_maintenance, pending, etc.) → try ["pending"]
+ */
 function getBuildingStatusCandidates(status: BuildingStatus): string[] {
-  // Try the UI value first, then fall back to legacy values to handle enum differences.
-  // This makes the function compatible with multiple historical schemas.
-  switch (status) {
-    case "critical":
-      return ["critical", "under_review"];
-    case "under_maintenance":
-      return ["under_maintenance", "under_inspection", "in_progress", "in-progress"];
-    case "pending":
-      return ["pending", "reported"];
-    case "resolved":
-      return ["resolved"];
-    case "under_review":
-      return ["under_review", "critical"];
-    case "under_inspection":
-      return ["under_inspection", "under_maintenance", "in_progress", "in-progress"];
-    case "in_progress":
-    case "in-progress":
-      return ["in_progress", "in-progress", "under_inspection", "under_maintenance"];
-    case "reported":
-      return ["reported", "pending"];
-    default:
-      return [toBuildingDbStatus(status)];
+  if (status === "resolved") {
+    return ["resolved"];
   }
+  // All other statuses (critical, under_maintenance, pending, etc.) map to pending
+  return ["pending"];
 }
 
 serve(async (req: Request) => {
