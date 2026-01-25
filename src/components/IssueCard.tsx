@@ -8,7 +8,7 @@ import { useAuth } from "@/context/AuthContext";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useIssues } from "@/context/IssuesContext";
 import { useToast } from "@/hooks/use-toast";
-import { updateIssueStatus } from "@/supabase/functions/classify-report"; // use final wrapper
+import { updateIssueStatus } from "../supabase/functions/classify-report";
 
 interface IssueCardProps {
   issue: Issue;
