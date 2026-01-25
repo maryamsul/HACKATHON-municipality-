@@ -68,6 +68,32 @@ function toBuildingDbStatus(status: BuildingStatus): string {
   }
 }
 
+function getBuildingStatusCandidates(status: BuildingStatus): string[] {
+  // Try the UI value first, then fall back to legacy values to handle enum differences.
+  // This makes the function compatible with multiple historical schemas.
+  switch (status) {
+    case "critical":
+      return ["critical", "under_review"];
+    case "under_maintenance":
+      return ["under_maintenance", "under_inspection", "in_progress", "in-progress"];
+    case "pending":
+      return ["pending", "reported"];
+    case "resolved":
+      return ["resolved"];
+    case "under_review":
+      return ["under_review", "critical"];
+    case "under_inspection":
+      return ["under_inspection", "under_maintenance", "in_progress", "in-progress"];
+    case "in_progress":
+    case "in-progress":
+      return ["in_progress", "in-progress", "under_inspection", "under_maintenance"];
+    case "reported":
+      return ["reported", "pending"];
+    default:
+      return [toBuildingDbStatus(status)];
+  }
+}
+
 serve(async (req: Request) => {
   const requestId = crypto.randomUUID().slice(0, 8);
   console.log(`[${requestId}] ${req.method} ${req.url}`);
@@ -175,26 +201,42 @@ serve(async (req: Request) => {
         });
       }
 
-      const dbStatus = toBuildingDbStatus(payload.status);
-      const updates: Record<string, unknown> = { status: dbStatus };
-      if (payload.assigned_to !== undefined) updates.assigned_to = payload.assigned_to;
+      const candidates = getBuildingStatusCandidates(payload.status);
+      let lastError: unknown = null;
+      let updatedRow: Record<string, unknown> | null = null;
+      let appliedStatus: string | null = null;
 
-      const { data, error } = await supabaseAdmin
-        .from("buildings_at_risk")
-        .update(updates)
-        .eq("id", String(payload.id))
-        .select("*")
-        .single();
+      for (const candidate of candidates) {
+        const updates: Record<string, unknown> = { status: candidate };
+        if (payload.assigned_to !== undefined) updates.assigned_to = payload.assigned_to;
 
-      if (error) {
-        console.error(`[${requestId}] building update error:`, error);
-        return new Response(JSON.stringify({ success: false, error: error.message, requestId }), {
+        const { data, error } = await supabaseAdmin
+          .from("buildings_at_risk")
+          .update(updates)
+          .eq("id", String(payload.id))
+          .select("*")
+          .single();
+
+        if (!error) {
+          updatedRow = data as unknown as Record<string, unknown>;
+          appliedStatus = candidate;
+          break;
+        }
+
+        lastError = error;
+        console.warn(`[${requestId}] building update failed for status='${candidate}', trying next`, error);
+      }
+
+      if (!updatedRow) {
+        console.error(`[${requestId}] building update error (all candidates failed):`, lastError);
+        const msg = (lastError as any)?.message || "Update failed";
+        return new Response(JSON.stringify({ success: false, error: msg, requestId, tried: candidates }), {
           status: 400,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
 
-      return new Response(JSON.stringify({ success: true, data, requestId }), {
+      return new Response(JSON.stringify({ success: true, data: updatedRow, requestId, appliedStatus }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
