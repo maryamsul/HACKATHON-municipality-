@@ -10,22 +10,10 @@ const corsHeaders = {
 
 type ReportType = "building" | "issue";
 
-// NOTE: buildings_at_risk historically used legacy status values like:
-// - under_review (maps to UI: critical)
-// - under_inspection / in_progress (maps to UI: under_maintenance)
-// The UI now uses: pending | critical | under_maintenance | resolved
-// This function accepts BOTH and normalizes writes to the legacy values to
-// avoid DB constraint issues in older projects.
-type BuildingStatus =
-  | "pending"
-  | "critical"
-  | "under_maintenance"
-  | "resolved"
-  | "under_review"
-  | "under_inspection"
-  | "in_progress"
-  | "in-progress"
-  | "reported";
+// Database status values - EXACT match to DB constraints
+// Buildings: pending | critical | under_maintenance | resolved
+// Issues: pending | under_review | under_maintenance | resolved
+type BuildingStatus = "pending" | "critical" | "under_maintenance" | "resolved";
 type IssueStatus = "pending" | "under_review" | "under_maintenance" | "resolved";
 
 interface Payload {
@@ -35,70 +23,14 @@ interface Payload {
   assigned_to?: string | null;
 }
 
+// Validate building status matches exact DB enum
 function isAllowedBuildingStatus(s: string): s is BuildingStatus {
-  return (
-    s === "pending" ||
-    s === "resolved" ||
-    s === "critical" ||
-    s === "under_maintenance" ||
-    s === "under_review" ||
-    s === "under_inspection" ||
-    s === "in_progress" ||
-    s === "in-progress" ||
-    s === "reported"
-  );
+  return s === "pending" || s === "critical" || s === "under_maintenance" || s === "resolved";
 }
 
+// Validate issue status matches exact DB enum
 function isAllowedIssueStatus(s: string): s is IssueStatus {
   return s === "pending" || s === "under_review" || s === "under_maintenance" || s === "resolved";
-}
-
-/**
- * Maps UI building statuses to database-compatible values.
- * 
- * Database only supports: "pending" and "resolved"
- * UI allows: "pending", "critical", "under_maintenance", "resolved"
- * 
- * Mapping:
- *   - critical → pending (employees mark as critical, stored as pending for review)
- *   - under_maintenance → pending (employees mark as under maintenance, stored as pending)
- *   - pending → pending
- *   - resolved → resolved
- *   - All other legacy values → pending
- */
-function toBuildingDbStatus(status: BuildingStatus): string {
-  switch (status) {
-    case "resolved":
-      return "resolved";
-    case "pending":
-    case "critical":
-    case "under_maintenance":
-    case "under_review":
-    case "under_inspection":
-    case "in_progress":
-    case "in-progress":
-    case "reported":
-    default:
-      // All non-resolved statuses map to "pending" in the database
-      return "pending";
-  }
-}
-
-/**
- * Returns candidate status values to try when updating a building.
- * Since the database only supports "pending" and "resolved", we only need
- * to try those two values.
- * 
- * Mapping:
- *   - resolved → try ["resolved"]
- *   - everything else (critical, under_maintenance, pending, etc.) → try ["pending"]
- */
-function getBuildingStatusCandidates(status: BuildingStatus): string[] {
-  if (status === "resolved") {
-    return ["resolved"];
-  }
-  // All other statuses (critical, under_maintenance, pending, etc.) map to pending
-  return ["pending"];
 }
 
 serve(async (req: Request) => {
@@ -200,57 +132,58 @@ serve(async (req: Request) => {
       );
     }
 
+    // Handle building status update
     if (payload.type === "building") {
       if (!isAllowedBuildingStatus(payload.status)) {
-        return new Response(JSON.stringify({ success: false, error: "Invalid building status", requestId }), {
+        console.error(`[${requestId}] Invalid building status: ${payload.status}`);
+        return new Response(
+          JSON.stringify({ 
+            success: false, 
+            error: "Invalid building status", 
+            requestId,
+            details: `Status must be one of: pending, critical, under_maintenance, resolved. Got: ${payload.status}`
+          }), {
           status: 400,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
 
-      const candidates = getBuildingStatusCandidates(payload.status);
-      let lastError: unknown = null;
-      let updatedRow: Record<string, unknown> | null = null;
-      let appliedStatus: string | null = null;
+      const updates: Record<string, unknown> = { status: payload.status };
+      if (payload.assigned_to !== undefined) updates.assigned_to = payload.assigned_to;
 
-      for (const candidate of candidates) {
-        const updates: Record<string, unknown> = { status: candidate };
-        if (payload.assigned_to !== undefined) updates.assigned_to = payload.assigned_to;
+      console.log(`[${requestId}] Updating building ${payload.id} to status: ${payload.status}`);
 
-        const { data, error } = await supabaseAdmin
-          .from("buildings_at_risk")
-          .update(updates)
-          .eq("id", String(payload.id))
-          .select("*")
-          .single();
+      const { data, error } = await supabaseAdmin
+        .from("buildings_at_risk")
+        .update(updates)
+        .eq("id", String(payload.id))
+        .select("*")
+        .single();
 
-        if (!error) {
-          updatedRow = data as unknown as Record<string, unknown>;
-          appliedStatus = candidate;
-          break;
-        }
-
-        lastError = error;
-        console.warn(`[${requestId}] building update failed for status='${candidate}', trying next`, error);
-      }
-
-      if (!updatedRow) {
-        console.error(`[${requestId}] building update error (all candidates failed):`, lastError);
-        const msg = (lastError as any)?.message || "Update failed";
-        return new Response(JSON.stringify({ success: false, error: msg, requestId, tried: candidates }), {
+      if (error) {
+        console.error(`[${requestId}] building update error:`, error);
+        return new Response(JSON.stringify({ success: false, error: error.message, requestId }), {
           status: 400,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
 
-      return new Response(JSON.stringify({ success: true, data: updatedRow, requestId, appliedStatus }), {
+      console.log(`[${requestId}] Building updated successfully:`, data);
+      return new Response(JSON.stringify({ success: true, data, requestId }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // issue
+    // Handle issue status update
     if (!isAllowedIssueStatus(payload.status)) {
-      return new Response(JSON.stringify({ success: false, error: "Invalid issue status", requestId }), {
+      console.error(`[${requestId}] Invalid issue status: ${payload.status}`);
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: "Invalid issue status", 
+          requestId,
+          details: `Status must be one of: pending, under_review, under_maintenance, resolved. Got: ${payload.status}`
+        }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -258,6 +191,8 @@ serve(async (req: Request) => {
 
     const updates: Record<string, unknown> = { status: payload.status };
     if (payload.assigned_to !== undefined) updates.assigned_to = payload.assigned_to;
+
+    console.log(`[${requestId}] Updating issue ${payload.id} to status: ${payload.status}`);
 
     const { data, error } = await supabaseAdmin
       .from("issues")
@@ -274,6 +209,7 @@ serve(async (req: Request) => {
       });
     }
 
+    console.log(`[${requestId}] Issue updated successfully:`, data);
     return new Response(JSON.stringify({ success: true, data, requestId }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
