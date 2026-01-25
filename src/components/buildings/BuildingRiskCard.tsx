@@ -1,11 +1,14 @@
 import { motion } from "framer-motion";
+import React from "react";
 import { 
   Building2, 
   Calendar, 
   MapPin, 
   AlertTriangle, 
   Wrench, 
-  CheckCircle2 
+  CheckCircle2,
+  Clock,
+  FileText,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
@@ -23,23 +26,33 @@ interface BuildingRiskCardProps {
 // Status-specific styling with colors matching requirements
 const getStatusConfig = (status: BuildingStatus) => {
   switch (status) {
+    case "pending":
+      return {
+        badgeClass: "bg-gray-100 text-gray-700 border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700",
+        iconBgClass: "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400",
+        Icon: Clock,
+        dotColor: "bg-gray-500",
+      };
     case "critical":
       return {
         badgeClass: "bg-red-100 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800",
         iconBgClass: "bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400",
         Icon: AlertTriangle,
+        dotColor: "bg-red-500",
       };
     case "under_maintenance":
       return {
         badgeClass: "bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800",
         iconBgClass: "bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400",
         Icon: Wrench,
+        dotColor: "bg-amber-500",
       };
     case "resolved":
       return {
         badgeClass: "bg-green-100 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800",
         iconBgClass: "bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400",
         Icon: CheckCircle2,
+        dotColor: "bg-green-500",
       };
   }
 };
@@ -52,6 +65,8 @@ export default function BuildingRiskCard({ building, index, isEmployee, onStatus
 
   const getStatusLabel = (status: BuildingStatus) => {
     switch (status) {
+      case "pending":
+        return t("buildings.statusReported", "Pending");
       case "critical":
         return t("buildings.statusCritical", "Critical");
       case "under_maintenance":
@@ -60,6 +75,11 @@ export default function BuildingRiskCard({ building, index, isEmployee, onStatus
         return t("buildings.statusResolved", "Resolved");
     }
   };
+
+  // Employees can change status; for pending items, show classification options
+  const availableStatuses: BuildingStatus[] = isEmployee 
+    ? ["critical", "under_maintenance", "resolved"] 
+    : [];
 
   return (
     <motion.div

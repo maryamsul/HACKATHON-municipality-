@@ -1,22 +1,41 @@
-import { Home, FileText, Plus, Bell, Settings, Heart, Building2 } from "lucide-react";
+import { Home, FileText, Plus, Bell, Settings, Heart, Building2, AlertTriangle } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
 import { useTranslation } from "react-i18next";
+import { useAuth } from "@/context/AuthContext";
+import { useBuildings } from "@/context/BuildingsContext";
 
 const BottomNav = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { t } = useTranslation();
+  const { profile } = useAuth();
+  const { buildings } = useBuildings();
 
-  const navItems = [
+  const isEmployee = profile?.role === "employee";
+  const pendingCount = buildings.filter((b) => b.status === "pending").length;
+
+  // Base nav items for all users
+  const baseNavItems = [
     { icon: Home, labelKey: "nav.home", path: "/" },
     { icon: FileText, labelKey: "nav.issues", path: "/issues" },
     { icon: Building2, labelKey: "nav.buildings", path: "/buildings-at-risk" },
     { icon: Plus, labelKey: "nav.add", isCenter: true, path: "/add" },
     { icon: Heart, labelKey: "nav.donors", path: "/donors" },
-    { icon: Bell, labelKey: "nav.notifications", path: "/notifications" },
-    { icon: Settings, labelKey: "nav.settings", path: "/settings" },
   ];
+
+  // Add alerts for employees, otherwise notifications
+  const navItems = isEmployee
+    ? [
+        ...baseNavItems,
+        { icon: AlertTriangle, labelKey: "nav.notifications", path: "/building-alerts", badge: pendingCount },
+        { icon: Settings, labelKey: "nav.settings", path: "/settings" },
+      ]
+    : [
+        ...baseNavItems,
+        { icon: Bell, labelKey: "nav.notifications", path: "/notifications" },
+        { icon: Settings, labelKey: "nav.settings", path: "/settings" },
+      ];
 
   return (
     <nav 
@@ -25,12 +44,13 @@ const BottomNav = () => {
       <div className="flex items-center justify-around max-w-lg mx-auto">
         {navItems.map((item) => {
           const isActive = location.pathname === item.path;
+          const isCenter = "isCenter" in item && item.isCenter;
           return (
             <motion.button
               key={item.labelKey}
               onClick={() => navigate(item.path)}
               className={`relative flex-1 flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-2xl transition-colors duration-200 ${
-                item.isCenter
+                isCenter
                   ? ""
                   : isActive
                   ? "text-primary"
@@ -38,7 +58,7 @@ const BottomNav = () => {
               }`}
               whileTap={{ scale: 0.95 }}
             >
-              {item.isCenter ? (
+              {isCenter ? (
                 <motion.div 
                   className="relative -mt-8 w-14 h-14 bg-primary rounded-2xl flex items-center justify-center shadow-lg"
                   whileHover={{ scale: 1.08, rotate: 3 }}
@@ -71,7 +91,7 @@ const BottomNav = () => {
               ) : (
                 <>
                   <motion.div
-                    className={`p-2 rounded-xl transition-colors ${
+                    className={`relative p-2 rounded-xl transition-colors ${
                       isActive ? "bg-primary/10" : ""
                     }`}
                     animate={isActive ? { scale: [1, 1.1, 1] } : {}}
@@ -82,6 +102,12 @@ const BottomNav = () => {
                         isActive ? "stroke-[2.5px]" : "stroke-[1.5px]"
                       }`} 
                     />
+                    {/* Badge for pending alerts */}
+                    {"badge" in item && item.badge !== undefined && item.badge > 0 && (
+                      <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] bg-destructive text-destructive-foreground text-[10px] font-bold rounded-full flex items-center justify-center px-1">
+                        {item.badge > 99 ? "99+" : item.badge}
+                      </span>
+                    )}
                   </motion.div>
                   <span className={`text-[10px] font-medium transition-all ${
                     isActive ? "text-primary" : ""

@@ -40,7 +40,13 @@ const BuildingsAtRisk = () => {
     setShowReportForm(true);
   };
 
-  const filteredBuildings = buildings.filter(
+  // Filter buildings: public users only see classified buildings (not pending)
+  // Employees see all buildings
+  const visibleBuildings = isEmployee 
+    ? buildings 
+    : buildings.filter((b) => b.status !== "pending");
+
+  const filteredBuildings = visibleBuildings.filter(
     (building) =>
       (building.building_name || building.title || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
       building.description.toLowerCase().includes(searchQuery.toLowerCase())
@@ -94,11 +100,12 @@ const BuildingsAtRisk = () => {
     }
   };
 
-  // Count by normalized status
+  // Count by normalized status (only from visible buildings for public)
   const statusCounts = {
-    critical: buildings.filter((b) => b.status === "critical").length,
-    under_maintenance: buildings.filter((b) => b.status === "under_maintenance").length,
-    resolved: buildings.filter((b) => b.status === "resolved").length,
+    pending: visibleBuildings.filter((b) => b.status === "pending").length,
+    critical: visibleBuildings.filter((b) => b.status === "critical").length,
+    under_maintenance: visibleBuildings.filter((b) => b.status === "under_maintenance").length,
+    resolved: visibleBuildings.filter((b) => b.status === "resolved").length,
   };
 
   if (showReportForm) {
@@ -119,7 +126,7 @@ const BuildingsAtRisk = () => {
               {t('buildings.title')}
             </h1>
             <p className="text-destructive-foreground/80 text-sm">
-              {buildings.length} {t('buildings.totalBuildings')}
+              {visibleBuildings.length} {t('buildings.totalBuildings')}
             </p>
           </div>
         </div>
@@ -133,15 +140,20 @@ const BuildingsAtRisk = () => {
           {t('buildings.reportButton')}
         </Button>
         
-        {/* Status Summary - Aligned with Issues */}
+        {/* Status Summary - Show pending count only for employees */}
         <div className="flex gap-2 flex-wrap mb-4">
-          <Badge variant="destructive" className="bg-destructive/15 text-destructive">
+          {isEmployee && statusCounts.pending > 0 && (
+            <Badge variant="outline" className="bg-gray-100/20 text-destructive-foreground border-destructive-foreground/30">
+              {statusCounts.pending} {t("buildings.statusReported", "Pending")}
+            </Badge>
+          )}
+          <Badge variant="destructive" className="bg-destructive/15 text-destructive-foreground">
             {statusCounts.critical} {t("buildings.critical", "Critical")}
           </Badge>
-          <Badge variant="secondary" className="bg-secondary text-secondary-foreground">
+          <Badge variant="secondary" className="bg-secondary/50 text-destructive-foreground">
             {statusCounts.under_maintenance} {t("buildings.inspecting", "Under Maintenance")}
           </Badge>
-          <Badge variant="default" className="bg-primary/15 text-primary">
+          <Badge variant="default" className="bg-primary/15 text-destructive-foreground">
             {statusCounts.resolved} {t("buildings.statusResolved", "Resolved")}
           </Badge>
         </div>
