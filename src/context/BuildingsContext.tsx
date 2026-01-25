@@ -10,28 +10,15 @@ interface BuildingsContextType {
 
 const BuildingsContext = createContext<BuildingsContextType | undefined>(undefined);
 
-// Normalize legacy status values - now includes "pending" as valid status
+// Database now has exact statuses: pending | critical | under_maintenance | resolved
+// No normalization needed - values are stored as-is
 const normalizeStatus = (status: string): BuildingStatus => {
-  const statusMap: Record<string, BuildingStatus> = {
-    // Pending is now a first-class status for new reports
-    pending: "pending",
-    reported: "pending",
-
-    // Critical status
-    under_review: "critical",
-    critical: "critical",
-
-    // Under maintenance
-    under_inspection: "under_maintenance",
-    in_progress: "under_maintenance",
-    "in-progress": "under_maintenance",
-    under_maintenance: "under_maintenance",
-
-    // Resolved
-    resolved: "resolved",
-  };
-
-  return statusMap[status] || "pending";
+  // Only accept exact DB values
+  if (status === "pending" || status === "critical" || status === "under_maintenance" || status === "resolved") {
+    return status;
+  }
+  // Fallback for any unexpected legacy data
+  return "pending";
 };
 
 export const BuildingsProvider = ({ children }: { children: ReactNode }) => {

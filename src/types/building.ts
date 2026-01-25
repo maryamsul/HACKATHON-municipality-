@@ -1,8 +1,11 @@
-// Building at risk status enum values
-// "pending" = new report awaiting employee classification
-// "critical", "under_maintenance", "resolved" = employee-classified statuses
+// Building at risk status enum values - EXACT match to database constraint
+// pending = new report awaiting employee classification
+// critical = employee-classified as critical/dangerous
+// under_maintenance = building is being repaired/inspected
+// resolved = issue has been resolved
 export type BuildingStatus = "pending" | "critical" | "under_maintenance" | "resolved";
 
+// Status labels for UI display - keys match database values exactly
 export const BUILDING_STATUSES: Record<BuildingStatus, { label: string }> = {
   pending: { label: "Pending" },
   critical: { label: "Critical" },
