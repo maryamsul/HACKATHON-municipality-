@@ -51,9 +51,20 @@ const IssueCard = ({ issue, index = 0 }: IssueCardProps) => {
   const currentStatus = ISSUE_STATUSES[issue.status as IssueStatus] || ISSUE_STATUSES.under_review;
 
   const handleStatusChange = async (newStatus: string) => {
+    // Ensure issue.id is a number (issues use numeric IDs)
+    const issueId = typeof issue.id === "number" ? issue.id : parseInt(String(issue.id), 10);
+    
+    console.log(`[IssueCard] Updating issue status - id: ${issueId} (typeof: ${typeof issueId}), newStatus: ${newStatus}`);
+    
+    if (isNaN(issueId) || issueId <= 0) {
+      console.error(`[IssueCard] Invalid issue ID: ${issue.id}`);
+      toast({ title: t('common.error'), description: "Invalid issue ID", variant: "destructive" });
+      return;
+    }
+
     try {
       const { data, error } = await supabase.functions.invoke("classify-report", {
-        body: { type: "issue", id: issue.id, status: newStatus },
+        body: { type: "issue", id: issueId, status: newStatus },
       });
 
       if (error || !data?.success) throw error || new Error(data?.error || "Update failed");
@@ -64,6 +75,7 @@ const IssueCard = ({ issue, index = 0 }: IssueCardProps) => {
         description: `${t('issueDetails.issueMarkedAs')} ${getStatusLabel(newStatus)}` 
       });
     } catch (error) {
+      console.error("[IssueCard] Status update failed:", error);
       toast({ title: t('common.error'), description: t('issueDetails.failedToUpdateStatus'), variant: "destructive" });
     }
   };
