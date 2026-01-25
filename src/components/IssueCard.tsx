@@ -1,4 +1,3 @@
-// IssueCard.tsx - fixed for optimistic UI + stable state
 import { Issue, ISSUE_STATUSES, IssueStatus } from "@/types/issue";
 import { MapPin, Calendar } from "lucide-react";
 import { useNavigate } from "react-router-dom";
@@ -6,9 +5,10 @@ import { useTranslation } from "react-i18next";
 import { motion } from "framer-motion";
 import { useAuth } from "@/context/AuthContext";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { supabase } from "@/integrations/supabase/client";
 import { useIssues } from "@/context/IssuesContext";
 import { useToast } from "@/hooks/use-toast";
-import { updateIssueStatus } from "../supabase/functions/classify-report";
+import { useEffect, useState } from "react";
 
 interface IssueCardProps {
   issue: Issue;
@@ -32,8 +32,13 @@ const IssueCard = ({ issue, index = 0 }: IssueCardProps) => {
   const { toast } = useToast();
   const isEmployee = profile?.role === "employee";
 
-  // Local state to **control the dropdown independently**
-  const [localStatus, setLocalStatus] = React.useState<IssueStatus>(issue.status as IssueStatus);
+  // ✅ LOCAL STATE (KEY FIX)
+  const [localStatus, setLocalStatus] = useState<IssueStatus>(issue.status as IssueStatus);
+
+  // ✅ KEEP LOCAL STATE IN SYNC WITH CONTEXT
+  useEffect(() => {
+    setLocalStatus(issue.status as IssueStatus);
+  }, [issue.status]);
 
   const formatLocation = (lat: number, lng: number) => `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
 
@@ -50,32 +55,67 @@ const IssueCard = ({ issue, index = 0 }: IssueCardProps) => {
     }
   };
 
-  const handleStatusChange = async (newStatus: IssueStatus) => {
-    if (newStatus === localStatus) return; // No change
+  const currentStatus = ISSUE_STATUSES[localStatus] || ISSUE_STATUSES.under_review;
 
-    // Optimistic update immediately
+  const handleStatusChange = async (newStatus: IssueStatus) => {
+    // ✅ PREVENT DUPLICATE CALLS
+    if (newStatus === localStatus) return;
+
+    const issueId = typeof issue.id === "number" ? issue.id : parseInt(String(issue.id), 10);
+
+    if (isNaN(issueId) || issueId <= 0) {
+      toast({
+        title: t("common.error"),
+        description: "Invalid issue ID",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // ✅ IMMEDIATE UI UPDATE (FEELS INSTANT)
     setLocalStatus(newStatus);
-    updateIssueOptimistic(issue.id, { status: newStatus });
 
     try {
-      const result = await updateIssueStatus(issue.id, newStatus);
-      if (!result.success) {
-        // Revert to previous status if API fails
+      const { data, error } = await supabase.functions.invoke("classify-report", {
+        body: {
+          type: "issue",
+          id: issueId,
+          status: newStatus,
+          assigned_to: null,
+        },
+      });
+
+      if (error || data?.success !== true) {
+        // ❌ REVERT UI IF FAILED
+        setLocalStatus(issue.status as IssueStatus);
+
         toast({
           title: t("common.error"),
-          description: result.error || t("issueDetails.failedToUpdateStatus"),
+          description: data?.error || t("issueDetails.failedToUpdateStatus"),
           variant: "destructive",
         });
-        setLocalStatus(issue.status); // revert local
-        updateIssueOptimistic(issue.id, { status: issue.status }); // revert context
-      } else {
-        // Update context with confirmed data from server
-        updateIssueOptimistic(issue.id, { status: newStatus, ...result.data });
+        return;
       }
+
+      // ✅ UPDATE CONTEXT STATE
+      updateIssueOptimistic(issueId, {
+        status: newStatus,
+        assigned_to: data.data?.assigned_to ?? null,
+      });
+
+      toast({
+        title: t("issueDetails.statusUpdated"),
+        description: `${t("issueDetails.issueMarkedAs")} ${getStatusLabel(newStatus)}`,
+      });
     } catch (err) {
-      toast({ title: t("common.error"), description: t("issueDetails.failedToUpdateStatus"), variant: "destructive" });
-      setLocalStatus(issue.status);
-      updateIssueOptimistic(issue.id, { status: issue.status });
+      // ❌ REVERT UI ON CRASH
+      setLocalStatus(issue.status as IssueStatus);
+
+      toast({
+        title: t("common.error"),
+        description: t("issueDetails.failedToUpdateStatus"),
+        variant: "destructive",
+      });
     }
   };
 
@@ -85,15 +125,10 @@ const IssueCard = ({ issue, index = 0 }: IssueCardProps) => {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.08 }}
-      whileHover={{ scale: 1.02, boxShadow: "0 8px 25px rgba(0,0,0,0.1)" }}
     >
       <motion.button
         onClick={() => navigate(`/issue/${issue.id}`)}
-        className="w-20 h-20 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0 text-3xl overflow-hidden"
-        initial={{ scale: 0.8, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        transition={{ delay: index * 0.08 + 0.1 }}
-        whileTap={{ scale: 0.98 }}
+        className="w-20 h-20 rounded-xl bg-primary/10 flex items-center justify-center text-3xl"
       >
         {issue.thumbnail ? (
           <img src={issue.thumbnail} alt={issue.category} className="w-full h-full object-cover" />
@@ -103,31 +138,35 @@ const IssueCard = ({ issue, index = 0 }: IssueCardProps) => {
       </motion.button>
 
       <div className="flex-1 min-w-0 cursor-pointer" onClick={() => navigate(`/issue/${issue.id}`)}>
-        <div className="flex items-start justify-between gap-2 mb-2">
-          <h3 className="font-semibold text-foreground truncate">{issue.title || issue.category}</h3>
-          {isEmployee && (
+        <div className="flex justify-between mb-2">
+          <h3 className="font-semibold truncate">{issue.title || issue.category}</h3>
+
+          {isEmployee ? (
             <div onClick={(e) => e.stopPropagation()}>
-              <Select value={localStatus} onValueChange={(v) => handleStatusChange(v as IssueStatus)}>
-                <SelectTrigger className={`w-36 h-7 text-xs font-medium border-0 ${ISSUE_STATUSES[localStatus].color}`}>
-                  <SelectValue placeholder={t("status.statusPlaceholder")} />
+              <Select value={localStatus} onValueChange={handleStatusChange}>
+                <SelectTrigger className={`w-36 h-7 text-xs border-0 ${currentStatus.color}`}>
+                  <SelectValue />
                 </SelectTrigger>
-                <SelectContent className="bg-popover border border-border shadow-lg z-50">
+                <SelectContent>
                   <SelectItem value="under_review">{t("status.underReview")}</SelectItem>
                   <SelectItem value="under_maintenance">{t("status.underMaintenance")}</SelectItem>
                   <SelectItem value="resolved">{t("status.resolved")}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
+          ) : (
+            <span className={`px-2 py-1 rounded-full text-xs ${currentStatus.color}`}>
+              {getStatusLabel(localStatus)}
+            </span>
           )}
         </div>
 
-        <div className="flex items-center gap-1 text-muted-foreground text-sm mb-1">
+        <div className="flex items-center gap-1 text-sm text-muted-foreground">
           <MapPin className="w-3.5 h-3.5" />
-          <span className="truncate" dir="ltr">
-            {formatLocation(issue.latitude, issue.longitude)}
-          </span>
+          <span>{formatLocation(issue.latitude, issue.longitude)}</span>
         </div>
-        <div className="flex items-center gap-1 text-muted-foreground text-sm">
+
+        <div className="flex items-center gap-1 text-sm text-muted-foreground">
           <Calendar className="w-3.5 h-3.5" />
           <span>
             {new Date(issue.created_at).toLocaleDateString(
