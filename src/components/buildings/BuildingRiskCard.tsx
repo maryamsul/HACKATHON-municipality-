@@ -1,5 +1,12 @@
 import { motion } from "framer-motion";
-import { Building2, Calendar, MapPin } from "lucide-react";
+import { 
+  Building2, 
+  Calendar, 
+  MapPin, 
+  AlertTriangle, 
+  Wrench, 
+  CheckCircle2 
+} from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { Badge } from "@/components/ui/badge";
@@ -13,30 +20,35 @@ interface BuildingRiskCardProps {
   onStatusChange: (buildingId: string, newStatus: BuildingStatus) => void;
 }
 
-const getBadgeVariant = (status: BuildingStatus) => {
+// Status-specific styling with colors matching requirements
+const getStatusConfig = (status: BuildingStatus) => {
   switch (status) {
     case "critical":
-      return "destructive" as const;
+      return {
+        badgeClass: "bg-red-100 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800",
+        iconBgClass: "bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400",
+        Icon: AlertTriangle,
+      };
     case "under_maintenance":
-      return "secondary" as const;
+      return {
+        badgeClass: "bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800",
+        iconBgClass: "bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400",
+        Icon: Wrench,
+      };
     case "resolved":
-      return "default" as const;
-  }
-};
-
-const getIconStyle = (status: BuildingStatus) => {
-  switch (status) {
-    case "critical":
-      return "bg-destructive/15 text-destructive";
-    case "under_maintenance":
-      return "bg-primary/15 text-primary";
-    case "resolved":
-      return "bg-primary/10 text-primary";
+      return {
+        badgeClass: "bg-green-100 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800",
+        iconBgClass: "bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400",
+        Icon: CheckCircle2,
+      };
   }
 };
 
 export default function BuildingRiskCard({ building, index, isEmployee, onStatusChange }: BuildingRiskCardProps) {
   const { t, i18n } = useTranslation();
+  const isRTL = i18n.language === "ar";
+  const statusConfig = getStatusConfig(building.status);
+  const StatusIcon = statusConfig.Icon;
 
   const getStatusLabel = (status: BuildingStatus) => {
     switch (status) {
@@ -54,69 +66,99 @@ export default function BuildingRiskCard({ building, index, isEmployee, onStatus
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.05 }}
-      className="bg-card rounded-xl p-4 shadow-sm border border-border"
+      className="bg-card rounded-xl p-4 shadow-sm border border-border hover:shadow-md transition-shadow"
+      dir={isRTL ? "rtl" : "ltr"}
     >
       <div className="flex items-start gap-4">
+        {/* Thumbnail or Status Icon */}
         {building.thumbnail ? (
           <img
             src={building.thumbnail}
             alt={building.title}
-            className="w-12 h-12 rounded-xl object-cover flex-shrink-0"
+            className="w-14 h-14 rounded-xl object-cover flex-shrink-0 border border-border"
             loading="lazy"
           />
         ) : (
           <div
-            className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 ${getIconStyle(
-              building.status,
-            )}`}
+            className={`w-14 h-14 rounded-xl flex items-center justify-center flex-shrink-0 ${statusConfig.iconBgClass}`}
           >
-            <Building2 className="w-6 h-6" />
+            <StatusIcon className="w-7 h-7" />
           </div>
         )}
 
         <div className="flex-1 min-w-0">
-          <div className="flex items-start justify-between gap-2 mb-1">
-            <h3 className="font-semibold text-foreground truncate">{building.building_name || building.title}</h3>
+          {/* Title and Status Badge */}
+          <div className="flex items-start justify-between gap-2 mb-2">
+            <h3 className="font-semibold text-foreground truncate text-base">
+              {building.building_name || building.title}
+            </h3>
 
             {isEmployee ? (
               <Select value={building.status} onValueChange={(v) => onStatusChange(building.id, v as BuildingStatus)}>
-                <SelectTrigger className="w-[160px] h-7 text-xs bg-background">
-                  <SelectValue />
+                <SelectTrigger className="w-[160px] h-8 text-xs bg-background border-border">
+                  <div className="flex items-center gap-1.5">
+                    <StatusIcon className="w-3.5 h-3.5" />
+                    <SelectValue />
+                  </div>
                 </SelectTrigger>
-                <SelectContent className="bg-popover z-50">
-                  {(Object.keys(BUILDING_STATUSES) as BuildingStatus[]).map((status) => (
-                    <SelectItem key={status} value={status}>
-                      {getStatusLabel(status)}
-                    </SelectItem>
-                  ))}
+                <SelectContent className="bg-popover z-50 border-border">
+                  {(Object.keys(BUILDING_STATUSES) as BuildingStatus[]).map((status) => {
+                    const config = getStatusConfig(status);
+                    const Icon = config.Icon;
+                    return (
+                      <SelectItem key={status} value={status} className="cursor-pointer">
+                        <div className="flex items-center gap-2">
+                          <Icon className="w-4 h-4" />
+                          <span>{getStatusLabel(status)}</span>
+                        </div>
+                      </SelectItem>
+                    );
+                  })}
                 </SelectContent>
               </Select>
             ) : (
-              <Badge variant={getBadgeVariant(building.status)} className="flex-shrink-0">
+              <Badge 
+                variant="outline" 
+                className={`flex-shrink-0 flex items-center gap-1.5 px-2.5 py-1 ${statusConfig.badgeClass}`}
+              >
+                <StatusIcon className="w-3.5 h-3.5" />
                 {getStatusLabel(building.status)}
               </Badge>
             )}
           </div>
 
+          {/* Location */}
           {building.latitude && building.longitude && (
-            <div className="flex items-center gap-1 text-sm text-muted-foreground mb-1">
-              <MapPin className="w-3.5 h-3.5" />
+            <div className="flex items-center gap-1.5 text-sm text-muted-foreground mb-1.5">
+              <MapPin className="w-4 h-4 flex-shrink-0" />
               <span className="truncate" dir="ltr">
                 {building.latitude.toFixed(4)}, {building.longitude.toFixed(4)}
               </span>
             </div>
           )}
 
-          <p className="text-sm text-muted-foreground mb-2 line-clamp-2">{building.description}</p>
+          {/* Description */}
+          <p className="text-sm text-muted-foreground mb-3 line-clamp-2">{building.description}</p>
 
-          <div className="flex items-center justify-end text-xs text-muted-foreground">
-            <div className="flex items-center gap-1">
-              <Calendar className="w-3 h-3" />
+          {/* Footer with Date */}
+          <div className="flex items-center justify-between text-xs text-muted-foreground border-t border-border/50 pt-2">
+            <div className="flex items-center gap-1.5">
+              <Calendar className="w-3.5 h-3.5" />
               <span>
                 {new Date(building.created_at).toLocaleDateString(
                   i18n.language === "ar" ? "ar-LB" : i18n.language === "fr" ? "fr-FR" : "en-US",
+                  { year: "numeric", month: "short", day: "numeric" }
                 )}
               </span>
+            </div>
+            {/* Status indicator dot for quick visual reference */}
+            <div className="flex items-center gap-1.5">
+              <span className={`w-2 h-2 rounded-full ${
+                building.status === "critical" ? "bg-red-500" :
+                building.status === "under_maintenance" ? "bg-amber-500" :
+                "bg-green-500"
+              }`} />
+              <span className="capitalize">{getStatusLabel(building.status)}</span>
             </div>
           </div>
         </div>
