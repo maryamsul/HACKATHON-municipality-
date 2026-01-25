@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 
 const SUPABASE_URL = "https://ypgoodjdxcnjysrsortp.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_rs58HjDUbtkp9QvD7Li4VA_fqtAUF2u";
-const API_URL = `${SUPABASE_URL}/functions/v1/quick-endpoint`;
+const API_URL = `${SUPABASE_URL}/functions/v1/building-at-risk`;
 
 export interface BuildingReportData {
   title: string;
