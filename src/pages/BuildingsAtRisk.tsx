@@ -25,7 +25,7 @@ const BuildingsAtRisk = () => {
   const navigate = useNavigate();
   const { t, i18n } = useTranslation();
   const isRTL = i18n.language === 'ar';
-  const { buildings, loading, refetchBuildings } = useBuildings();
+  const { buildings, loading, updateBuildingOptimistic } = useBuildings();
   const { profile, isAuthenticated } = useAuth();
   const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState("");
@@ -77,7 +77,7 @@ const BuildingsAtRisk = () => {
     }
   };
 
-  // Employee-only status change handler
+  // Employee-only status change handler with optimistic update
   const handleStatusChange = async (buildingId: string, newStatus: BuildingStatus) => {
     if (!isEmployee) {
       toast({
@@ -100,22 +100,53 @@ const BuildingsAtRisk = () => {
       return;
     }
 
-    console.log(`[BuildingsAtRisk] Updating building status - id: ${buildingId} (typeof: ${typeof buildingId}), newStatus: ${newStatus}`);
+    console.log(`[BuildingsAtRisk] Updating building status - id: ${buildingId}, newStatus: ${newStatus}`);
 
     try {
       const { data, error } = await supabase.functions.invoke("classify-report", {
-        body: { type: "building", id: buildingId, status: newStatus },
+        body: { 
+          type: "building", 
+          id: buildingId, 
+          status: newStatus,
+          assigned_to: null // Always send null, never undefined
+        },
       });
 
-      if (error || !data?.success) throw error || new Error(data?.error || "Update failed");
+      // Check for network/invocation errors first
+      if (error) {
+        console.error("[BuildingsAtRisk] Supabase invoke error:", error);
+        toast({
+          title: t('common.error'),
+          description: t('buildings.statusUpdateError'),
+          variant: "destructive",
+        });
+        return;
+      }
 
-      await refetchBuildings();
-      toast({
-        title: t('common.success'),
-        description: t('buildings.statusUpdated'),
-      });
+      // Check the response success flag - this is the key fix
+      if (data?.success === true) {
+        // Optimistic update - update local state immediately
+        updateBuildingOptimistic(buildingId, { 
+          status: newStatus,
+          assigned_to: data.data?.assigned_to ?? null
+        });
+        
+        toast({
+          title: t('common.success'),
+          description: t('buildings.statusUpdated'),
+        });
+        console.log("[BuildingsAtRisk] Status update successful:", data);
+      } else {
+        // API returned success: false
+        console.error("[BuildingsAtRisk] API returned failure:", data);
+        toast({
+          title: t('common.error'),
+          description: data?.error || t('buildings.statusUpdateError'),
+          variant: "destructive",
+        });
+      }
     } catch (error) {
-      console.error("[BuildingsAtRisk] Error updating building status:", error);
+      console.error("[BuildingsAtRisk] Unexpected error:", error);
       toast({
         title: t('common.error'),
         description: t('buildings.statusUpdateError'),

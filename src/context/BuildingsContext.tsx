@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from "react";
 import { BuildingAtRisk, BuildingStatus } from "@/types/building";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -6,18 +6,16 @@ interface BuildingsContextType {
   buildings: BuildingAtRisk[];
   loading: boolean;
   refetchBuildings: () => Promise<void>;
+  updateBuildingOptimistic: (buildingId: string, updates: Partial<BuildingAtRisk>) => void;
 }
 
 const BuildingsContext = createContext<BuildingsContextType | undefined>(undefined);
 
 // Database now has exact statuses: pending | critical | under_maintenance | resolved
-// No normalization needed - values are stored as-is
 const normalizeStatus = (status: string): BuildingStatus => {
-  // Only accept exact DB values
   if (status === "pending" || status === "critical" || status === "under_maintenance" || status === "resolved") {
     return status;
   }
-  // Fallback for any unexpected legacy data
   return "pending";
 };
 
@@ -37,7 +35,6 @@ export const BuildingsProvider = ({ children }: { children: ReactNode }) => {
         console.error("Error fetching buildings at risk:", error);
         setBuildings([]);
       } else {
-        // Map database columns to BuildingAtRisk type with UI-friendly building_name
         const normalizedBuildings = (data || []).map((building) => ({
           ...building,
           status: normalizeStatus(building.status),
@@ -51,6 +48,17 @@ export const BuildingsProvider = ({ children }: { children: ReactNode }) => {
     }
     setLoading(false);
   };
+
+  // Optimistic update for a single building - updates state immediately without refetch
+  const updateBuildingOptimistic = useCallback((buildingId: string, updates: Partial<BuildingAtRisk>) => {
+    setBuildings((prevBuildings) =>
+      prevBuildings.map((building) =>
+        building.id === buildingId
+          ? { ...building, ...updates }
+          : building
+      )
+    );
+  }, []);
 
   useEffect(() => {
     fetchBuildings();
@@ -73,7 +81,7 @@ export const BuildingsProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   return (
-    <BuildingsContext.Provider value={{ buildings, loading, refetchBuildings: fetchBuildings }}>
+    <BuildingsContext.Provider value={{ buildings, loading, refetchBuildings: fetchBuildings, updateBuildingOptimistic }}>
       {children}
     </BuildingsContext.Provider>
   );
