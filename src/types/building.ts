@@ -1,9 +1,9 @@
-// Building at risk status enum values - matches database
-export type BuildingStatus = "pending" | "under_inspection" | "resolved";
+// Building at risk status enum values - aligned with Issues for consistency
+export type BuildingStatus = "under_review" | "under_maintenance" | "resolved";
 
 export const BUILDING_STATUSES: Record<BuildingStatus, { label: string; color: string }> = {
-  pending: { label: "Pending", color: "bg-yellow-100 text-yellow-700" },
-  under_inspection: { label: "Under Inspection", color: "bg-blue-100 text-blue-700" },
+  under_review: { label: "Critical", color: "bg-red-100 text-red-700" },
+  under_maintenance: { label: "Under Inspection", color: "bg-blue-100 text-blue-700" },
   resolved: { label: "Resolved", color: "bg-green-100 text-green-700" },
 };
 

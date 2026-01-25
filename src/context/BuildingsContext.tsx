@@ -10,16 +10,22 @@ interface BuildingsContextType {
 
 const BuildingsContext = createContext<BuildingsContextType | undefined>(undefined);
 
-// Normalize status values to ensure consistency
+// Normalize status values to match Issues system: under_review, under_maintenance, resolved
 const normalizeStatus = (status: string): BuildingStatus => {
   const statusMap: Record<string, BuildingStatus> = {
-    "pending": "pending",
-    "under_inspection": "under_inspection",
-    "reported": "pending",
-    "critical": "under_inspection",
+    // Legacy/default values → mapped to new system
+    "pending": "under_review",
+    "critical": "under_review",
+    "reported": "under_review",
+    "under_inspection": "under_maintenance",
+    "in_progress": "under_maintenance",
+    "in-progress": "under_maintenance",
+    // Current values pass through
+    "under_review": "under_review",
+    "under_maintenance": "under_maintenance",
     "resolved": "resolved",
   };
-  return statusMap[status] || "pending";
+  return statusMap[status] || "under_review";
 };
 
 export const BuildingsProvider = ({ children }: { children: ReactNode }) => {
@@ -28,21 +34,27 @@ export const BuildingsProvider = ({ children }: { children: ReactNode }) => {
 
   const fetchBuildings = async () => {
     setLoading(true);
-    const { data, error } = await supabase
-      .from("buildings_at_risk")
-      .select("*")
-      .order("created_at", { ascending: false });
+    try {
+      const { data, error } = await supabase
+        .from("buildings_at_risk")
+        .select("*")
+        .order("created_at", { ascending: false });
 
-    if (error) {
-      console.error("Error fetching buildings at risk:", error);
-    } else {
-      // Map database columns to BuildingAtRisk type with UI-friendly building_name
-      const normalizedBuildings = (data || []).map((building) => ({
-        ...building,
-        status: normalizeStatus(building.status),
-        building_name: building.title || "Unknown Building",
-      })) as BuildingAtRisk[];
-      setBuildings(normalizedBuildings);
+      if (error) {
+        console.error("Error fetching buildings at risk:", error);
+        setBuildings([]);
+      } else {
+        // Map database columns to BuildingAtRisk type with UI-friendly building_name
+        const normalizedBuildings = (data || []).map((building) => ({
+          ...building,
+          status: normalizeStatus(building.status),
+          building_name: building.title || "Unknown Building",
+        })) as BuildingAtRisk[];
+        setBuildings(normalizedBuildings);
+      }
+    } catch (err) {
+      console.error("Unexpected error fetching buildings:", err);
+      setBuildings([]);
     }
     setLoading(false);
   };
@@ -50,7 +62,7 @@ export const BuildingsProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     fetchBuildings();
 
-    // Subscribe to realtime updates
+    // Subscribe to realtime updates for immediate display of new reports
     const channel = supabase
       .channel("buildings-changes")
       .on(
