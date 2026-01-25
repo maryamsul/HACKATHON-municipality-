@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from "react";
 import { Issue, IssueStatus } from "@/types/issue";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -6,12 +6,12 @@ interface IssuesContextType {
   issues: Issue[];
   loading: boolean;
   refetchIssues: () => Promise<void>;
+  updateIssueOptimistic: (issueId: number, updates: Partial<Issue>) => void;
 }
 
 const IssuesContext = createContext<IssuesContextType | undefined>(undefined);
 
 // Normalize legacy status values to current enum values
-// "pending" is now a first-class status for new reports awaiting review
 const normalizeStatus = (status: string): IssueStatus => {
   const statusMap: Record<string, IssueStatus> = {
     "pending": "pending",
@@ -39,7 +39,6 @@ export const IssuesProvider = ({ children }: { children: ReactNode }) => {
     if (error) {
       console.error("Error fetching issues:", error);
     } else {
-      // Normalize status values from legacy formats
       const normalizedIssues = (data || []).map((issue) => ({
         ...issue,
         status: normalizeStatus(issue.status),
@@ -48,6 +47,17 @@ export const IssuesProvider = ({ children }: { children: ReactNode }) => {
     }
     setLoading(false);
   };
+
+  // Optimistic update for a single issue - updates state immediately without refetch
+  const updateIssueOptimistic = useCallback((issueId: number, updates: Partial<Issue>) => {
+    setIssues((prevIssues) =>
+      prevIssues.map((issue) =>
+        issue.id === issueId
+          ? { ...issue, ...updates }
+          : issue
+      )
+    );
+  }, []);
 
   useEffect(() => {
     fetchIssues();
@@ -70,7 +80,7 @@ export const IssuesProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   return (
-    <IssuesContext.Provider value={{ issues, loading, refetchIssues: fetchIssues }}>
+    <IssuesContext.Provider value={{ issues, loading, refetchIssues: fetchIssues, updateIssueOptimistic }}>
       {children}
     </IssuesContext.Provider>
   );

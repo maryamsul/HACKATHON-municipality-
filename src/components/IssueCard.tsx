@@ -27,7 +27,7 @@ const IssueCard = ({ issue, index = 0 }: IssueCardProps) => {
   const navigate = useNavigate();
   const { t, i18n } = useTranslation();
   const { profile } = useAuth();
-  const { refetchIssues } = useIssues();
+  const { updateIssueOptimistic } = useIssues();
   const { toast } = useToast();
   const isEmployee = profile?.role === "employee";
 
@@ -54,28 +54,55 @@ const IssueCard = ({ issue, index = 0 }: IssueCardProps) => {
     // Ensure issue.id is a number (issues use numeric IDs)
     const issueId = typeof issue.id === "number" ? issue.id : parseInt(String(issue.id), 10);
     
-    console.log(`[IssueCard] Updating issue status - id: ${issueId} (typeof: ${typeof issueId}), newStatus: ${newStatus}`);
-    
     if (isNaN(issueId) || issueId <= 0) {
       console.error(`[IssueCard] Invalid issue ID: ${issue.id}`);
       toast({ title: t('common.error'), description: "Invalid issue ID", variant: "destructive" });
       return;
     }
 
+    console.log(`[IssueCard] Updating issue status - id: ${issueId}, newStatus: ${newStatus}`);
+
     try {
       const { data, error } = await supabase.functions.invoke("classify-report", {
-        body: { type: "issue", id: issueId, status: newStatus },
+        body: { 
+          type: "issue", 
+          id: issueId, 
+          status: newStatus,
+          assigned_to: null // Always send null, never undefined
+        },
       });
 
-      if (error || !data?.success) throw error || new Error(data?.error || "Update failed");
-      
-      await refetchIssues();
-      toast({ 
-        title: t('issueDetails.statusUpdated'), 
-        description: `${t('issueDetails.issueMarkedAs')} ${getStatusLabel(newStatus)}` 
-      });
+      // Check for network/invocation errors first
+      if (error) {
+        console.error("[IssueCard] Supabase invoke error:", error);
+        toast({ title: t('common.error'), description: t('issueDetails.failedToUpdateStatus'), variant: "destructive" });
+        return;
+      }
+
+      // Check the response success flag - this is the key fix
+      if (data?.success === true) {
+        // Optimistic update - update local state immediately
+        updateIssueOptimistic(issueId, { 
+          status: newStatus as IssueStatus,
+          assigned_to: data.data?.assigned_to ?? null
+        });
+        
+        toast({ 
+          title: t('issueDetails.statusUpdated'), 
+          description: `${t('issueDetails.issueMarkedAs')} ${getStatusLabel(newStatus)}` 
+        });
+        console.log("[IssueCard] Status update successful:", data);
+      } else {
+        // API returned success: false
+        console.error("[IssueCard] API returned failure:", data);
+        toast({ 
+          title: t('common.error'), 
+          description: data?.error || t('issueDetails.failedToUpdateStatus'), 
+          variant: "destructive" 
+        });
+      }
     } catch (error) {
-      console.error("[IssueCard] Status update failed:", error);
+      console.error("[IssueCard] Unexpected error:", error);
       toast({ title: t('common.error'), description: t('issueDetails.failedToUpdateStatus'), variant: "destructive" });
     }
   };
