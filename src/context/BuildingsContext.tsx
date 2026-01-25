@@ -13,19 +13,21 @@ const BuildingsContext = createContext<BuildingsContextType | undefined>(undefin
 // Normalize status values to match Issues system: under_review, under_maintenance, resolved
 const normalizeStatus = (status: string): BuildingStatus => {
   const statusMap: Record<string, BuildingStatus> = {
-    // Legacy/default values → mapped to new system
-    "pending": "under_review",
-    "critical": "under_review",
-    "reported": "under_review",
-    "under_inspection": "under_maintenance",
-    "in_progress": "under_maintenance",
+    // Legacy/default values → mapped to the required UI statuses
+    pending: "critical",
+    reported: "critical",
+    under_review: "critical",
+    critical: "critical",
+
+    under_inspection: "under_maintenance",
+    in_progress: "under_maintenance",
     "in-progress": "under_maintenance",
-    // Current values pass through
-    "under_review": "under_review",
-    "under_maintenance": "under_maintenance",
-    "resolved": "resolved",
+    under_maintenance: "under_maintenance",
+
+    resolved: "resolved",
   };
-  return statusMap[status] || "under_review";
+
+  return statusMap[status] || "critical";
 };
 
 export const BuildingsProvider = ({ children }: { children: ReactNode }) => {

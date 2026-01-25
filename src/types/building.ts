@@ -1,10 +1,12 @@
-// Building at risk status enum values - aligned with Issues for consistency
-export type BuildingStatus = "under_review" | "under_maintenance" | "resolved";
+// Building at risk status enum values (must match the Buildings-at-Risk UI requirements)
+// NOTE: The database may still contain legacy values (e.g. pending/under_review/etc.).
+// Those are normalized in BuildingsContext.
+export type BuildingStatus = "critical" | "under_maintenance" | "resolved";
 
-export const BUILDING_STATUSES: Record<BuildingStatus, { label: string; color: string }> = {
-  under_review: { label: "Critical", color: "bg-red-100 text-red-700" },
-  under_maintenance: { label: "Under Inspection", color: "bg-blue-100 text-blue-700" },
-  resolved: { label: "Resolved", color: "bg-green-100 text-green-700" },
+export const BUILDING_STATUSES: Record<BuildingStatus, { label: string }> = {
+  critical: { label: "Critical" },
+  under_maintenance: { label: "Under Maintenance" },
+  resolved: { label: "Resolved" },
 };
 
 // BuildingAtRisk now matches the same structure as issues table
