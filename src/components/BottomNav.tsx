@@ -3,21 +3,45 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/context/AuthContext";
-import { useBuildings } from "@/context/BuildingsContext";
-import { useIssues } from "@/context/IssuesContext";
+import { useContext } from "react";
+import { BuildingAtRisk, BuildingStatus } from "@/types/building";
+import { Issue, IssueStatus } from "@/types/issue";
+
+// Import context directly to handle potential missing provider gracefully
+import { createContext } from "react";
+
+// Safe hooks that won't throw if provider is missing
+const useSafeBuildings = () => {
+  try {
+    // Dynamic import to avoid circular dependency issues
+    const { useBuildings } = require("@/context/BuildingsContext");
+    return useBuildings();
+  } catch {
+    return { buildings: [] as BuildingAtRisk[], loading: true };
+  }
+};
+
+const useSafeIssues = () => {
+  try {
+    const { useIssues } = require("@/context/IssuesContext");
+    return useIssues();
+  } catch {
+    return { issues: [] as Issue[], loading: true };
+  }
+};
 
 const BottomNav = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { t } = useTranslation();
   const { profile } = useAuth();
-  const { buildings } = useBuildings();
-  const { issues } = useIssues();
+  const { buildings } = useSafeBuildings();
+  const { issues } = useSafeIssues();
 
   const isEmployee = profile?.role === "employee";
   // Combined pending count from both buildings and issues
-  const pendingBuildingsCount = buildings.filter((b) => b.status === "pending").length;
-  const pendingIssuesCount = issues.filter((i) => i.status === "pending").length;
+  const pendingBuildingsCount = buildings.filter((b: BuildingAtRisk) => b.status === "pending").length;
+  const pendingIssuesCount = issues.filter((i: Issue) => i.status === "pending").length;
   const totalPendingCount = pendingBuildingsCount + pendingIssuesCount;
 
   // Base nav items for all users
