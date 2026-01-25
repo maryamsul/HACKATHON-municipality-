@@ -9,5 +9,5 @@ verify_jwt = false
 [functions.verify-phone-otp]
 verify_jwt = false
 
-[functions.create-building-report]
+[functions.building-at-risk]
 verify_jwt = false
