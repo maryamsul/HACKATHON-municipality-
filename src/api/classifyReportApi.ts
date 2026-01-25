@@ -1,157 +1,96 @@
-// Classify Report API - Updates building or issue status via Edge Function
+// classify-report.ts (Supabase Edge Function + wrappers)
+import { serve } from "https://deno.land/std@0.193.0/http/server.ts";
 import { supabase } from "@/integrations/supabase/client";
 import { BuildingStatus } from "@/types/building";
 import { IssueStatus } from "@/types/issue";
 
-const SUPABASE_URL = "https://ypgoodjdxcnjysrsortp.supabase.co";
-const CLASSIFY_REPORT_URL = `${SUPABASE_URL}/functions/v1/classify-report`;
-
 export type ReportType = "building" | "issue";
-
-export interface ClassifyReportPayload {
-  type: ReportType;
-  id: string | number;
-  status: BuildingStatus | IssueStatus;
-  assigned_to?: string | null;
-}
 
 export interface ClassifyReportResponse {
   success: boolean;
   data?: unknown;
   error?: string;
-  details?: string;
-  requestId?: string;
 }
 
-/**
- * Update a building or issue status via Supabase Edge Function
- *
- * @param type "building" | "issue"
- * @param id row ID (UUID string for buildings, number for issues)
- * @param status must match DB enum:
- *               Buildings: pending, critical, under_maintenance, resolved
- *               Issues: pending, under_review, under_maintenance, resolved
- * @param assigned_to optional UUID of assigned user
- * @returns Promise with the API response
- * @throws Error if user is not authenticated or update fails
- */
+/** --- EDGE FUNCTION --- */
+serve(async (req) => {
+  try {
+    const body = (await req.json()) as {
+      type: ReportType;
+      id: string | number;
+      status: BuildingStatus | IssueStatus;
+      assigned_to?: string | null;
+    };
+
+    const { type, id, status, assigned_to = null } = body;
+
+    if (!type || !id || !status) {
+      return new Response(JSON.stringify({ success: false, error: "Missing required fields" }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    let updateResult;
+    if (type === "issue") {
+      updateResult = await supabase.from("issues").update({ status, assigned_to }).eq("id", Number(id));
+    } else if (type === "building") {
+      updateResult = await supabase.from("buildings_at_risk").update({ status, assigned_to }).eq("id", String(id));
+    } else {
+      return new Response(JSON.stringify({ success: false, error: "Invalid type" }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    if (updateResult.error) {
+      return new Response(JSON.stringify({ success: false, error: updateResult.error.message }), {
+        status: 500,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    return new Response(JSON.stringify({ success: true, data: updateResult.data }), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
+  } catch (error) {
+    console.error("[classify-report] Error:", error);
+    return new Response(
+      JSON.stringify({ success: false, error: error instanceof Error ? error.message : "Unknown error" }),
+      { status: 500, headers: { "Content-Type": "application/json" } },
+    );
+  }
+});
+
+/** --- WRAPPER FUNCTIONS --- */
 export async function updateReportStatus(
   type: ReportType,
   id: string | number,
   status: BuildingStatus | IssueStatus,
   assigned_to: string | null = null,
 ): Promise<ClassifyReportResponse> {
-  // Get current session for auth token
-  const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
-
-  if (sessionError || !sessionData.session) {
-    console.error("[classifyReportApi] No active session:", sessionError);
-    throw new Error("You must be logged in to update status");
-  }
-
-  const token = sessionData.session.access_token;
-
-  // Validate and normalize ID based on type
-  let normalizedId: string | number;
-  if (type === "building") {
-    // Buildings use UUID strings - ensure it's a string
-    normalizedId = String(id);
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    if (!uuidRegex.test(normalizedId)) {
-      console.error(`[classifyReportApi] Invalid building UUID: ${normalizedId}`);
-      throw new Error(`Invalid building ID: ${normalizedId}. Must be a UUID.`);
-    }
-  } else {
-    // Issues use numeric IDs - ensure it's a number
-    normalizedId = typeof id === "number" ? id : parseInt(String(id), 10);
-    if (isNaN(normalizedId) || normalizedId <= 0) {
-      console.error(`[classifyReportApi] Invalid issue ID: ${id}`);
-      throw new Error(`Invalid issue ID: ${id}. Must be a positive number.`);
-    }
-  }
-
-  // Validate status based on type
-  const validBuildingStatuses: BuildingStatus[] = ["pending", "critical", "under_maintenance", "resolved"];
-  const validIssueStatuses: IssueStatus[] = ["pending", "under_review", "under_maintenance", "resolved"];
-
-  if (type === "building" && !validBuildingStatuses.includes(status as BuildingStatus)) {
-    throw new Error(`Invalid building status: ${status}. Must be one of: ${validBuildingStatuses.join(", ")}`);
-  }
-
-  if (type === "issue" && !validIssueStatuses.includes(status as IssueStatus)) {
-    throw new Error(`Invalid issue status: ${status}. Must be one of: ${validIssueStatuses.join(", ")}`);
-  }
-
-  // Log payload before sending
-  console.log(`[classifyReportApi] === SENDING PAYLOAD ===`);
-  console.log(`[classifyReportApi] type: ${type}`);
-  console.log(`[classifyReportApi] id: ${normalizedId} (typeof: ${typeof normalizedId})`);
-  console.log(`[classifyReportApi] status: ${status}`);
-  console.log(`[classifyReportApi] assigned_to: ${assigned_to}`);
-
   try {
-    const payload = {
-      type,
-      id: normalizedId,
-      status,
-      assigned_to,
-    };
-
-    const res = await fetch(CLASSIFY_REPORT_URL, {
+    const res = await fetch(`${supabase.functionsUrl}/classify-report`, {
       method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(payload),
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ type, id, status, assigned_to }),
     });
-
     const result = await res.json();
-
-    if (!res.ok || !result.success) {
-      console.error("[classifyReportApi] Update failed:", result);
-      return {
-        success: false,
-        error: result.error || "Failed to update status",
-        details: result.details,
-        requestId: result.requestId,
-      };
-    }
-
-    console.log("[classifyReportApi] Update successful:", result);
-    return {
-      success: true,
-      data: result.data,
-      requestId: result.requestId,
-    };
+    return result as ClassifyReportResponse;
   } catch (error) {
-    console.error("[classifyReportApi] Network error:", error);
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : "Network error",
-      details: "Unable to reach the server. Please check your connection.",
-    };
+    return { success: false, error: error instanceof Error ? error.message : "Network error" };
   }
 }
 
-/**
- * Update building status - convenience wrapper
- */
 export async function updateBuildingStatus(
   buildingId: string,
   status: BuildingStatus,
   assigned_to: string | null = null,
-): Promise<ClassifyReportResponse> {
+) {
   return updateReportStatus("building", buildingId, status, assigned_to);
 }
 
-/**
- * Update issue status - convenience wrapper
- */
-export async function updateIssueStatus(
-  issueId: number,
-  status: IssueStatus,
-  assigned_to: string | null = null,
-): Promise<ClassifyReportResponse> {
+export async function updateIssueStatus(issueId: number, status: IssueStatus, assigned_to: string | null = null) {
   return updateReportStatus("issue", issueId, status, assigned_to);
 }
