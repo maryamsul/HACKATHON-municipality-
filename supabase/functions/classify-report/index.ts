@@ -125,11 +125,45 @@ serve(async (req: Request) => {
       });
     }
 
+    // Enhanced payload logging for debugging
+    console.log(`[${requestId}] === RECEIVED PAYLOAD ===`);
+    console.log(`[${requestId}] type: ${payload.type}`);
+    console.log(`[${requestId}] id: ${payload.id} (typeof: ${typeof payload.id})`);
+    console.log(`[${requestId}] status: ${payload.status}`);
+    console.log(`[${requestId}] assigned_to: ${payload.assigned_to}`);
+
     if (!payload?.type || (payload.id === undefined || payload.id === null) || !payload.status) {
+      console.error(`[${requestId}] Missing required fields - type: ${payload?.type}, id: ${payload?.id}, status: ${payload?.status}`);
       return new Response(
         JSON.stringify({ success: false, error: "Missing required fields", requestId, details: "type, id, status" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
+    }
+
+    // Validate ID types based on report type
+    if (payload.type === "building") {
+      // Buildings use UUID strings
+      const idStr = String(payload.id);
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      if (!uuidRegex.test(idStr)) {
+        console.error(`[${requestId}] Invalid building ID format: ${idStr}`);
+        return new Response(
+          JSON.stringify({ success: false, error: "Invalid building ID", requestId, details: `Building ID must be a UUID. Got: ${idStr}` }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
+      console.log(`[${requestId}] Building ID validated as UUID: ${idStr}`);
+    } else if (payload.type === "issue") {
+      // Issues use numeric IDs
+      const idNum = Number(payload.id);
+      if (isNaN(idNum) || idNum <= 0) {
+        console.error(`[${requestId}] Invalid issue ID: ${payload.id}`);
+        return new Response(
+          JSON.stringify({ success: false, error: "Invalid issue ID", requestId, details: `Issue ID must be a positive number. Got: ${payload.id}` }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
+      console.log(`[${requestId}] Issue ID validated as number: ${idNum}`);
     }
 
     // Handle building status update

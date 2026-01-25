@@ -88,6 +88,20 @@ const BuildingsAtRisk = () => {
       return;
     }
 
+    // Validate buildingId is a UUID string
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(buildingId)) {
+      console.error(`[BuildingsAtRisk] Invalid building UUID: ${buildingId}`);
+      toast({
+        title: t('common.error'),
+        description: "Invalid building ID format",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    console.log(`[BuildingsAtRisk] Updating building status - id: ${buildingId} (typeof: ${typeof buildingId}), newStatus: ${newStatus}`);
+
     try {
       const { data, error } = await supabase.functions.invoke("classify-report", {
         body: { type: "building", id: buildingId, status: newStatus },
@@ -101,7 +115,7 @@ const BuildingsAtRisk = () => {
         description: t('buildings.statusUpdated'),
       });
     } catch (error) {
-      console.error("Error updating building status:", error);
+      console.error("[BuildingsAtRisk] Error updating building status:", error);
       toast({
         title: t('common.error'),
         description: t('buildings.statusUpdateError'),
