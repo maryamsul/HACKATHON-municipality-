@@ -258,14 +258,14 @@ const Header = ({ onFilter, showSearch = true }: HeaderProps) => {
                           </div>
                           <span
                             className={`text-xs px-2 py-1 rounded-full flex-shrink-0 ${
-                              issue.status === "under_review"
+                              issue.status === "Under Review"
                                 ? "bg-orange-100 text-orange-700"
-                                : issue.status === "under_maintenance"
+                                : issue.status === "Under Maintenance"
                                 ? "bg-blue-100 text-blue-700"
                                 : "bg-green-100 text-green-700"
                             }`}
                           >
-                            {t(`dashboard.${issue.status === 'under_review' ? 'underReview' : issue.status === 'under_maintenance' ? 'underMaintenance' : 'resolved'}`)}
+                            {t(`dashboard.${issue.status === 'Under Review' ? 'underReview' : issue.status === 'Under Maintenance' ? 'underMaintenance' : 'resolved'}`)}
                           </span>
                         </button>
                       ))}

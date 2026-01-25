@@ -10,19 +10,15 @@ interface IssuesContextType {
 
 const IssuesContext = createContext<IssuesContextType | undefined>(undefined);
 
-// Normalize legacy status values to current enum values
-// "pending" is now a first-class status for new reports awaiting review
+// Database has exact statuses: Under Review | Under Maintenance | Resolved
+// No normalization needed - values are stored as-is
 const normalizeStatus = (status: string): IssueStatus => {
-  const statusMap: Record<string, IssueStatus> = {
-    "pending": "pending",
-    "reported": "pending",
-    "in-progress": "under_maintenance",
-    "in_progress": "under_maintenance",
-    "under_review": "under_review",
-    "under_maintenance": "under_maintenance",
-    "resolved": "resolved",
-  };
-  return statusMap[status] || "pending";
+  // Only accept exact DB values
+  if (status === "Under Review" || status === "Under Maintenance" || status === "Resolved") {
+    return status;
+  }
+  // Fallback for any unexpected legacy data
+  return "Under Review";
 };
 
 export const IssuesProvider = ({ children }: { children: ReactNode }) => {

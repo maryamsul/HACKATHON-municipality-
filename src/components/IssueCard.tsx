@@ -35,20 +35,20 @@ const IssueCard = ({ issue, index = 0 }: IssueCardProps) => {
     return `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
   };
 
-  const getStatusLabel = (status: string) => {
+  const getStatusLabel = (status: IssueStatus) => {
     switch (status) {
-      case 'under_review':
+      case 'Under Review':
         return t('status.underReview');
-      case 'under_maintenance':
+      case 'Under Maintenance':
         return t('status.underMaintenance');
-      case 'resolved':
+      case 'Resolved':
         return t('status.resolved');
       default:
         return status;
     }
   };
 
-  const currentStatus = ISSUE_STATUSES[issue.status as IssueStatus] || ISSUE_STATUSES.under_review;
+  const currentStatus = ISSUE_STATUSES[issue.status] || ISSUE_STATUSES["Under Review"];
 
   const handleStatusChange = async (newStatus: string) => {
     try {
@@ -61,7 +61,7 @@ const IssueCard = ({ issue, index = 0 }: IssueCardProps) => {
       await refetchIssues();
       toast({ 
         title: t('issueDetails.statusUpdated'), 
-        description: `${t('issueDetails.issueMarkedAs')} ${getStatusLabel(newStatus)}` 
+        description: `${t('issueDetails.issueMarkedAs')} ${getStatusLabel(newStatus as IssueStatus)}` 
       });
     } catch (error) {
       toast({ title: t('common.error'), description: t('issueDetails.failedToUpdateStatus'), variant: "destructive" });
@@ -108,9 +108,9 @@ const IssueCard = ({ issue, index = 0 }: IssueCardProps) => {
                   <SelectValue placeholder={t('status.statusPlaceholder')} />
                 </SelectTrigger>
                 <SelectContent className="bg-popover border border-border shadow-lg z-50">
-                  <SelectItem value="under_review">{t('status.underReview')}</SelectItem>
-                  <SelectItem value="under_maintenance">{t('status.underMaintenance')}</SelectItem>
-                  <SelectItem value="resolved">{t('status.resolved')}</SelectItem>
+                  <SelectItem value="Under Review">{t('status.underReview')}</SelectItem>
+                  <SelectItem value="Under Maintenance">{t('status.underMaintenance')}</SelectItem>
+                  <SelectItem value="Resolved">{t('status.resolved')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>

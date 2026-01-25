@@ -3,17 +3,12 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/context/AuthContext";
-import { useContext } from "react";
-import { BuildingAtRisk, BuildingStatus } from "@/types/building";
-import { Issue, IssueStatus } from "@/types/issue";
-
-// Import context directly to handle potential missing provider gracefully
-import { createContext } from "react";
+import { BuildingAtRisk } from "@/types/building";
+import { Issue } from "@/types/issue";
 
 // Safe hooks that won't throw if provider is missing
 const useSafeBuildings = () => {
   try {
-    // Dynamic import to avoid circular dependency issues
     const { useBuildings } = require("@/context/BuildingsContext");
     return useBuildings();
   } catch {
@@ -39,9 +34,11 @@ const BottomNav = () => {
   const { issues } = useSafeIssues();
 
   const isEmployee = profile?.role === "employee";
-  // Combined pending count from both buildings and issues
+  // Combined pending count - buildings use "pending", issues don't have pending status
+  // For buildings: count "pending" status
   const pendingBuildingsCount = buildings.filter((b: BuildingAtRisk) => b.status === "pending").length;
-  const pendingIssuesCount = issues.filter((i: Issue) => i.status === "pending").length;
+  // Issues don't have a "pending" status in the new schema, so we count "Under Review" for alerts
+  const pendingIssuesCount = issues.filter((i: Issue) => i.status === "Under Review").length;
   const totalPendingCount = pendingBuildingsCount + pendingIssuesCount;
 
   // Base nav items for all users
