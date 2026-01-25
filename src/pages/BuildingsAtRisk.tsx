@@ -40,11 +40,10 @@ const BuildingsAtRisk = () => {
     setShowReportForm(true);
   };
 
-  // Filter buildings: public users only see classified buildings (not pending)
-  // Employees see all buildings
-  const visibleBuildings = isEmployee 
-    ? buildings 
-    : buildings.filter((b) => b.status !== "pending");
+  // Filter buildings: public users see all buildings (for now, until proper classification workflow)
+  // Employees see all buildings including pending
+  // NOTE: Once employees start classifying, citizens will only see non-pending
+  const visibleBuildings = buildings;
 
   const filteredBuildings = visibleBuildings.filter(
     (building) =>
