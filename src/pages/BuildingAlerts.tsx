@@ -30,19 +30,14 @@ import BottomNav from "@/components/BottomNav";
 import { useBuildings } from "@/context/BuildingsContext";
 import { useIssues } from "@/context/IssuesContext";
 import { useAuth } from "@/context/AuthContext";
-import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
-import { BuildingStatus } from "@/types/building";
-import { IssueStatus } from "@/types/issue";
 
 const BuildingAlerts = () => {
   const navigate = useNavigate();
   const { t, i18n } = useTranslation();
   const isRTL = i18n.language === "ar";
-  const { buildings, loading: buildingsLoading, refetchBuildings } = useBuildings();
-  const { issues, loading: issuesLoading, refetchIssues } = useIssues();
+  const { buildings, loading: buildingsLoading } = useBuildings();
+  const { issues, loading: issuesLoading } = useIssues();
   const { profile, isAuthenticated } = useAuth();
-  const { toast } = useToast();
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [activeTab, setActiveTab] = useState<string>("all");
 
@@ -71,54 +66,6 @@ const BuildingAlerts = () => {
   const pendingBuildings = buildings.filter((b) => b.status === "pending");
   const pendingIssues = issues.filter((i) => i.status === "pending");
   const totalPending = pendingBuildings.length + pendingIssues.length;
-
-  // Classify building
-  const handleClassifyBuilding = async (buildingId: string, newStatus: BuildingStatus) => {
-    try {
-      const { data, error } = await supabase.functions.invoke("classify-report", {
-        body: { type: "building", id: buildingId, status: newStatus },
-      });
-
-      if (error || !data?.success) throw error || new Error(data?.error || "Update failed");
-
-      await refetchBuildings();
-      toast({
-        title: t("common.success"),
-        description: t("alerts.classified", "Report has been classified successfully"),
-      });
-    } catch (error) {
-      console.error("Error classifying building:", error);
-      toast({
-        title: t("common.error"),
-        description: t("alerts.classifyError", "Failed to classify report"),
-        variant: "destructive",
-      });
-    }
-  };
-
-  // Classify issue
-  const handleClassifyIssue = async (issueId: number, newStatus: IssueStatus) => {
-    try {
-      const { data, error } = await supabase.functions.invoke("classify-report", {
-        body: { type: "issue", id: issueId, status: newStatus },
-      });
-
-      if (error || !data?.success) throw error || new Error(data?.error || "Update failed");
-
-      await refetchIssues();
-      toast({
-        title: t("common.success"),
-        description: t("alerts.classified", "Report has been classified successfully"),
-      });
-    } catch (error) {
-      console.error("Error classifying issue:", error);
-      toast({
-        title: t("common.error"),
-        description: t("alerts.classifyError", "Failed to classify report"),
-        variant: "destructive",
-      });
-    }
-  };
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -171,7 +118,7 @@ const BuildingAlerts = () => {
     }
   };
 
-  // Render building card
+  // Render building card (view only - no status update)
   const renderBuildingCard = (building: typeof buildings[0], isPending: boolean) => {
     const StatusIcon = getStatusIcon(building.status);
     return (
@@ -184,7 +131,8 @@ const BuildingAlerts = () => {
           isPending
             ? "bg-amber-50 dark:bg-amber-900/20 border-2 border-amber-200 dark:border-amber-800"
             : "bg-card border border-border"
-        } rounded-xl p-4 shadow-sm`}
+        } rounded-xl p-4 shadow-sm cursor-pointer hover:shadow-md transition-shadow`}
+        onClick={() => navigate("/buildings-at-risk")}
       >
         <div className="flex items-start gap-3">
           {building.thumbnail ? (
@@ -234,7 +182,7 @@ const BuildingAlerts = () => {
               {building.description}
             </p>
 
-            <div className="flex items-center gap-1 text-xs text-muted-foreground mb-3">
+            <div className="flex items-center gap-1 text-xs text-muted-foreground">
               <Calendar className="w-3 h-3" />
               <span>
                 {new Date(building.created_at).toLocaleDateString(
@@ -243,55 +191,13 @@ const BuildingAlerts = () => {
                 )}
               </span>
             </div>
-
-            {/* Classification Buttons */}
-            <div className="flex flex-wrap gap-2">
-              <Button
-                size="sm"
-                variant={building.status === "critical" ? "default" : "destructive"}
-                onClick={() => handleClassifyBuilding(building.id, "critical")}
-                className="flex items-center gap-1"
-                disabled={building.status === "critical"}
-              >
-                <AlertTriangle className="w-3.5 h-3.5" />
-                {t("buildings.statusCritical", "Critical")}
-              </Button>
-              <Button
-                size="sm"
-                variant="secondary"
-                onClick={() => handleClassifyBuilding(building.id, "under_maintenance")}
-                className={`flex items-center gap-1 ${
-                  building.status === "under_maintenance" 
-                    ? "bg-amber-500 text-white" 
-                    : "bg-amber-100 text-amber-700 hover:bg-amber-200 dark:bg-amber-900/50 dark:text-amber-300"
-                }`}
-                disabled={building.status === "under_maintenance"}
-              >
-                <Wrench className="w-3.5 h-3.5" />
-                {t("buildings.statusInspection", "Maintenance")}
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => handleClassifyBuilding(building.id, "resolved")}
-                className={`flex items-center gap-1 ${
-                  building.status === "resolved"
-                    ? "bg-green-500 text-white border-green-500"
-                    : "border-green-300 text-green-700 hover:bg-green-50 dark:border-green-700 dark:text-green-400"
-                }`}
-                disabled={building.status === "resolved"}
-              >
-                <CheckCircle2 className="w-3.5 h-3.5" />
-                {t("buildings.statusResolved", "Resolved")}
-              </Button>
-            </div>
           </div>
         </div>
       </motion.div>
     );
   };
 
-  // Render issue card
+  // Render issue card (view only - no status update)
   const renderIssueCard = (issue: typeof issues[0], isPending: boolean) => {
     const StatusIcon = getStatusIcon(issue.status);
     return (
@@ -304,7 +210,8 @@ const BuildingAlerts = () => {
           isPending
             ? "bg-orange-50 dark:bg-orange-900/20 border-2 border-orange-200 dark:border-orange-800"
             : "bg-card border border-border"
-        } rounded-xl p-4 shadow-sm`}
+        } rounded-xl p-4 shadow-sm cursor-pointer hover:shadow-md transition-shadow`}
+        onClick={() => navigate(`/issue/${issue.id}`)}
       >
         <div className="flex items-start gap-3">
           {issue.thumbnail ? (
@@ -354,7 +261,7 @@ const BuildingAlerts = () => {
               {issue.description}
             </p>
 
-            <div className="flex items-center gap-1 text-xs text-muted-foreground mb-3">
+            <div className="flex items-center gap-1 text-xs text-muted-foreground">
               <Calendar className="w-3 h-3" />
               <span>
                 {new Date(issue.created_at).toLocaleDateString(
@@ -362,52 +269,6 @@ const BuildingAlerts = () => {
                   { year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }
                 )}
               </span>
-            </div>
-
-            {/* Classification Buttons for Issues */}
-            <div className="flex flex-wrap gap-2">
-              <Button
-                size="sm"
-                variant="secondary"
-                onClick={() => handleClassifyIssue(issue.id, "under_review")}
-                className={`flex items-center gap-1 ${
-                  issue.status === "under_review"
-                    ? "bg-orange-500 text-white"
-                    : "bg-orange-100 text-orange-700 hover:bg-orange-200 dark:bg-orange-900/50 dark:text-orange-300"
-                }`}
-                disabled={issue.status === "under_review"}
-              >
-                <Eye className="w-3.5 h-3.5" />
-                {t("issues.underReview", "Under Review")}
-              </Button>
-              <Button
-                size="sm"
-                variant="secondary"
-                onClick={() => handleClassifyIssue(issue.id, "under_maintenance")}
-                className={`flex items-center gap-1 ${
-                  issue.status === "under_maintenance"
-                    ? "bg-amber-500 text-white"
-                    : "bg-amber-100 text-amber-700 hover:bg-amber-200 dark:bg-amber-900/50 dark:text-amber-300"
-                }`}
-                disabled={issue.status === "under_maintenance"}
-              >
-                <Wrench className="w-3.5 h-3.5" />
-                {t("buildings.statusInspection", "Maintenance")}
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => handleClassifyIssue(issue.id, "resolved")}
-                className={`flex items-center gap-1 ${
-                  issue.status === "resolved"
-                    ? "bg-green-500 text-white border-green-500"
-                    : "border-green-300 text-green-700 hover:bg-green-50 dark:border-green-700 dark:text-green-400"
-                }`}
-                disabled={issue.status === "resolved"}
-              >
-                <CheckCircle2 className="w-3.5 h-3.5" />
-                {t("buildings.statusResolved", "Resolved")}
-              </Button>
             </div>
           </div>
         </div>
@@ -448,6 +309,13 @@ const BuildingAlerts = () => {
           </div>
         </div>
 
+        {/* Info banner */}
+        <div className="bg-white/10 rounded-lg p-3 mb-4">
+          <p className="text-sm text-white/90">
+            {t("alerts.viewOnlyInfo", "View pending reports here. To update status, go to the respective Buildings or Issues page.")}
+          </p>
+        </div>
+
         {/* Filter */}
         <div className="flex items-center gap-2">
           <Filter className="w-4 h-4" />
@@ -455,7 +323,7 @@ const BuildingAlerts = () => {
             <SelectTrigger className="flex-1 bg-white/10 border-white/20 text-white">
               <SelectValue placeholder={t("alerts.filterBy", "Filter by status")} />
             </SelectTrigger>
-            <SelectContent className="bg-popover z-50">
+            <SelectContent className="bg-popover z-50 border-border">
               <SelectItem value="all">{t("filters.all", "All")}</SelectItem>
               <SelectItem value="pending">{t("buildings.statusReported", "Pending")}</SelectItem>
               <SelectItem value="critical">{t("buildings.statusCritical", "Critical")}</SelectItem>
@@ -467,121 +335,103 @@ const BuildingAlerts = () => {
         </div>
       </header>
 
-      {/* Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <div className="sticky top-[140px] bg-background z-[5] px-4 pt-4 pb-2 border-b">
-          <TabsList className="w-full grid grid-cols-3">
-            <TabsTrigger value="all" className="flex items-center gap-1">
-              <Bell className="w-4 h-4" />
+      {/* Content */}
+      <main className="p-4">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="w-full mb-4 bg-muted">
+            <TabsTrigger value="all" className="flex-1">
               {t("filters.all", "All")}
-              {totalPending > 0 && (
-                <Badge variant="destructive" className="ml-1 h-5 w-5 p-0 text-xs flex items-center justify-center">
-                  {totalPending}
-                </Badge>
-              )}
             </TabsTrigger>
-            <TabsTrigger value="buildings" className="flex items-center gap-1">
-              <Building2 className="w-4 h-4" />
+            <TabsTrigger value="buildings" className="flex-1">
+              <Building2 className="w-4 h-4 mr-1" />
               {t("alerts.buildings", "Buildings")}
-              {pendingBuildings.length > 0 && (
-                <Badge variant="secondary" className="ml-1 h-5 w-5 p-0 text-xs flex items-center justify-center bg-destructive text-white">
-                  {pendingBuildings.length}
-                </Badge>
-              )}
             </TabsTrigger>
-            <TabsTrigger value="issues" className="flex items-center gap-1">
-              <FileWarning className="w-4 h-4" />
+            <TabsTrigger value="issues" className="flex-1">
+              <FileWarning className="w-4 h-4 mr-1" />
               {t("alerts.issues", "Issues")}
-              {pendingIssues.length > 0 && (
-                <Badge variant="secondary" className="ml-1 h-5 w-5 p-0 text-xs flex items-center justify-center bg-orange-500 text-white">
-                  {pendingIssues.length}
-                </Badge>
-              )}
             </TabsTrigger>
           </TabsList>
-        </div>
 
-        {loading ? (
-          <div className="text-center py-12 text-muted-foreground">
-            {t("common.loading", "Loading...")}
-          </div>
-        ) : (
-          <>
-            {/* All Tab */}
-            <TabsContent value="all" className="p-4 space-y-4 mt-0">
-              {/* Pending Section */}
-              {totalPending > 0 && filterStatus !== "resolved" && filterStatus !== "critical" && filterStatus !== "under_maintenance" && filterStatus !== "under_review" && (
-                <section>
-                  <h2 className="text-lg font-semibold mb-3 flex items-center gap-2 text-amber-600 dark:text-amber-400">
-                    <Clock className="w-5 h-5" />
-                    {t("alerts.awaitingClassification", "Awaiting Classification")} ({totalPending})
-                  </h2>
-                  <div className="space-y-3">
-                    <AnimatePresence>
-                      {pendingBuildings.map((building) => renderBuildingCard(building, true))}
-                      {pendingIssues.map((issue) => renderIssueCard(issue, true))}
-                    </AnimatePresence>
+          <TabsContent value="all" className="space-y-4">
+            {loading ? (
+              <p className="text-center text-muted-foreground py-8">{t("common.loading")}</p>
+            ) : (
+              <AnimatePresence mode="popLayout">
+                {/* Pending items first */}
+                {pendingBuildings.length > 0 && filterStatus === "all" && (
+                  <div className="mb-4">
+                    <h3 className="text-sm font-medium text-muted-foreground mb-2 flex items-center gap-2">
+                      <Clock className="w-4 h-4" />
+                      {t("alerts.pendingBuildings", "Pending Buildings")} ({pendingBuildings.length})
+                    </h3>
+                    <div className="space-y-3">
+                      {pendingBuildings.map((b) => renderBuildingCard(b, true))}
+                    </div>
                   </div>
-                </section>
-              )}
+                )}
 
-              {/* Classified Section */}
-              {(getFilteredBuildings().filter(b => b.status !== "pending").length > 0 || 
-                getFilteredIssues().filter(i => i.status !== "pending").length > 0) && (
-                <section>
-                  <h2 className="text-lg font-semibold mb-3 flex items-center gap-2">
-                    <CheckCircle2 className="w-5 h-5" />
-                    {t("alerts.classifiedReports", "Classified Reports")}
-                  </h2>
-                  <div className="space-y-3">
-                    {getFilteredBuildings().filter(b => b.status !== "pending").map((building) => renderBuildingCard(building, false))}
-                    {getFilteredIssues().filter(i => i.status !== "pending").map((issue) => renderIssueCard(issue, false))}
+                {pendingIssues.length > 0 && filterStatus === "all" && (
+                  <div className="mb-4">
+                    <h3 className="text-sm font-medium text-muted-foreground mb-2 flex items-center gap-2">
+                      <Clock className="w-4 h-4" />
+                      {t("alerts.pendingIssues", "Pending Issues")} ({pendingIssues.length})
+                    </h3>
+                    <div className="space-y-3">
+                      {pendingIssues.map((i) => renderIssueCard(i, true))}
+                    </div>
                   </div>
-                </section>
-              )}
+                )}
 
-              {getFilteredBuildings().length === 0 && getFilteredIssues().length === 0 && (
-                <div className="text-center py-12 text-muted-foreground">
-                  <Bell className="w-12 h-12 mx-auto mb-4 text-muted-foreground/50" />
-                  <p>{t("alerts.noAlerts", "No reports found")}</p>
-                </div>
-              )}
-            </TabsContent>
+                {/* All filtered items */}
+                {filterStatus !== "all" && (
+                  <div className="space-y-3">
+                    {getFilteredBuildings().map((b) => renderBuildingCard(b, b.status === "pending"))}
+                    {getFilteredIssues().map((i) => renderIssueCard(i, i.status === "pending"))}
+                  </div>
+                )}
 
-            {/* Buildings Tab */}
-            <TabsContent value="buildings" className="p-4 space-y-3 mt-0">
-              {getFilteredBuildings().length > 0 ? (
-                <AnimatePresence>
-                  {getFilteredBuildings().map((building) => 
-                    renderBuildingCard(building, building.status === "pending")
-                  )}
-                </AnimatePresence>
-              ) : (
-                <div className="text-center py-12 text-muted-foreground">
-                  <Building2 className="w-12 h-12 mx-auto mb-4 text-muted-foreground/50" />
-                  <p>{t("alerts.noBuildings", "No building reports found")}</p>
-                </div>
-              )}
-            </TabsContent>
+                {filterStatus === "all" && pendingBuildings.length === 0 && pendingIssues.length === 0 && (
+                  <div className="text-center py-12">
+                    <CheckCircle2 className="w-16 h-16 mx-auto mb-4 text-green-500" />
+                    <p className="text-lg font-medium">{t("alerts.allClear", "All Clear!")}</p>
+                    <p className="text-muted-foreground">{t("alerts.noPending", "No pending reports to review")}</p>
+                  </div>
+                )}
+              </AnimatePresence>
+            )}
+          </TabsContent>
 
-            {/* Issues Tab */}
-            <TabsContent value="issues" className="p-4 space-y-3 mt-0">
-              {getFilteredIssues().length > 0 ? (
-                <AnimatePresence>
-                  {getFilteredIssues().map((issue) => 
-                    renderIssueCard(issue, issue.status === "pending")
-                  )}
-                </AnimatePresence>
-              ) : (
-                <div className="text-center py-12 text-muted-foreground">
-                  <FileWarning className="w-12 h-12 mx-auto mb-4 text-muted-foreground/50" />
-                  <p>{t("alerts.noIssues", "No issue reports found")}</p>
-                </div>
-              )}
-            </TabsContent>
-          </>
-        )}
-      </Tabs>
+          <TabsContent value="buildings" className="space-y-3">
+            {loading ? (
+              <p className="text-center text-muted-foreground py-8">{t("common.loading")}</p>
+            ) : getFilteredBuildings().length > 0 ? (
+              <AnimatePresence mode="popLayout">
+                {getFilteredBuildings().map((b) => renderBuildingCard(b, b.status === "pending"))}
+              </AnimatePresence>
+            ) : (
+              <div className="text-center py-12 text-muted-foreground">
+                <Building2 className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                <p>{t("alerts.noBuildingReports", "No building reports")}</p>
+              </div>
+            )}
+          </TabsContent>
+
+          <TabsContent value="issues" className="space-y-3">
+            {loading ? (
+              <p className="text-center text-muted-foreground py-8">{t("common.loading")}</p>
+            ) : getFilteredIssues().length > 0 ? (
+              <AnimatePresence mode="popLayout">
+                {getFilteredIssues().map((i) => renderIssueCard(i, i.status === "pending"))}
+              </AnimatePresence>
+            ) : (
+              <div className="text-center py-12 text-muted-foreground">
+                <FileWarning className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                <p>{t("alerts.noIssueReports", "No issue reports")}</p>
+              </div>
+            )}
+          </TabsContent>
+        </Tabs>
+      </main>
 
       <BottomNav />
     </div>
