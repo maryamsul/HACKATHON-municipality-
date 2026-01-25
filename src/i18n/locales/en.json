@@ -259,6 +259,18 @@
     "emptyDesc": "You'll see updates about your reported issues here",
     "markAllRead": "Mark all as read"
   },
+  "alerts": {
+    "title": "Building Alerts",
+    "pendingReports": "pending reports",
+    "awaitingClassification": "Awaiting Classification",
+    "classifiedBuildings": "Classified Buildings",
+    "filterBy": "Filter by status",
+    "classified": "Building has been classified successfully",
+    "classifyError": "Failed to classify building",
+    "noAlerts": "No building alerts",
+    "employeeOnly": "Employee Access Only",
+    "employeeOnlyDesc": "This page is restricted to municipality employees."
+  },
   "settings": {
     "title": "Settings",
     "language": "Language",

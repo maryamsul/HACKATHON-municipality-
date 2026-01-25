@@ -21,6 +21,7 @@ import Auth from "./pages/Auth";
 import AuthCallback from "./pages/AuthCallback";
 import Donors from "./pages/Donors";
 import BuildingsAtRisk from "./pages/BuildingsAtRisk";
+import BuildingAlerts from "./pages/BuildingAlerts";
 
 const queryClient = new QueryClient();
 
@@ -47,6 +48,7 @@ const App = () => {
                       <Route path="/settings" element={<Settings />} />
                       <Route path="/donors" element={<Donors />} />
                       <Route path="/buildings-at-risk" element={<BuildingsAtRisk />} />
+                      <Route path="/building-alerts" element={<BuildingAlerts />} />
                       <Route path="/category/:category" element={<CategoryIssues />} />
                       <Route path="/issue/:id" element={<IssueDetails />} />
                       {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

@@ -1,15 +1,16 @@
-// Building at risk status enum values (must match the Buildings-at-Risk UI requirements)
-// NOTE: The database may still contain legacy values (e.g. pending/under_review/etc.).
-// Those are normalized in BuildingsContext.
-export type BuildingStatus = "critical" | "under_maintenance" | "resolved";
+// Building at risk status enum values
+// "pending" = new report awaiting employee classification
+// "critical", "under_maintenance", "resolved" = employee-classified statuses
+export type BuildingStatus = "pending" | "critical" | "under_maintenance" | "resolved";
 
 export const BUILDING_STATUSES: Record<BuildingStatus, { label: string }> = {
+  pending: { label: "Pending" },
   critical: { label: "Critical" },
   under_maintenance: { label: "Under Maintenance" },
   resolved: { label: "Resolved" },
 };
 
-// BuildingAtRisk now matches the same structure as issues table
+// BuildingAtRisk matches the buildings_at_risk table structure
 export interface BuildingAtRisk {
   id: string;
   title: string;
