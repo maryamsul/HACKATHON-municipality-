@@ -75,12 +75,11 @@ const BuildingAlerts = () => {
   // Classify building
   const handleClassifyBuilding = async (buildingId: string, newStatus: BuildingStatus) => {
     try {
-      const { error } = await supabase
-        .from("buildings_at_risk")
-        .update({ status: newStatus })
-        .eq("id", buildingId);
+      const { data, error } = await supabase.functions.invoke("classify-report", {
+        body: { type: "building", id: buildingId, status: newStatus },
+      });
 
-      if (error) throw error;
+      if (error || !data?.success) throw error || new Error(data?.error || "Update failed");
 
       await refetchBuildings();
       toast({
@@ -100,12 +99,11 @@ const BuildingAlerts = () => {
   // Classify issue
   const handleClassifyIssue = async (issueId: number, newStatus: IssueStatus) => {
     try {
-      const { error } = await supabase
-        .from("issues")
-        .update({ status: newStatus })
-        .eq("id", issueId);
+      const { data, error } = await supabase.functions.invoke("classify-report", {
+        body: { type: "issue", id: issueId, status: newStatus },
+      });
 
-      if (error) throw error;
+      if (error || !data?.success) throw error || new Error(data?.error || "Update failed");
 
       await refetchIssues();
       toast({

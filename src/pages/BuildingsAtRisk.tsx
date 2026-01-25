@@ -40,10 +40,9 @@ const BuildingsAtRisk = () => {
     setShowReportForm(true);
   };
 
-  // Filter buildings: public users see all buildings (for now, until proper classification workflow)
+  // Public users only see classified buildings (exclude pending)
   // Employees see all buildings including pending
-  // NOTE: Once employees start classifying, citizens will only see non-pending
-  const visibleBuildings = buildings;
+  const visibleBuildings = isEmployee ? buildings : buildings.filter((b) => b.status !== "pending");
 
   const filteredBuildings = visibleBuildings.filter(
     (building) =>
@@ -77,12 +76,11 @@ const BuildingsAtRisk = () => {
     }
 
     try {
-      const { error } = await supabase
-        .from("buildings_at_risk")
-        .update({ status: newStatus })
-        .eq("id", buildingId);
+      const { data, error } = await supabase.functions.invoke("classify-report", {
+        body: { type: "building", id: buildingId, status: newStatus },
+      });
 
-      if (error) throw error;
+      if (error || !data?.success) throw error || new Error(data?.error || "Update failed");
 
       await refetchBuildings();
       toast({

@@ -1,13 +1,17 @@
-import { ArrowLeft, Bell, CheckCircle2, Clock, Wrench } from "lucide-react";
+import { ArrowLeft, Bell, CheckCircle2, Clock, Wrench, AlertTriangle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { motion, AnimatePresence } from "framer-motion";
 import BottomNav from "@/components/BottomNav";
 import { useIssues } from "@/context/IssuesContext";
+import { useBuildings } from "@/context/BuildingsContext";
+import { useAuth } from "@/context/AuthContext";
 
 const Notifications = () => {
   const navigate = useNavigate();
   const { issues } = useIssues();
+  const { buildings } = useBuildings();
+  const { user } = useAuth();
   const { t, i18n } = useTranslation();
   const isRTL = i18n.language === 'ar';
 
@@ -15,9 +19,19 @@ const Notifications = () => {
     return `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
   };
 
-  // Generate notifications based on recent issues
-  const notifications = issues.slice(0, 5).map((issue, index) => ({
-    id: index,
+  const issueItems = (user ? issues.filter((i) => i.reported_by === user.id) : []).filter((i) => i.status !== "pending");
+  const buildingItems = (user ? buildings.filter((b) => b.reported_by === user.id) : []).filter((b) => b.status !== "pending");
+
+  const getItemTime = (item: any) => {
+    const ts = item.updated_at || item.created_at;
+    return new Date(ts).getTime();
+  };
+
+  // Generate notifications based on the current user's reports (issues + buildings)
+  const notifications = [...issueItems.map((issue) => ({
+    kind: "issue" as const,
+    key: `issue-${issue.id}`,
+    status: issue.status,
     title:
       issue.status === "resolved"
         ? `${t('dashboard.resolved')}: ${t(`categories.${issue.category.toLowerCase().replace(' ', '')}` as any) || issue.category}`
@@ -31,9 +45,28 @@ const Notifications = () => {
         ? `${t('issueDetails.location')}: ${formatLocation(issue.latitude, issue.longitude)} - ${t('dashboard.underMaintenance')}`
         : `${t('issueDetails.location')}: ${formatLocation(issue.latitude, issue.longitude)} - ${t('dashboard.underReview')}`,
     time: new Date(issue.created_at).toLocaleDateString(i18n.language === 'ar' ? 'ar-LB' : i18n.language === 'fr' ? 'fr-FR' : 'en-US'),
-    status: issue.status,
-    issueId: issue.id,
-  }));
+    navigateTo: `/issue/${issue.id}`,
+    sortTime: getItemTime(issue),
+  })),
+  ...buildingItems.map((building) => ({
+    kind: "building" as const,
+    key: `building-${building.id}`,
+    status: building.status,
+    title:
+      building.status === "resolved"
+        ? `${t('buildings.statusResolved')}: ${building.building_name || building.title}`
+        : building.status === "under_maintenance"
+        ? `${t('buildings.statusInspection')}: ${building.building_name || building.title}`
+        : `${t('buildings.statusCritical')}: ${building.building_name || building.title}`,
+    message:
+      `${t('buildings.title')}: ${building.building_name || building.title}`,
+    time: new Date((building as any).updated_at || building.created_at).toLocaleDateString(i18n.language === 'ar' ? 'ar-LB' : i18n.language === 'fr' ? 'fr-FR' : 'en-US'),
+    navigateTo: `/buildings-at-risk`,
+    sortTime: getItemTime(building),
+  }))]
+    .sort((a, b) => b.sortTime - a.sortTime)
+    .slice(0, 10)
+    .map((n, idx) => ({ ...n, id: idx }));
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -41,6 +74,8 @@ const Notifications = () => {
         return <CheckCircle2 className="w-5 h-5 text-green-500" />;
       case "under_maintenance":
         return <Wrench className="w-5 h-5 text-blue-500" />;
+      case "critical":
+        return <AlertTriangle className="w-5 h-5 text-red-500" />;
       default:
         return <Clock className="w-5 h-5 text-orange-500" />;
     }
@@ -92,7 +127,7 @@ const Notifications = () => {
             notifications.map((notification, index) => (
               <motion.button
                 key={notification.id}
-                onClick={() => navigate(`/issue/${notification.issueId}`)}
+                onClick={() => navigate(notification.navigateTo)}
                 className={`w-full bg-card rounded-xl p-4 shadow-sm ${isRTL ? 'text-right' : 'text-left'} hover:shadow-md transition-shadow`}
                 initial={{ opacity: 0, x: isRTL ? -50 : 50 }}
                 animate={{ opacity: 1, x: 0 }}

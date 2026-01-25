@@ -20,7 +20,10 @@ const AllIssues = () => {
   const categoryFilter = searchParams.get("category") || "all";
   const sortBy = searchParams.get("sort") || "newest";
 
-  const filteredIssues = issues
+  // Public users should not see pending issues (awaiting employee review)
+  const visibleIssues = isEmployee ? issues : issues.filter((i) => i.status !== "pending");
+
+  const filteredIssues = visibleIssues
     .filter((issue) => {
       const matchesStatus = statusFilter === "all" || issue.status === statusFilter;
       const matchesCategory = categoryFilter === "all" || issue.category === categoryFilter;
@@ -48,9 +51,9 @@ const AllIssues = () => {
 
   // Count issues by status
   const statusCounts = {
-    under_review: issues.filter(i => i.status === "under_review").length,
-    under_maintenance: issues.filter(i => i.status === "under_maintenance").length,
-    resolved: issues.filter(i => i.status === "resolved").length,
+    under_review: visibleIssues.filter(i => i.status === "under_review").length,
+    under_maintenance: visibleIssues.filter(i => i.status === "under_maintenance").length,
+    resolved: visibleIssues.filter(i => i.status === "resolved").length,
   };
 
   return (
@@ -77,7 +80,7 @@ const AllIssues = () => {
             {/* Status summary for employees */}
             {isEmployee && (
               <div className="grid grid-cols-3 gap-2 mb-4">
-                {(Object.keys(ISSUE_STATUSES) as IssueStatus[]).map((status) => (
+                {(["under_review", "under_maintenance", "resolved"] as IssueStatus[]).map((status) => (
                   <div 
                     key={status}
                     className={`p-3 rounded-lg text-center ${ISSUE_STATUSES[status].color}`}
