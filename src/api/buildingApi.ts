@@ -1,6 +1,8 @@
-// Supabase configuration - same as Issues API
+// Building at Risk API - Uses the same Supabase project as main client
+import { supabase } from "@/integrations/supabase/client";
+
 const SUPABASE_URL = "https://ypgoodjdxcnjysrsortp.supabase.co";
-const SUPABASE_ANON_KEY = "sb_publishable_rs58HjDUbtkp9QvD7Li4VA_fqtAUF2u";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlwZ29vZGpkeGNuanlzcnNvcnRwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU2NTI5NTIsImV4cCI6MjA4MTIyODk1Mn0.4xlx81jHjv3OcvSE1oJlv1ZPjQUOMIJigTGhvikDfvw";
 const API_URL = `${SUPABASE_URL}/functions/v1/building-at-risk`;
 
 export interface BuildingReportData {
@@ -37,22 +39,28 @@ export interface BuildingApiResponse {
 export const createBuildingReport = async (reportData: BuildingReportData): Promise<BuildingApiResponse> => {
   try {
     console.log("Calling building report API:", reportData);
+    console.log("Using API URL:", API_URL);
 
     const response = await fetch(API_URL, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        apikey: SUPABASE_ANON_KEY,
+        "apikey": SUPABASE_ANON_KEY,
+        "Authorization": `Bearer ${SUPABASE_ANON_KEY}`,
       },
       body: JSON.stringify({
         title: reportData.title,
         description: reportData.description,
         reportedBy: reportData.reportedBy,
+        assignedTo: reportData.assignedTo || null,
         latitude: reportData.latitude,
         longitude: reportData.longitude,
         thumbnail: reportData.thumbnail,
       }),
     });
+
+    console.log("Response status:", response.status);
+    console.log("Response headers:", Object.fromEntries(response.headers.entries()));
 
     const result = await response.json();
     console.log("API response:", result);
@@ -76,7 +84,7 @@ export const createBuildingReport = async (reportData: BuildingReportData): Prom
     return {
       success: false,
       error: error instanceof Error ? error.message : "Network error",
-      details: "Unable to reach the server. Please try again.",
+      details: "Unable to reach the server. Please check your connection and try again.",
     };
   }
 };
@@ -90,9 +98,6 @@ export const updateBuildingStatus = async (
   newStatus: "pending" | "under_inspection" | "resolved",
 ): Promise<BuildingApiResponse> => {
   try {
-    // Import supabase client dynamically to avoid circular dependencies
-    const { supabase } = await import("@/integrations/supabase/client");
-
     const { data, error } = await supabase
       .from("buildings_at_risk")
       .update({ status: newStatus })
