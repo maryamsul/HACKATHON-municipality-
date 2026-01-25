@@ -36,6 +36,7 @@
     "add": "Report",
     "donors": "Donors",
     "notifications": "Alerts",
+    "alerts": "Alerts",
     "settings": "Settings"
   },
   "donors": {
@@ -260,16 +261,25 @@
     "markAllRead": "Mark all as read"
   },
   "alerts": {
-    "title": "Building Alerts",
+    "title": "Alerts & Reports",
     "pendingReports": "pending reports",
     "awaitingClassification": "Awaiting Classification",
     "classifiedBuildings": "Classified Buildings",
+    "classifiedReports": "Classified Reports",
     "filterBy": "Filter by status",
-    "classified": "Building has been classified successfully",
-    "classifyError": "Failed to classify building",
-    "noAlerts": "No building alerts",
+    "classified": "Report has been classified successfully",
+    "classifyError": "Failed to classify report",
+    "noAlerts": "No reports found",
+    "noBuildings": "No building reports found",
+    "noIssues": "No issue reports found",
+    "buildings": "Buildings",
+    "issues": "Issues",
+    "building": "Building",
     "employeeOnly": "Employee Access Only",
     "employeeOnlyDesc": "This page is restricted to municipality employees."
+  },
+  "issues": {
+    "underReview": "Under Review"
   },
   "settings": {
     "title": "Settings",
