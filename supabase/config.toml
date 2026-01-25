@@ -14,3 +14,6 @@ verify_jwt = false
 
 [functions.quick-endpoint]
 verify_jwt = false
+
+[functions.classify-report]
+verify_jwt = false

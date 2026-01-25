@@ -52,12 +52,11 @@ const IssueCard = ({ issue, index = 0 }: IssueCardProps) => {
 
   const handleStatusChange = async (newStatus: string) => {
     try {
-      const { error } = await supabase
-        .from("issues")
-        .update({ status: newStatus })
-        .eq("id", issue.id);
-      
-      if (error) throw error;
+      const { data, error } = await supabase.functions.invoke("classify-report", {
+        body: { type: "issue", id: issue.id, status: newStatus },
+      });
+
+      if (error || !data?.success) throw error || new Error(data?.error || "Update failed");
       
       await refetchIssues();
       toast({ 
