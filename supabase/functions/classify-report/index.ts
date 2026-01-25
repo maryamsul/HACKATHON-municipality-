@@ -9,7 +9,22 @@ const corsHeaders = {
 
 type ReportType = "building" | "issue";
 
-type BuildingStatus = "pending" | "critical" | "under_maintenance" | "resolved";
+// NOTE: buildings_at_risk historically used legacy status values like:
+// - under_review (maps to UI: critical)
+// - under_inspection / in_progress (maps to UI: under_maintenance)
+// The UI now uses: pending | critical | under_maintenance | resolved
+// This function accepts BOTH and normalizes writes to the legacy values to
+// avoid DB constraint issues in older projects.
+type BuildingStatus =
+  | "pending"
+  | "critical"
+  | "under_maintenance"
+  | "resolved"
+  | "under_review"
+  | "under_inspection"
+  | "in_progress"
+  | "in-progress"
+  | "reported";
 type IssueStatus = "pending" | "under_review" | "under_maintenance" | "resolved";
 
 interface Payload {
@@ -20,11 +35,37 @@ interface Payload {
 }
 
 function isAllowedBuildingStatus(s: string): s is BuildingStatus {
-  return s === "pending" || s === "critical" || s === "under_maintenance" || s === "resolved";
+  return (
+    s === "pending" ||
+    s === "resolved" ||
+    s === "critical" ||
+    s === "under_maintenance" ||
+    s === "under_review" ||
+    s === "under_inspection" ||
+    s === "in_progress" ||
+    s === "in-progress" ||
+    s === "reported"
+  );
 }
 
 function isAllowedIssueStatus(s: string): s is IssueStatus {
   return s === "pending" || s === "under_review" || s === "under_maintenance" || s === "resolved";
+}
+
+function toBuildingDbStatus(status: BuildingStatus): string {
+  // Normalize UI statuses to legacy DB statuses (most compatible)
+  switch (status) {
+    case "critical":
+      return "under_review";
+    case "under_maintenance":
+    case "in_progress":
+    case "in-progress":
+      return "under_inspection";
+    case "reported":
+      return "pending";
+    default:
+      return status;
+  }
 }
 
 serve(async (req: Request) => {
@@ -134,7 +175,8 @@ serve(async (req: Request) => {
         });
       }
 
-      const updates: Record<string, unknown> = { status: payload.status };
+      const dbStatus = toBuildingDbStatus(payload.status);
+      const updates: Record<string, unknown> = { status: dbStatus };
       if (payload.assigned_to !== undefined) updates.assigned_to = payload.assigned_to;
 
       const { data, error } = await supabaseAdmin
