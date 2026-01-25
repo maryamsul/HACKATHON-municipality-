@@ -20,8 +20,8 @@ const AllIssues = () => {
   const categoryFilter = searchParams.get("category") || "all";
   const sortBy = searchParams.get("sort") || "newest";
 
-  // All users see all issues (no pending status in issues anymore)
-  const visibleIssues = issues;
+  // Public users should not see pending issues (awaiting employee review)
+  const visibleIssues = isEmployee ? issues : issues.filter((i) => i.status !== "pending");
 
   const filteredIssues = visibleIssues
     .filter((issue) => {
@@ -36,24 +36,24 @@ const AllIssues = () => {
       return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
     });
 
-  const getStatusLabel = (status: IssueStatus) => {
+  const getStatusLabel = (status: string) => {
     switch (status) {
-      case 'Under Review':
+      case 'under_review':
         return t('status.underReview');
-      case 'Under Maintenance':
+      case 'under_maintenance':
         return t('status.underMaintenance');
-      case 'Resolved':
+      case 'resolved':
         return t('status.resolved');
       default:
         return status;
     }
   };
 
-  // Count issues by status - exact DB values
-  const statusCounts: Record<IssueStatus, number> = {
-    "Under Review": visibleIssues.filter(i => i.status === "Under Review").length,
-    "Under Maintenance": visibleIssues.filter(i => i.status === "Under Maintenance").length,
-    "Resolved": visibleIssues.filter(i => i.status === "Resolved").length,
+  // Count issues by status
+  const statusCounts = {
+    under_review: visibleIssues.filter(i => i.status === "under_review").length,
+    under_maintenance: visibleIssues.filter(i => i.status === "under_maintenance").length,
+    resolved: visibleIssues.filter(i => i.status === "resolved").length,
   };
 
   return (
@@ -80,7 +80,7 @@ const AllIssues = () => {
             {/* Status summary for employees */}
             {isEmployee && (
               <div className="grid grid-cols-3 gap-2 mb-4">
-                {(["Under Review", "Under Maintenance", "Resolved"] as IssueStatus[]).map((status) => (
+                {(["under_review", "under_maintenance", "resolved"] as IssueStatus[]).map((status) => (
                   <div 
                     key={status}
                     className={`p-3 rounded-lg text-center ${ISSUE_STATUSES[status].color}`}

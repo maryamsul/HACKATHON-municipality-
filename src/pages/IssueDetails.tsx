@@ -84,7 +84,7 @@ const IssueDetails = () => {
     );
   }
 
-  const currentStatus = ISSUE_STATUSES[issue.status as IssueStatus] || ISSUE_STATUSES["Under Review"];
+  const currentStatus = ISSUE_STATUSES[issue.status as IssueStatus] || ISSUE_STATUSES.under_review;
   const openStreetMapUrl = `https://www.openstreetmap.org/export/embed.html?bbox=${issue.longitude - 0.01},${issue.latitude - 0.01},${issue.longitude + 0.01},${issue.latitude + 0.01}&layer=mapnik&marker=${issue.latitude},${issue.longitude}`;
 
   return (

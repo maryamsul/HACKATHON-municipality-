@@ -17,10 +17,9 @@ const CategoryIssues = () => {
     (issue) => issue.category.toLowerCase() === decodedCategory.toLowerCase()
   );
 
-  // Using exact DB status values: "Under Review", "Under Maintenance", "Resolved"
-  const underReviewCount = filteredIssues.filter((i) => i.status === "Under Review").length;
-  const underMaintenanceCount = filteredIssues.filter((i) => i.status === "Under Maintenance").length;
-  const resolvedCount = filteredIssues.filter((i) => i.status === "Resolved").length;
+  const underReviewCount = filteredIssues.filter((i) => i.status === "under_review").length;
+  const underMaintenanceCount = filteredIssues.filter((i) => i.status === "under_maintenance").length;
+  const resolvedCount = filteredIssues.filter((i) => i.status === "resolved").length;
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-amber-50 to-background pb-24" dir={isRTL ? 'rtl' : 'ltr'}>

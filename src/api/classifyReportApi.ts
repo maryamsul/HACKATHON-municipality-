@@ -28,9 +28,9 @@ export interface ClassifyReportResponse {
  *
  * @param type "building" | "issue"
  * @param id row ID (number for issues, string UUID for buildings)
- * @param status must match DB enum EXACTLY:
- *               Buildings: pending, Critical, Under Inspection, Resolved
- *               Issues: Under Review, Under Maintenance, Resolved
+ * @param status must match DB enum:
+ *               Buildings: pending, critical, under_maintenance, resolved
+ *               Issues: pending, under_review, under_maintenance, resolved
  * @param assigned_to optional UUID of assigned user
  * @returns Promise with the API response
  * @throws Error if user is not authenticated or update fails
@@ -51,9 +51,9 @@ export async function updateReportStatus(
 
   const token = sessionData.session.access_token;
 
-  // Validate status based on type - EXACT database values
-  const validBuildingStatuses: BuildingStatus[] = ["pending", "Critical", "Under Inspection", "Resolved"];
-  const validIssueStatuses: IssueStatus[] = ["Under Review", "Under Maintenance", "Resolved"];
+  // Validate status based on type
+  const validBuildingStatuses: BuildingStatus[] = ["pending", "critical", "under_maintenance", "resolved"];
+  const validIssueStatuses: IssueStatus[] = ["pending", "under_review", "under_maintenance", "resolved"];
 
   if (type === "building" && !validBuildingStatuses.includes(status as BuildingStatus)) {
     throw new Error(`Invalid building status: ${status}. Must be one of: ${validBuildingStatuses.join(", ")}`);

@@ -63,18 +63,15 @@ const BuildingsAtRisk = () => {
       building.description.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  // Status labels (Buildings-at-Risk - exact DB values)
-  // DB statuses: pending | Critical | Under Inspection | Resolved
+  // Status labels (Buildings-at-Risk required values)
   const getStatusLabel = (status: BuildingStatus) => {
     switch (status) {
-      case 'Critical':
+      case 'critical':
         return t('buildings.statusCritical', 'Critical');
-      case 'Under Inspection':
-        return t('buildings.statusInspection', 'Under Inspection');
-      case 'Resolved':
+      case 'under_maintenance':
+        return t('buildings.statusInspection', 'Under Maintenance');
+      case 'resolved':
         return t('buildings.statusResolved', 'Resolved');
-      case 'pending':
-        return t('buildings.statusReported', 'Pending');
       default:
         return status;
     }
@@ -113,12 +110,12 @@ const BuildingsAtRisk = () => {
     }
   };
 
-  // Count by exact DB status values
+  // Count by normalized status (only from visible buildings for public)
   const statusCounts = {
     pending: visibleBuildings.filter((b) => b.status === "pending").length,
-    Critical: visibleBuildings.filter((b) => b.status === "Critical").length,
-    "Under Inspection": visibleBuildings.filter((b) => b.status === "Under Inspection").length,
-    Resolved: visibleBuildings.filter((b) => b.status === "Resolved").length,
+    critical: visibleBuildings.filter((b) => b.status === "critical").length,
+    under_maintenance: visibleBuildings.filter((b) => b.status === "under_maintenance").length,
+    resolved: visibleBuildings.filter((b) => b.status === "resolved").length,
   };
 
   if (showReportForm) {
@@ -159,13 +156,13 @@ const BuildingsAtRisk = () => {
             {statusCounts.pending} {t("buildings.statusReported", "Pending")}
           </Badge>
           <Badge variant="destructive" className="bg-destructive/15 text-destructive-foreground">
-            {statusCounts.Critical} {t("buildings.critical", "Critical")}
+            {statusCounts.critical} {t("buildings.critical", "Critical")}
           </Badge>
           <Badge variant="secondary" className="bg-secondary/50 text-destructive-foreground">
-            {statusCounts["Under Inspection"]} {t("buildings.inspecting", "Under Inspection")}
+            {statusCounts.under_maintenance} {t("buildings.inspecting", "Under Maintenance")}
           </Badge>
           <Badge variant="default" className="bg-primary/15 text-destructive-foreground">
-            {statusCounts.Resolved} {t("buildings.statusResolved", "Resolved")}
+            {statusCounts.resolved} {t("buildings.statusResolved", "Resolved")}
           </Badge>
         </div>
         
@@ -179,9 +176,9 @@ const BuildingsAtRisk = () => {
             <SelectContent className="bg-popover z-50">
               <SelectItem value="all">{t("filters.all", "All")}</SelectItem>
               <SelectItem value="pending">{t("buildings.statusReported", "Pending")}</SelectItem>
-              <SelectItem value="Critical">{t("buildings.statusCritical", "Critical")}</SelectItem>
-              <SelectItem value="Under Inspection">{t("buildings.statusInspection", "Under Inspection")}</SelectItem>
-              <SelectItem value="Resolved">{t("buildings.statusResolved", "Resolved")}</SelectItem>
+              <SelectItem value="critical">{t("buildings.statusCritical", "Critical")}</SelectItem>
+              <SelectItem value="under_maintenance">{t("buildings.statusInspection", "Under Maintenance")}</SelectItem>
+              <SelectItem value="resolved">{t("buildings.statusResolved", "Resolved")}</SelectItem>
             </SelectContent>
           </Select>
         </div>

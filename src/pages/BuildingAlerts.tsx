@@ -67,9 +67,9 @@ const BuildingAlerts = () => {
     );
   }
 
-  // Filter pending items - Buildings use "pending", Issues use "Under Review" as initial status
+  // Filter pending items
   const pendingBuildings = buildings.filter((b) => b.status === "pending");
-  const pendingIssues = issues.filter((i) => i.status === "Under Review");
+  const pendingIssues = issues.filter((i) => i.status === "pending");
   const totalPending = pendingBuildings.length + pendingIssues.length;
 
   // Classify building
@@ -120,58 +120,51 @@ const BuildingAlerts = () => {
     }
   };
 
-  // Status icons - using exact DB values
   const getStatusIcon = (status: string) => {
     switch (status) {
       case "pending":
         return Clock;
-      case "Critical":
+      case "critical":
         return AlertTriangle;
-      case "Under Review":
+      case "under_review":
         return Eye;
-      case "Under Inspection":
-      case "Under Maintenance":
+      case "under_maintenance":
         return Wrench;
-      case "Resolved":
+      case "resolved":
         return CheckCircle2;
       default:
         return Clock;
     }
   };
 
-  // Status colors - using exact DB values
   const getStatusColor = (status: string) => {
     switch (status) {
       case "pending":
         return "bg-gray-100 text-gray-700 border-gray-200 dark:bg-gray-800 dark:text-gray-300";
-      case "Critical":
+      case "critical":
         return "bg-red-100 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-400";
-      case "Under Review":
+      case "under_review":
         return "bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-900/30 dark:text-orange-400";
-      case "Under Inspection":
-      case "Under Maintenance":
+      case "under_maintenance":
         return "bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-400";
-      case "Resolved":
+      case "resolved":
         return "bg-green-100 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-400";
       default:
         return "bg-gray-100 text-gray-700";
     }
   };
 
-  // Status labels - using exact DB values
   const getStatusLabel = (status: string, type: "building" | "issue") => {
     switch (status) {
       case "pending":
         return t("buildings.statusReported", "Pending");
-      case "Critical":
+      case "critical":
         return t("buildings.statusCritical", "Critical");
-      case "Under Review":
+      case "under_review":
         return t("issues.underReview", "Under Review");
-      case "Under Inspection":
-        return t("buildings.statusInspection", "Under Inspection");
-      case "Under Maintenance":
-        return t("issues.underMaintenance", "Under Maintenance");
-      case "Resolved":
+      case "under_maintenance":
+        return t("buildings.statusInspection", "Under Maintenance");
+      case "resolved":
         return t("buildings.statusResolved", "Resolved");
       default:
         return status;
@@ -251,14 +244,14 @@ const BuildingAlerts = () => {
               </span>
             </div>
 
-            {/* Classification Buttons - Using exact DB values */}
+            {/* Classification Buttons */}
             <div className="flex flex-wrap gap-2">
               <Button
                 size="sm"
-                variant={building.status === "Critical" ? "default" : "destructive"}
-                onClick={() => handleClassifyBuilding(building.id, "Critical")}
+                variant={building.status === "critical" ? "default" : "destructive"}
+                onClick={() => handleClassifyBuilding(building.id, "critical")}
                 className="flex items-center gap-1"
-                disabled={building.status === "Critical"}
+                disabled={building.status === "critical"}
               >
                 <AlertTriangle className="w-3.5 h-3.5" />
                 {t("buildings.statusCritical", "Critical")}
@@ -266,27 +259,27 @@ const BuildingAlerts = () => {
               <Button
                 size="sm"
                 variant="secondary"
-                onClick={() => handleClassifyBuilding(building.id, "Under Inspection")}
+                onClick={() => handleClassifyBuilding(building.id, "under_maintenance")}
                 className={`flex items-center gap-1 ${
-                  building.status === "Under Inspection" 
+                  building.status === "under_maintenance" 
                     ? "bg-amber-500 text-white" 
                     : "bg-amber-100 text-amber-700 hover:bg-amber-200 dark:bg-amber-900/50 dark:text-amber-300"
                 }`}
-                disabled={building.status === "Under Inspection"}
+                disabled={building.status === "under_maintenance"}
               >
                 <Wrench className="w-3.5 h-3.5" />
-                {t("buildings.statusInspection", "Inspection")}
+                {t("buildings.statusInspection", "Maintenance")}
               </Button>
               <Button
                 size="sm"
                 variant="outline"
-                onClick={() => handleClassifyBuilding(building.id, "Resolved")}
+                onClick={() => handleClassifyBuilding(building.id, "resolved")}
                 className={`flex items-center gap-1 ${
-                  building.status === "Resolved"
+                  building.status === "resolved"
                     ? "bg-green-500 text-white border-green-500"
                     : "border-green-300 text-green-700 hover:bg-green-50 dark:border-green-700 dark:text-green-400"
                 }`}
-                disabled={building.status === "Resolved"}
+                disabled={building.status === "resolved"}
               >
                 <CheckCircle2 className="w-3.5 h-3.5" />
                 {t("buildings.statusResolved", "Resolved")}
@@ -371,18 +364,18 @@ const BuildingAlerts = () => {
               </span>
             </div>
 
-            {/* Classification Buttons for Issues - Using exact DB values */}
+            {/* Classification Buttons for Issues */}
             <div className="flex flex-wrap gap-2">
               <Button
                 size="sm"
                 variant="secondary"
-                onClick={() => handleClassifyIssue(issue.id, "Under Review")}
+                onClick={() => handleClassifyIssue(issue.id, "under_review")}
                 className={`flex items-center gap-1 ${
-                  issue.status === "Under Review"
+                  issue.status === "under_review"
                     ? "bg-orange-500 text-white"
                     : "bg-orange-100 text-orange-700 hover:bg-orange-200 dark:bg-orange-900/50 dark:text-orange-300"
                 }`}
-                disabled={issue.status === "Under Review"}
+                disabled={issue.status === "under_review"}
               >
                 <Eye className="w-3.5 h-3.5" />
                 {t("issues.underReview", "Under Review")}
@@ -390,27 +383,27 @@ const BuildingAlerts = () => {
               <Button
                 size="sm"
                 variant="secondary"
-                onClick={() => handleClassifyIssue(issue.id, "Under Maintenance")}
+                onClick={() => handleClassifyIssue(issue.id, "under_maintenance")}
                 className={`flex items-center gap-1 ${
-                  issue.status === "Under Maintenance"
+                  issue.status === "under_maintenance"
                     ? "bg-amber-500 text-white"
                     : "bg-amber-100 text-amber-700 hover:bg-amber-200 dark:bg-amber-900/50 dark:text-amber-300"
                 }`}
-                disabled={issue.status === "Under Maintenance"}
+                disabled={issue.status === "under_maintenance"}
               >
                 <Wrench className="w-3.5 h-3.5" />
-                {t("issues.underMaintenance", "Maintenance")}
+                {t("buildings.statusInspection", "Maintenance")}
               </Button>
               <Button
                 size="sm"
                 variant="outline"
-                onClick={() => handleClassifyIssue(issue.id, "Resolved")}
+                onClick={() => handleClassifyIssue(issue.id, "resolved")}
                 className={`flex items-center gap-1 ${
-                  issue.status === "Resolved"
+                  issue.status === "resolved"
                     ? "bg-green-500 text-white border-green-500"
                     : "border-green-300 text-green-700 hover:bg-green-50 dark:border-green-700 dark:text-green-400"
                 }`}
-                disabled={issue.status === "Resolved"}
+                disabled={issue.status === "resolved"}
               >
                 <CheckCircle2 className="w-3.5 h-3.5" />
                 {t("buildings.statusResolved", "Resolved")}
@@ -455,7 +448,7 @@ const BuildingAlerts = () => {
           </div>
         </div>
 
-        {/* Filter - Using exact DB values */}
+        {/* Filter */}
         <div className="flex items-center gap-2">
           <Filter className="w-4 h-4" />
           <Select value={filterStatus} onValueChange={setFilterStatus}>
@@ -465,11 +458,10 @@ const BuildingAlerts = () => {
             <SelectContent className="bg-popover z-50">
               <SelectItem value="all">{t("filters.all", "All")}</SelectItem>
               <SelectItem value="pending">{t("buildings.statusReported", "Pending")}</SelectItem>
-              <SelectItem value="Critical">{t("buildings.statusCritical", "Critical")}</SelectItem>
-              <SelectItem value="Under Review">{t("issues.underReview", "Under Review")}</SelectItem>
-              <SelectItem value="Under Inspection">{t("buildings.statusInspection", "Under Inspection")}</SelectItem>
-              <SelectItem value="Under Maintenance">{t("issues.underMaintenance", "Under Maintenance")}</SelectItem>
-              <SelectItem value="Resolved">{t("buildings.statusResolved", "Resolved")}</SelectItem>
+              <SelectItem value="critical">{t("buildings.statusCritical", "Critical")}</SelectItem>
+              <SelectItem value="under_review">{t("issues.underReview", "Under Review")}</SelectItem>
+              <SelectItem value="under_maintenance">{t("buildings.statusInspection", "Under Maintenance")}</SelectItem>
+              <SelectItem value="resolved">{t("buildings.statusResolved", "Resolved")}</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -518,7 +510,7 @@ const BuildingAlerts = () => {
             {/* All Tab */}
             <TabsContent value="all" className="p-4 space-y-4 mt-0">
               {/* Pending Section */}
-              {totalPending > 0 && filterStatus !== "Resolved" && filterStatus !== "Critical" && filterStatus !== "Under Inspection" && filterStatus !== "Under Review" && filterStatus !== "Under Maintenance" && (
+              {totalPending > 0 && filterStatus !== "resolved" && filterStatus !== "critical" && filterStatus !== "under_maintenance" && filterStatus !== "under_review" && (
                 <section>
                   <h2 className="text-lg font-semibold mb-3 flex items-center gap-2 text-amber-600 dark:text-amber-400">
                     <Clock className="w-5 h-5" />
@@ -535,7 +527,7 @@ const BuildingAlerts = () => {
 
               {/* Classified Section */}
               {(getFilteredBuildings().filter(b => b.status !== "pending").length > 0 || 
-                getFilteredIssues().filter(i => i.status !== "Under Review").length > 0) && (
+                getFilteredIssues().filter(i => i.status !== "pending").length > 0) && (
                 <section>
                   <h2 className="text-lg font-semibold mb-3 flex items-center gap-2">
                     <CheckCircle2 className="w-5 h-5" />
@@ -543,7 +535,7 @@ const BuildingAlerts = () => {
                   </h2>
                   <div className="space-y-3">
                     {getFilteredBuildings().filter(b => b.status !== "pending").map((building) => renderBuildingCard(building, false))}
-                    {getFilteredIssues().filter(i => i.status !== "Under Review").map((issue) => renderIssueCard(issue, false))}
+                    {getFilteredIssues().filter(i => i.status !== "pending").map((issue) => renderIssueCard(issue, false))}
                   </div>
                 </section>
               )}
@@ -577,7 +569,7 @@ const BuildingAlerts = () => {
               {getFilteredIssues().length > 0 ? (
                 <AnimatePresence>
                   {getFilteredIssues().map((issue) => 
-                    renderIssueCard(issue, issue.status === "Under Review")
+                    renderIssueCard(issue, issue.status === "pending")
                   )}
                 </AnimatePresence>
               ) : (
