@@ -11,3 +11,6 @@ verify_jwt = false
 
 [functions.building-at-risk]
 verify_jwt = false
+
+[functions.quick-endpoint]
+verify_jwt = false
