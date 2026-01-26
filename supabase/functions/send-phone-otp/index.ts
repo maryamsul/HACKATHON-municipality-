@@ -1,18 +1,11 @@
-import { createClient } from "@supabase/supabase-js";
-import twilio from "twilio";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
+import twilio from "npm:twilio";
 
-// CORS headers
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Access-Control-Allow-Headers": "authorization, content-type",
-};
-
-// Initialize Supabase client (service role key required for insert)
 const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
-// Initialize Twilio client
-const twilioClient = twilio(Deno.env.get("TWILIO_ACCOUNT_SID")!, Deno.env.get("TWILIO_AUTH_TOKEN")!);
+const client = twilio(Deno.env.get("TWILIO_ACCOUNT_SID")!, Deno.env.get("TWILIO_AUTH_TOKEN")!);
+
+const TWILIO_SERVICE_SID = Deno.env.get("TWILIO_SERVICE_SID")!;
 
 function formatPhoneNumber(phone: string): string {
   let cleaned = phone.replace(/[^\d+]/g, "");
@@ -25,49 +18,25 @@ function formatPhoneNumber(phone: string): string {
 }
 
 export default async function handler(req: Request) {
-  if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: corsHeaders });
-  if (req.method !== "POST")
-    return new Response(JSON.stringify({ success: false, error: "Method not allowed" }), {
-      status: 405,
-      headers: corsHeaders,
-    });
+  if (req.method !== "POST") {
+    return new Response(JSON.stringify({ error: "Method not allowed" }), { status: 405 });
+  }
 
   try {
     const { phone } = await req.json();
-    if (!phone)
-      return new Response(JSON.stringify({ success: false, error: "Phone number is required" }), {
-        status: 400,
-        headers: corsHeaders,
-      });
+    if (!phone) return new Response(JSON.stringify({ error: "Phone is required" }), { status: 400 });
 
     const formattedPhone = formatPhoneNumber(phone);
 
-    // Send verification code via Twilio Verify
-    const verification = await twilioClient.verify.v2
-      .services(Deno.env.get("TWILIO_SERVICE_SID")!)
-      .verifications.create({
-        to: formattedPhone,
-        channel: "sms",
-      });
-
-    if (!verification.sid) throw new Error("Failed to send OTP");
-
-    // Optional: store a record in your Supabase table
-    await supabase.from("otp_codes").insert({
-      phone: formattedPhone,
-      created_at: new Date().toISOString(),
-      used: false,
+    // Send OTP via Twilio Verify
+    const verification = await client.verify.v2.services(TWILIO_SERVICE_SID).verifications.create({
+      to: formattedPhone,
+      channel: "sms",
     });
 
-    return new Response(JSON.stringify({ success: true, message: "OTP sent" }), {
-      status: 200,
-      headers: corsHeaders,
-    });
-  } catch (err) {
-    console.error("Error sending OTP:", err);
-    return new Response(JSON.stringify({ success: false, error: err.message }), {
-      status: 500,
-      headers: corsHeaders,
-    });
+    return new Response(JSON.stringify({ success: true, sid: verification.sid }));
+  } catch (error) {
+    console.error("Error sending OTP:", error);
+    return new Response(JSON.stringify({ error: "Failed to send OTP" }), { status: 500 });
   }
 }
