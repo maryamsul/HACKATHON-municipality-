@@ -1,3 +1,38 @@
+// classify-report.ts (Supabase Edge Function)
+import { serve } from "https://deno.land/std@0.193.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+// --- TYPES ---
+export type ReportType = "building" | "issue";
+
+export type BuildingStatus = "pending" | "critical" | "under_maintenance" | "resolved";
+export type IssueStatus = "pending" | "under_review" | "under_maintenance" | "resolved";
+
+export interface ClassifyReportResponse {
+  success: boolean;
+  data?: unknown;
+  error?: string;
+}
+
+// --- VALIDATION HELPERS ---
+function isAllowedBuildingStatus(s: string): s is BuildingStatus {
+  return ["pending", "critical", "under_maintenance", "resolved"].includes(s);
+}
+
+function isAllowedIssueStatus(s: string): s is IssueStatus {
+  return ["pending", "under_review", "under_maintenance", "resolved"].includes(s);
+}
+
+function isValidUUID(id: string): boolean {
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  return uuidRegex.test(id);
+}
+
+// --- SUPABASE ADMIN CLIENT (service role bypasses RLS) ---
+const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
+
 serve(async (req) => {
   // 1. Handle the CORS Pre-flight (This is likely why it's failing)
   if (req.method === "OPTIONS") {
