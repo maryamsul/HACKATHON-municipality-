@@ -32,10 +32,10 @@ const IssueCard = ({ issue, index = 0 }: IssueCardProps) => {
   const { toast } = useToast();
   const isEmployee = profile?.role === "employee";
 
-  // ✅ LOCAL STATE (KEY FIX)
+  // LOCAL STATE FOR UI RESPONSIVENESS
   const [localStatus, setLocalStatus] = useState<IssueStatus>(issue.status as IssueStatus);
 
-  // ✅ KEEP LOCAL STATE IN SYNC WITH CONTEXT
+  // KEEP LOCAL STATE IN SYNC IF EXTERNAL DATA UPDATES
   useEffect(() => {
     setLocalStatus(issue.status as IssueStatus);
   }, [issue.status]);
@@ -58,9 +58,9 @@ const IssueCard = ({ issue, index = 0 }: IssueCardProps) => {
   const currentStatus = ISSUE_STATUSES[localStatus] || ISSUE_STATUSES.under_review;
 
   const handleStatusChange = async (newStatus: IssueStatus) => {
-    // ✅ PREVENT DUPLICATE CALLS
     if (newStatus === localStatus) return;
 
+    // Ensure ID is numeric for the "issue" type logic in the Edge Function
     const issueId = typeof issue.id === "number" ? issue.id : parseInt(String(issue.id), 10);
 
     if (isNaN(issueId) || issueId <= 0) {
@@ -72,11 +72,12 @@ const IssueCard = ({ issue, index = 0 }: IssueCardProps) => {
       return;
     }
 
-    // ✅ IMMEDIATE UI UPDATE (FEELS INSTANT)
+    // 1. OPTIMISTIC UPDATE: Change UI immediately
     setLocalStatus(newStatus);
 
     try {
-      const { data, error } = await supabase.functions.invoke("classify-report", {
+      // 2. CALL EDGE FUNCTION
+      const { data, error: invokeError } = await supabase.functions.invoke("classify-report", {
         body: {
           type: "issue",
           id: issueId,
@@ -85,19 +86,13 @@ const IssueCard = ({ issue, index = 0 }: IssueCardProps) => {
         },
       });
 
-      if (error || data?.success !== true) {
-        // ❌ REVERT UI IF FAILED
-        setLocalStatus(issue.status as IssueStatus);
-
-        toast({
-          title: t("common.error"),
-          description: data?.error || t("issueDetails.failedToUpdateStatus"),
-          variant: "destructive",
-        });
-        return;
+      // 3. CHECK FOR ERRORS
+      // Supabase .invoke wraps your function's return inside 'data'
+      if (invokeError || !data || data.success !== true) {
+        throw new Error(data?.error || "Update failed");
       }
 
-      // ✅ UPDATE CONTEXT STATE
+      // 4. SYNC GLOBAL CONTEXT
       updateIssueOptimistic(issueId, {
         status: newStatus,
         assigned_to: data.data?.assigned_to ?? null,
@@ -107,13 +102,15 @@ const IssueCard = ({ issue, index = 0 }: IssueCardProps) => {
         title: t("issueDetails.statusUpdated"),
         description: `${t("issueDetails.issueMarkedAs")} ${getStatusLabel(newStatus)}`,
       });
-    } catch (err) {
-      // ❌ REVERT UI ON CRASH
+    } catch (err: any) {
+      console.error("Status Update Failed:", err);
+
+      // 5. REVERT UI: Snap back to original status on failure
       setLocalStatus(issue.status as IssueStatus);
 
       toast({
         title: t("common.error"),
-        description: t("issueDetails.failedToUpdateStatus"),
+        description: err.message || t("issueDetails.failedToUpdateStatus"),
         variant: "destructive",
       });
     }
@@ -128,7 +125,7 @@ const IssueCard = ({ issue, index = 0 }: IssueCardProps) => {
     >
       <motion.button
         onClick={() => navigate(`/issue/${issue.id}`)}
-        className="w-20 h-20 rounded-xl bg-primary/10 flex items-center justify-center text-3xl"
+        className="w-20 h-20 rounded-xl bg-primary/10 flex items-center justify-center text-3xl overflow-hidden"
       >
         {issue.thumbnail ? (
           <img src={issue.thumbnail} alt={issue.category} className="w-full h-full object-cover" />
@@ -138,13 +135,13 @@ const IssueCard = ({ issue, index = 0 }: IssueCardProps) => {
       </motion.button>
 
       <div className="flex-1 min-w-0 cursor-pointer" onClick={() => navigate(`/issue/${issue.id}`)}>
-        <div className="flex justify-between mb-2">
-          <h3 className="font-semibold truncate">{issue.title || issue.category}</h3>
+        <div className="flex justify-between items-start mb-2">
+          <h3 className="font-semibold truncate pr-2">{issue.title || issue.category}</h3>
 
           {isEmployee ? (
             <div onClick={(e) => e.stopPropagation()}>
               <Select value={localStatus} onValueChange={handleStatusChange}>
-                <SelectTrigger className={`w-36 h-7 text-xs border-0 ${currentStatus.color}`}>
+                <SelectTrigger className={`w-36 h-7 text-xs border-0 rounded-full font-medium ${currentStatus.color}`}>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -155,24 +152,26 @@ const IssueCard = ({ issue, index = 0 }: IssueCardProps) => {
               </Select>
             </div>
           ) : (
-            <span className={`px-2 py-1 rounded-full text-xs ${currentStatus.color}`}>
+            <span className={`px-2 py-1 rounded-full text-xs font-medium ${currentStatus.color}`}>
               {getStatusLabel(localStatus)}
             </span>
           )}
         </div>
 
-        <div className="flex items-center gap-1 text-sm text-muted-foreground">
-          <MapPin className="w-3.5 h-3.5" />
-          <span>{formatLocation(issue.latitude, issue.longitude)}</span>
-        </div>
+        <div className="flex flex-col gap-1">
+          <div className="flex items-center gap-1 text-sm text-muted-foreground">
+            <MapPin className="w-3.5 h-3.5" />
+            <span className="truncate">{formatLocation(issue.latitude, issue.longitude)}</span>
+          </div>
 
-        <div className="flex items-center gap-1 text-sm text-muted-foreground">
-          <Calendar className="w-3.5 h-3.5" />
-          <span>
-            {new Date(issue.created_at).toLocaleDateString(
-              i18n.language === "ar" ? "ar-LB" : i18n.language === "fr" ? "fr-FR" : "en-US",
-            )}
-          </span>
+          <div className="flex items-center gap-1 text-sm text-muted-foreground">
+            <Calendar className="w-3.5 h-3.5" />
+            <span>
+              {new Date(issue.created_at).toLocaleDateString(
+                i18n.language === "ar" ? "ar-LB" : i18n.language === "fr" ? "fr-FR" : "en-US",
+              )}
+            </span>
+          </div>
         </div>
       </div>
     </motion.div>
