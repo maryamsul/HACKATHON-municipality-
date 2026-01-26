@@ -32,225 +32,89 @@ function isAllowedBuildingStatus(s: string): s is BuildingStatus {
 function isAllowedIssueStatus(s: string): s is IssueStatus {
   return s === "pending" || s === "under_review" || s === "under_maintenance" || s === "resolved";
 }
+// ... (Your imports and types stay the same)
 
 serve(async (req: Request) => {
   const requestId = crypto.randomUUID().slice(0, 8);
-  console.log(`[${requestId}] ${req.method} ${req.url}`);
 
+  // 1. ALWAYS handle OPTIONS first for CORS
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 204, headers: corsHeaders });
   }
 
-  if (req.method !== "POST") {
-    return new Response(JSON.stringify({ success: false, error: "Method not allowed", requestId }), {
-      status: 405,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  }
-
   try {
-    const supabaseUrl = Deno.env.get("SUPABASE_URL");
-    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-    const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
 
-    if (!supabaseUrl || !serviceRoleKey || !anonKey) {
-      console.error(`[${requestId}] Missing SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY / SUPABASE_ANON_KEY`);
-      return new Response(JSON.stringify({ success: false, error: "Server configuration error", requestId }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+    // 2. Setup Auth Check
+    const authHeader = req.headers.get("Authorization") || req.headers.get("authorization");
+    if (!authHeader) {
+      throw new Error("Missing Authorization header");
     }
 
-    const authHeader = req.headers.get("authorization") || req.headers.get("Authorization");
-    if (!authHeader?.startsWith("Bearer ")) {
-      return new Response(JSON.stringify({ success: false, error: "Missing Authorization header", requestId }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
+    const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
     const token = authHeader.replace("Bearer ", "").trim();
 
-    // Client for validating the JWT
-    const supabaseAuth = createClient(supabaseUrl, anonKey, {
-      global: {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      },
-    });
+    // Verify the user is who they say they are
+    const {
+      data: { user },
+      error: userError,
+    } = await supabaseAdmin.auth.getUser(token);
+    if (userError || !user) throw new Error("Unauthorized");
 
-    const { data: userData, error: userError } = await supabaseAuth.auth.getUser();
-    if (userError || !userData.user) {
-      console.error(`[${requestId}] auth.getUser error:`, userError);
-      return new Response(JSON.stringify({ success: false, error: "Unauthorized", requestId }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    // Admin client for role check + updates (bypasses RLS)
-    const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
-
-    const { data: roleRow, error: roleError } = await supabaseAdmin
+    // 3. Role Check
+    const { data: roleRow } = await supabaseAdmin
       .from("user_roles")
       .select("role")
-      .eq("user_id", userData.user.id)
+      .eq("user_id", user.id)
       .eq("role", "employee")
       .maybeSingle();
 
-    if (roleError) {
-      console.error(`[${requestId}] role lookup error:`, roleError);
-      return new Response(JSON.stringify({ success: false, error: "Role check failed", requestId }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
     if (!roleRow) {
-      return new Response(JSON.stringify({ success: false, error: "Forbidden", requestId }), {
+      return new Response(JSON.stringify({ success: false, error: "Forbidden: Employees only" }), {
         status: 403,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    let payload: Payload;
-    try {
-      payload = (await req.json()) as Payload;
-    } catch (e) {
-      console.error(`[${requestId}] Invalid JSON`, e);
-      return new Response(JSON.stringify({ success: false, error: "Invalid JSON payload", requestId }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    // 4. Parse Payload
+    const payload: Payload = await req.json();
+    const table = payload.type === "building" ? "buildings_at_risk" : "issues";
 
-    // Enhanced payload logging for debugging
-    console.log(`[${requestId}] === RECEIVED PAYLOAD ===`);
-    console.log(`[${requestId}] type: ${payload.type}`);
-    console.log(`[${requestId}] id: ${payload.id} (typeof: ${typeof payload.id})`);
-    console.log(`[${requestId}] status: ${payload.status}`);
-    console.log(`[${requestId}] assigned_to: ${payload.assigned_to}`);
+    // Auto-detect if ID should be Number or String
+    const isNumeric = !isNaN(Number(payload.id)) && payload.type === "issue";
+    const queryId = isNumeric ? Number(payload.id) : String(payload.id);
 
-    if (!payload?.type || (payload.id === undefined || payload.id === null) || !payload.status) {
-      console.error(`[${requestId}] Missing required fields - type: ${payload?.type}, id: ${payload?.id}, status: ${payload?.status}`);
-      return new Response(
-        JSON.stringify({ success: false, error: "Missing required fields", requestId, details: "type, id, status" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
-    }
-
-    // Validate ID types based on report type
-    if (payload.type === "building") {
-      // Buildings use UUID strings
-      const idStr = String(payload.id);
-      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-      if (!uuidRegex.test(idStr)) {
-        console.error(`[${requestId}] Invalid building ID format: ${idStr}`);
-        return new Response(
-          JSON.stringify({ success: false, error: "Invalid building ID", requestId, details: `Building ID must be a UUID. Got: ${idStr}` }),
-          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-        );
-      }
-      console.log(`[${requestId}] Building ID validated as UUID: ${idStr}`);
-    } else if (payload.type === "issue") {
-      // Issues use numeric IDs
-      const idNum = Number(payload.id);
-      if (isNaN(idNum) || idNum <= 0) {
-        console.error(`[${requestId}] Invalid issue ID: ${payload.id}`);
-        return new Response(
-          JSON.stringify({ success: false, error: "Invalid issue ID", requestId, details: `Issue ID must be a positive number. Got: ${payload.id}` }),
-          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-        );
-      }
-      console.log(`[${requestId}] Issue ID validated as number: ${idNum}`);
-    }
-
-    // Handle building status update
-    if (payload.type === "building") {
-      if (!isAllowedBuildingStatus(payload.status)) {
-        console.error(`[${requestId}] Invalid building status: ${payload.status}`);
-        return new Response(
-          JSON.stringify({ 
-            success: false, 
-            error: "Invalid building status", 
-            requestId,
-            details: `Status must be one of: pending, critical, under_maintenance, resolved. Got: ${payload.status}`
-          }), {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-
-      const updates: Record<string, unknown> = { status: payload.status };
-      if (payload.assigned_to !== undefined) updates.assigned_to = payload.assigned_to;
-
-      console.log(`[${requestId}] Updating building ${payload.id} to status: ${payload.status}`);
-
-      const { data, error } = await supabaseAdmin
-        .from("buildings_at_risk")
-        .update(updates)
-        .eq("id", String(payload.id))
-        .select("*")
-        .single();
-
-      if (error) {
-        console.error(`[${requestId}] building update error:`, error);
-        return new Response(JSON.stringify({ success: false, error: error.message, requestId }), {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-
-      console.log(`[${requestId}] Building updated successfully:`, data);
-      return new Response(JSON.stringify({ success: true, data, requestId }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    // Handle issue status update
-    if (!isAllowedIssueStatus(payload.status)) {
-      console.error(`[${requestId}] Invalid issue status: ${payload.status}`);
-      return new Response(
-        JSON.stringify({ 
-          success: false, 
-          error: "Invalid issue status", 
-          requestId,
-          details: `Status must be one of: pending, under_review, under_maintenance, resolved. Got: ${payload.status}`
-        }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    const updates: Record<string, unknown> = { status: payload.status };
-    if (payload.assigned_to !== undefined) updates.assigned_to = payload.assigned_to;
-
-    console.log(`[${requestId}] Updating issue ${payload.id} to status: ${payload.status}`);
-
+    // 5. Execute Update
     const { data, error } = await supabaseAdmin
-      .from("issues")
-      .update(updates)
-      .eq("id", Number(payload.id))
-      .select("*")
-      .single();
+      .from(table)
+      .update({
+        status: payload.status,
+        assigned_to: payload.assigned_to,
+      })
+      .eq("id", queryId)
+      .select();
 
-    if (error) {
-      console.error(`[${requestId}] issue update error:`, error);
-      return new Response(JSON.stringify({ success: false, error: error.message, requestId }), {
-        status: 400,
+    if (error) throw error;
+
+    if (!data || data.length === 0) {
+      return new Response(JSON.stringify({ success: false, error: "Record not found" }), {
+        status: 404,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    console.log(`[${requestId}] Issue updated successfully:`, data);
-    return new Response(JSON.stringify({ success: true, data, requestId }), {
+    // 6. Success Response
+    return new Response(JSON.stringify({ success: true, data: data[0] }), {
+      status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
-  } catch (e) {
-    console.error(`[${requestId}] Unhandled error:`, e);
-    return new Response(JSON.stringify({ success: false, error: e instanceof Error ? e.message : "Unknown error", requestId }), {
-      status: 500,
+  } catch (e: any) {
+    // CRITICAL: Even errors must return CORS headers so the frontend can read them
+    console.error(`[${requestId}] Error:`, e.message);
+    return new Response(JSON.stringify({ success: false, error: e.message, requestId }), {
+      status: 400,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
