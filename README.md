@@ -14,20 +14,24 @@ A comprehensive digital platform designed to bridge the gap between citizens and
 ##### Report Issues: Submit reports for road damage, lighting issues, waste management, etc.
 ##### Buildings at Risk: A dedicated section to report and monitor structurally unsafe buildings.
 ##### Real-time Updates: Track the status of your reports from "Pending" to "Resolved."
-##### Multilingual Support: Full support for English and Arabic (RTL).
+##### Multilingual Support: Full support for English, French and Arabic (RTL).
 
 #### For Municipality Employees
 
 #### Management Dashboard: A centralized view to review incoming citizen reports.
 ##### Status Control: Update report statuses (e.g., Critical, Under Maintenance, Resolved).
-##### Assignment System: Assign tasks to specific departments or staff members.
 ##### Secure Access: Role-based access control (RBAC) ensuring only authorized staff can modify data.
 
 #### **🛠️ Tech Stack**
+
 Frontend: React (Vite), TypeScript, Tailwind CSS.
+
 UI Components: Shadcn/UI, Lucide React.
+
 Backend & Database: Supabase (PostgreSQL, Auth, Edge Functions).
+
 State Management: React Context API & TanStack Query (Optimistic Updates).
+
 Internationalization: i18next (English, French and Arabic).
 
 #### ⚙️ Getting Started
@@ -65,8 +69,9 @@ npm run dev
 ```
 🔐 Security & Roles
 The project uses Supabase Row Level Security (RLS).
-Public: Can read "Resolved" issues and buildings.
+Public: Can read issues and buildings reported.
 Authenticated Citizens: Can create reports.
+
 Employees: Can access the classify-report Edge Function to update statuses and assign personnel.
 
 ### Supabase Setup
