@@ -103,35 +103,35 @@ const IssueCard = ({ issue, index = 0 }: IssueCardProps) => {
         return;
       }
 
-      console.log("[IssueCard] API response:", { data, dataSuccess: data?.success, dataType: typeof data?.success });
+      console.log("[IssueCard] API response:", JSON.stringify(data));
 
-      // 4. CHECK API RESPONSE SUCCESS
-      if (data && (data.success === true || data.success === "true")) {
-        // Refetch to ensure we have the latest database state
-        await refetchIssues();
-        
+      // 4. CHECK API RESPONSE SUCCESS - use truthy check
+      if (data?.success) {
+        // Show success toast immediately
         toast({
           title: t("issueDetails.statusUpdated"),
           description: `${t("issueDetails.issueMarkedAs")} ${getStatusLabel(newStatus)}`,
         });
+        
+        // Refetch in background (don't await to avoid blocking)
+        refetchIssues().catch(err => console.log("[IssueCard] Background refetch error:", err));
       } else {
-        // API returned failure - revert optimistic update
+        // Only show error if API explicitly returned failure
         console.error("[IssueCard] API returned failure:", data);
         setLocalStatus(issue.status as IssueStatus);
-        await refetchIssues();
         
         toast({
           title: t("common.error"),
           description: data?.error || t("issueDetails.failedToUpdateStatus"),
           variant: "destructive",
         });
+        refetchIssues().catch(err => console.log("[IssueCard] Revert refetch error:", err));
       }
     } catch (err: any) {
       console.error("Status Update Failed:", err);
 
       // 5. REVERT UI: Snap back to original status on failure
       setLocalStatus(issue.status as IssueStatus);
-      await refetchIssues();
 
       toast({
         title: t("common.error"),
