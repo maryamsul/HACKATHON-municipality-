@@ -132,36 +132,37 @@ const BuildingsAtRisk = () => {
       }
 
       // Log response for debugging
-      console.log("[BuildingsAtRisk] API response:", { data, dataSuccess: data?.success, dataType: typeof data?.success });
+      console.log("[BuildingsAtRisk] API response:", JSON.stringify(data));
 
-      // Check for success more robustly
-      if (data && (data.success === true || data.success === "true")) {
-        // Refetch to ensure UI has latest database state
-        await refetchBuildings();
-
+      // Check for success - use truthy check to handle various response formats
+      if (data?.success) {
+        // Show success toast immediately
         toast({
           title: t('common.success'),
           description: t('buildings.statusUpdated'),
         });
+        
+        // Refetch in background (don't await to avoid blocking)
+        refetchBuildings().catch(err => console.log("[BuildingsAtRisk] Background refetch error:", err));
       } else {
-        // API returned failure - revert optimistic update
+        // Only show error if API explicitly returned failure
         console.error("[BuildingsAtRisk] API returned failure:", data);
-        await refetchBuildings();
         toast({
           title: t('common.error'),
           description: data?.error || t('buildings.statusUpdateError'),
           variant: "destructive",
         });
+        // Revert by refetching
+        refetchBuildings().catch(err => console.log("[BuildingsAtRisk] Revert refetch error:", err));
       }
-    } catch (error) {
-      console.error("[BuildingsAtRisk] Unexpected error:", error);
-      // Revert optimistic update on exception
-      await refetchBuildings();
+    } catch (err) {
+      console.error("[BuildingsAtRisk] Unexpected error:", err);
       toast({
         title: t('common.error'),
         description: t('buildings.statusUpdateError'),
         variant: "destructive",
       });
+      refetchBuildings().catch(e => console.log("[BuildingsAtRisk] Revert refetch error:", e));
     }
   };
 
