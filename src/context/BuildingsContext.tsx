@@ -49,30 +49,28 @@ export const BuildingsProvider = ({ children }: { children: ReactNode }) => {
     setLoading(false);
   };
 
-  // Optimistic update for a single building - updates state immediately without refetch
+  // Optimistic update for a single building
   const updateBuildingOptimistic = useCallback((buildingId: string, updates: Partial<BuildingAtRisk>) => {
     setBuildings((prevBuildings) =>
-      prevBuildings.map((building) =>
-        building.id === buildingId
-          ? { ...building, ...updates }
-          : building
-      )
+      prevBuildings.map((building) => (building.id === buildingId ? { ...building, ...updates } : building)),
     );
   }, []);
 
   useEffect(() => {
     fetchBuildings();
 
-    // Subscribe to realtime updates for immediate display of new reports
+    // ✅ Single realtime subscription that merges payloads directly
     const channel = supabase
       .channel("buildings-changes")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "buildings_at_risk" },
-        () => {
-          fetchBuildings();
+      .on("postgres_changes", { event: "*", schema: "public", table: "buildings_at_risk" }, (payload) => {
+        if (payload.eventType === "UPDATE") {
+          setBuildings((prev) => prev.map((b) => (b.id === payload.new.id ? { ...b, ...payload.new } : b)));
+        } else if (payload.eventType === "INSERT") {
+          setBuildings((prev) => [payload.new as BuildingAtRisk, ...prev]);
+        } else if (payload.eventType === "DELETE") {
+          setBuildings((prev) => prev.filter((b) => b.id !== payload.old.id));
         }
-      )
+      })
       .subscribe();
 
     return () => {
@@ -81,7 +79,9 @@ export const BuildingsProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   return (
-    <BuildingsContext.Provider value={{ buildings, loading, refetchBuildings: fetchBuildings, updateBuildingOptimistic }}>
+    <BuildingsContext.Provider
+      value={{ buildings, loading, refetchBuildings: fetchBuildings, updateBuildingOptimistic }}
+    >
       {children}
     </BuildingsContext.Provider>
   );
