@@ -1,159 +1,65 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
+import twilio from "npm:twilio";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
-// --------------------
-// Helpers
-// --------------------
+const client = twilio(Deno.env.get("TWILIO_ACCOUNT_SID")!, Deno.env.get("TWILIO_AUTH_TOKEN")!);
 
-function formatPhone(phone: string): string {
+const TWILIO_SERVICE_SID = Deno.env.get("TWILIO_SERVICE_SID")!;
+
+function formatPhoneNumber(phone: string): string {
   let cleaned = phone.replace(/[^\d+]/g, "");
   if (!cleaned.startsWith("+")) {
-    cleaned = cleaned.startsWith("961") ? "+" + cleaned : "+961" + cleaned;
+    if (cleaned.startsWith("961")) cleaned = "+" + cleaned;
+    else if (cleaned.length <= 10) cleaned = "+961" + cleaned;
+    else cleaned = "+" + cleaned;
   }
   return cleaned;
 }
 
-async function hashOtp(otp: string): Promise<string> {
-  const data = new TextEncoder().encode(
-    otp + Deno.env.get("OTP_SECRET")
-  );
-  const hash = await crypto.subtle.digest("SHA-256", data);
-  return Array.from(new Uint8Array(hash))
-    .map(b => b.toString(16).padStart(2, "0"))
-    .join("");
-}
-
-function genericOtpError() {
-  return new Response(
-    JSON.stringify({
-      success: false,
-      error: "Invalid or expired verification code",
-    }),
-    {
-      status: 400,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    }
-  );
-}
-
-// --------------------
-// Edge Function
-// --------------------
-
-Deno.serve(async (req) => {
-  // CORS preflight
-  if (req.method === "OPTIONS") {
-    return new Response(null, { status: 204, headers: corsHeaders });
-  }
-
+export default async function handler(req: Request) {
   if (req.method !== "POST") {
-    return new Response("Method not allowed", {
-      status: 405,
-      headers: corsHeaders,
-    });
+    return new Response(JSON.stringify({ error: "Method not allowed" }), { status: 405 });
   }
 
   try {
-    const { phone, otp, full_name, role } = await req.json();
+    const { phone, code } = await req.json();
+    if (!phone || !code) return new Response(JSON.stringify({ error: "Phone and code are required" }), { status: 400 });
 
-    if (!phone || !otp) {
-      return genericOtpError();
+    const formattedPhone = formatPhoneNumber(phone);
+
+    const verificationCheck = await client.verify.v2.services(TWILIO_SERVICE_SID).verificationChecks.create({
+      to: formattedPhone,
+      code,
+    });
+
+    if (verificationCheck.status !== "approved") {
+      return new Response(JSON.stringify({ success: false, error: "Invalid code" }), { status: 400 });
     }
 
-    const formattedPhone = formatPhone(phone);
-    const otpHash = await hashOtp(otp);
-
-    const supabase = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-    );
-
-    // --------------------
-    // Fetch latest unused OTP
-    // --------------------
-    const { data: otpRecord } = await supabase
-      .from("otp_codes")
-      .select("*")
-      .eq("phone", formattedPhone)
-      .eq("used", false)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    if (!otpRecord) return genericOtpError();
-
-    // Max attempts
-    if (otpRecord.attempts >= 5) return genericOtpError();
-
-    // Expired
-    if (new Date(otpRecord.expires_at) < new Date()) {
-      await supabase
-        .from("otp_codes")
-        .update({ used: true })
-        .eq("id", otpRecord.id);
-
-      return genericOtpError();
-    }
-
-    // Wrong OTP
-    if (otpRecord.otp_hash !== otpHash) {
-      await supabase
-        .from("otp_codes")
-        .update({ attempts: otpRecord.attempts + 1 })
-        .eq("id", otpRecord.id);
-
-      return genericOtpError();
-    }
-
-    // --------------------
-    // OTP is valid
-    // --------------------
-    await supabase
-      .from("otp_codes")
-      .update({ used: true })
-      .eq("id", otpRecord.id);
-
-    // --------------------
-    // Get or create user
-    // --------------------
-    let { data: user } = await supabase
+    let { data: user, error: userError } = await supabase
       .from("phone_users")
       .select("*")
       .eq("phone", formattedPhone)
       .maybeSingle();
 
-    const allowedRoles = ["citizen", "employee"] as const;
-    const safeRole = allowedRoles.includes(role) ? role : "citizen";
+    if (userError) return new Response(JSON.stringify({ error: "Failed to fetch user" }), { status: 500 });
 
     if (!user) {
-      const { data: newUser, error } = await supabase
+      const { data: newUser, error: createError } = await supabase
         .from("phone_users")
-        .insert({
-          phone: formattedPhone,
-          full_name: full_name || null,
-          role: safeRole,
-        })
+        .insert({ phone: formattedPhone, role: "citizen" })
         .select()
         .single();
 
-      if (error) throw error;
-      user = newUser;
-    } else if (full_name && !user.full_name) {
-      await supabase
-        .from("phone_users")
-        .update({
-          full_name,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", user.id);
+      if (createError) return new Response(JSON.stringify({ error: "Failed to create user" }), { status: 500 });
 
-      user.full_name = full_name;
+      user = newUser;
     }
 
-    // --------------------
-    // Create session (
+    return new Response(JSON.stringify({ success: true, user }));
+  } catch (error) {
+    console.error("Error verifying OTP:", error);
+    return new Response(JSON.stringify({ error: "Failed to verify OTP" }), { status: 500 });
+  }
+}
