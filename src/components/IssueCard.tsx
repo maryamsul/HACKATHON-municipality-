@@ -28,7 +28,7 @@ const IssueCard = ({ issue, index = 0 }: IssueCardProps) => {
   const navigate = useNavigate();
   const { t, i18n } = useTranslation();
   const { profile } = useAuth();
-  const { updateIssueOptimistic } = useIssues();
+  const { updateIssueOptimistic, refetchIssues } = useIssues();
   const { toast } = useToast();
   const isEmployee = profile?.role === "employee";
 
@@ -74,6 +74,10 @@ const IssueCard = ({ issue, index = 0 }: IssueCardProps) => {
 
     // 1. OPTIMISTIC UPDATE: Change UI immediately
     setLocalStatus(newStatus);
+    updateIssueOptimistic(issueId, {
+      status: newStatus,
+      assigned_to: null,
+    });
 
     try {
       // 2. CALL EDGE FUNCTION
@@ -86,27 +90,48 @@ const IssueCard = ({ issue, index = 0 }: IssueCardProps) => {
         },
       });
 
-      // 3. CHECK FOR ERRORS
-      // Supabase .invoke wraps your function's return inside 'data'
-      if (invokeError || !data || data.success !== true) {
-        throw new Error(data?.error || "Update failed");
+      // 3. CHECK FOR NETWORK ERRORS
+      if (invokeError) {
+        console.error("[IssueCard] Supabase invoke error:", invokeError);
+        setLocalStatus(issue.status as IssueStatus);
+        await refetchIssues();
+        toast({
+          title: t("common.error"),
+          description: t("issueDetails.failedToUpdateStatus"),
+          variant: "destructive",
+        });
+        return;
       }
 
-      // 4. SYNC GLOBAL CONTEXT
-      updateIssueOptimistic(issueId, {
-        status: newStatus,
-        assigned_to: data.data?.assigned_to ?? null,
-      });
+      console.log("[IssueCard] API response:", { data, dataSuccess: data?.success, dataType: typeof data?.success });
 
-      toast({
-        title: t("issueDetails.statusUpdated"),
-        description: `${t("issueDetails.issueMarkedAs")} ${getStatusLabel(newStatus)}`,
-      });
+      // 4. CHECK API RESPONSE SUCCESS
+      if (data && (data.success === true || data.success === "true")) {
+        // Refetch to ensure we have the latest database state
+        await refetchIssues();
+        
+        toast({
+          title: t("issueDetails.statusUpdated"),
+          description: `${t("issueDetails.issueMarkedAs")} ${getStatusLabel(newStatus)}`,
+        });
+      } else {
+        // API returned failure - revert optimistic update
+        console.error("[IssueCard] API returned failure:", data);
+        setLocalStatus(issue.status as IssueStatus);
+        await refetchIssues();
+        
+        toast({
+          title: t("common.error"),
+          description: data?.error || t("issueDetails.failedToUpdateStatus"),
+          variant: "destructive",
+        });
+      }
     } catch (err: any) {
       console.error("Status Update Failed:", err);
 
       // 5. REVERT UI: Snap back to original status on failure
       setLocalStatus(issue.status as IssueStatus);
+      await refetchIssues();
 
       toast({
         title: t("common.error"),

@@ -59,19 +59,26 @@ export const BuildingsProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     fetchBuildings();
 
-    // Subscribe to realtime updates - refetch to avoid stale data race conditions
+    // Subscribe to realtime updates - debounce to avoid overwriting optimistic updates
+    let refetchTimeout: NodeJS.Timeout | null = null;
+    
     const channel = supabase
       .channel("buildings-changes")
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "buildings_at_risk" },
         () => {
-          fetchBuildings();
+          // Debounce refetch to avoid race conditions with optimistic updates
+          if (refetchTimeout) clearTimeout(refetchTimeout);
+          refetchTimeout = setTimeout(() => {
+            fetchBuildings();
+          }, 500); // Wait 500ms before refetching
         }
       )
       .subscribe();
 
     return () => {
+      if (refetchTimeout) clearTimeout(refetchTimeout);
       supabase.removeChannel(channel);
     };
   }, []);

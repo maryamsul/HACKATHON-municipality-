@@ -62,19 +62,26 @@ export const IssuesProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     fetchIssues();
 
-    // Subscribe to realtime updates
+    // Subscribe to realtime updates - debounce to avoid overwriting optimistic updates
+    let refetchTimeout: NodeJS.Timeout | null = null;
+    
     const channel = supabase
       .channel("issues-changes")
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "issues" },
         () => {
-          fetchIssues();
+          // Debounce refetch to avoid race conditions with optimistic updates
+          if (refetchTimeout) clearTimeout(refetchTimeout);
+          refetchTimeout = setTimeout(() => {
+            fetchIssues();
+          }, 500); // Wait 500ms before refetching
         }
       )
       .subscribe();
 
     return () => {
+      if (refetchTimeout) clearTimeout(refetchTimeout);
       supabase.removeChannel(channel);
     };
   }, []);
