@@ -25,7 +25,7 @@ const BuildingsAtRisk = () => {
   const navigate = useNavigate();
   const { t, i18n } = useTranslation();
   const isRTL = i18n.language === 'ar';
-  const { buildings, loading, updateBuildingOptimistic } = useBuildings();
+  const { buildings, loading, updateBuildingOptimistic, refetchBuildings } = useBuildings();
   const { profile, isAuthenticated } = useAuth();
   const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState("");
@@ -103,6 +103,12 @@ const BuildingsAtRisk = () => {
     console.log(`[BuildingsAtRisk] Updating building status - id: ${buildingId}, newStatus: ${newStatus}`);
 
     try {
+      // Apply optimistic update FIRST
+      updateBuildingOptimistic(buildingId, { 
+        status: newStatus,
+        assigned_to: null
+      });
+
       const { data, error } = await supabase.functions.invoke("classify-report", {
         body: { 
           type: "building", 
@@ -115,6 +121,8 @@ const BuildingsAtRisk = () => {
       // Check for network/invocation errors first
       if (error) {
         console.error("[BuildingsAtRisk] Supabase invoke error:", error);
+        // Revert optimistic update on error by refetching
+        await refetchBuildings();
         toast({
           title: t('common.error'),
           description: t('buildings.statusUpdateError'),
@@ -123,22 +131,22 @@ const BuildingsAtRisk = () => {
         return;
       }
 
-      // Check the response success flag - this is the key fix
-      if (data?.success === true) {
-        // Optimistic update - update local state immediately
-        updateBuildingOptimistic(buildingId, { 
-          status: newStatus,
-          assigned_to: data.data?.assigned_to ?? null
-        });
-        
+      // Log response for debugging
+      console.log("[BuildingsAtRisk] API response:", { data, dataSuccess: data?.success, dataType: typeof data?.success });
+
+      // Check for success more robustly
+      if (data && (data.success === true || data.success === "true")) {
+        // Refetch to ensure UI has latest database state
+        await refetchBuildings();
+
         toast({
           title: t('common.success'),
           description: t('buildings.statusUpdated'),
         });
-        console.log("[BuildingsAtRisk] Status update successful:", data);
       } else {
-        // API returned success: false
+        // API returned failure - revert optimistic update
         console.error("[BuildingsAtRisk] API returned failure:", data);
+        await refetchBuildings();
         toast({
           title: t('common.error'),
           description: data?.error || t('buildings.statusUpdateError'),
@@ -147,6 +155,8 @@ const BuildingsAtRisk = () => {
       }
     } catch (error) {
       console.error("[BuildingsAtRisk] Unexpected error:", error);
+      // Revert optimistic update on exception
+      await refetchBuildings();
       toast({
         title: t('common.error'),
         description: t('buildings.statusUpdateError'),
