@@ -22,7 +22,12 @@ interface PhoneAuthContextType {
   isPhoneAuthenticated: boolean;
   isLoading: boolean;
   sendOtp: (phone: string, fullName?: string, role?: UserRole) => Promise<{ error: string | null }>;
-  verifyOtp: (phone: string, otp: string, fullName?: string, role?: UserRole) => Promise<{ error: string | null; user?: PhoneUser }>;
+  verifyOtp: (
+    phone: string,
+    otp: string,
+    fullName?: string,
+    role?: UserRole,
+  ) => Promise<{ error: string | null; user?: PhoneUser }>;
   signOutPhone: () => void;
 }
 
@@ -74,20 +79,18 @@ export const PhoneAuthProvider = ({ children }: { children: ReactNode }) => {
     return cleaned;
   };
 
+  // --------------------
   // Send OTP
-  const sendOtp = async (
-    phone: string,
-    fullName?: string,
-    role?: UserRole
-  ): Promise<{ error: string | null }> => {
+  // --------------------
+  const sendOtp = async (phone: string, fullName?: string, role?: UserRole): Promise<{ error: string | null }> => {
     try {
       const formattedPhone = formatPhoneNumber(phone);
 
       const { data, error } = await supabase.functions.invoke("send-phone-otp", {
         body: {
           phone: formattedPhone,
-          full_name: fullName,
-          role: role,
+          full_name: fullName || null,
+          role: role || "citizen", // default to citizen
         },
       });
 
@@ -96,9 +99,7 @@ export const PhoneAuthProvider = ({ children }: { children: ReactNode }) => {
         return { error: error.message || "Failed to send OTP" };
       }
 
-      if (data?.error) {
-        return { error: data.error };
-      }
+      if (data?.error) return { error: data.error };
 
       return { error: null };
     } catch (err) {
@@ -107,12 +108,14 @@ export const PhoneAuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  // --------------------
   // Verify OTP
+  // --------------------
   const verifyOtp = async (
     phone: string,
     otp: string,
     fullName?: string,
-    role?: UserRole
+    role?: UserRole,
   ): Promise<{ error: string | null; user?: PhoneUser }> => {
     try {
       const formattedPhone = formatPhoneNumber(phone);
@@ -120,9 +123,9 @@ export const PhoneAuthProvider = ({ children }: { children: ReactNode }) => {
       const { data, error } = await supabase.functions.invoke("verify-phone-otp", {
         body: {
           phone: formattedPhone,
-          otp: otp,
-          full_name: fullName,
-          role: role,
+          otp,
+          full_name: fullName || null,
+          role: role || "citizen", // default to citizen
         },
       });
 
@@ -131,9 +134,7 @@ export const PhoneAuthProvider = ({ children }: { children: ReactNode }) => {
         return { error: error.message || "Failed to verify OTP" };
       }
 
-      if (data?.error) {
-        return { error: data.error };
-      }
+      if (data?.error) return { error: data.error };
 
       if (data?.success && data?.user) {
         const user: PhoneUser = {
@@ -145,11 +146,11 @@ export const PhoneAuthProvider = ({ children }: { children: ReactNode }) => {
         };
 
         const session: PhoneSession = {
-          access_token: data.session?.access_token || null,
+          access_token: data.session?.token || null,
           expires_at: data.session?.expires_at || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
         };
 
-        // Store in state and localStorage
+        // Save in state & localStorage
         setPhoneUser(user);
         setPhoneSession(session);
         localStorage.setItem(PHONE_USER_KEY, JSON.stringify(user));
@@ -165,7 +166,9 @@ export const PhoneAuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  // Sign out phone user
+  // --------------------
+  // Sign out
+  // --------------------
   const signOutPhone = () => {
     setPhoneUser(null);
     setPhoneSession(null);
@@ -192,8 +195,6 @@ export const PhoneAuthProvider = ({ children }: { children: ReactNode }) => {
 
 export const usePhoneAuth = () => {
   const context = useContext(PhoneAuthContext);
-  if (!context) {
-    throw new Error("usePhoneAuth must be used within PhoneAuthProvider");
-  }
+  if (!context) throw new Error("usePhoneAuth must be used within PhoneAuthProvider");
   return context;
 };
