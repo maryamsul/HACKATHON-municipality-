@@ -11,7 +11,7 @@ interface BuildingsContextType {
 
 const BuildingsContext = createContext<BuildingsContextType | undefined>(undefined);
 
-// Database now has exact statuses: pending | critical | under_maintenance | resolved
+// Database statuses: pending | critical | under_maintenance | resolved
 const normalizeStatus = (status: string): BuildingStatus => {
   if (status === "pending" || status === "critical" || status === "under_maintenance" || status === "resolved") {
     return status;
@@ -63,6 +63,8 @@ export const BuildingsProvider = ({ children }: { children: ReactNode }) => {
     const channel = supabase
       .channel("buildings-changes")
       .on("postgres_changes", { event: "*", schema: "public", table: "buildings_at_risk" }, (payload) => {
+        console.log("Realtime payload:", payload);
+
         if (payload.eventType === "UPDATE") {
           setBuildings((prev) => prev.map((b) => (b.id === payload.new.id ? { ...b, ...payload.new } : b)));
         } else if (payload.eventType === "INSERT") {
