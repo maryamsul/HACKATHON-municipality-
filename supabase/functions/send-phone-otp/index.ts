@@ -1,5 +1,4 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
-import { hmac } from "https://deno.land/x/hmac@v2.0.1/mod.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -12,10 +11,14 @@ const generateOtp = (): string => {
   return Math.floor(100000 + Math.random() * 900000).toString();
 };
 
-// Hash OTP securely using a secret
-const hashOtp = (otp: string, secret: string) => {
-  return hmac("sha256", secret, otp);
-};
+// Hash OTP securely using built-in crypto
+async function hashOtp(otp: string, secret: string): Promise<string> {
+  const data = new TextEncoder().encode(otp + secret);
+  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+  return Array.from(new Uint8Array(hashBuffer))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+}
 
 // Format phone number to international format
 const formatPhoneNumber = (phone: string): string => {
@@ -59,7 +62,7 @@ Deno.serve(async (req: Request) => {
     // Generate OTP
     const otp = generateOtp();
     const otpSecret = Deno.env.get("OTP_SECRET")!;
-    const otpHash = hashOtp(otp, otpSecret);
+    const otpHash = await hashOtp(otp, otpSecret);
 
     // Expiry in 5 minutes
     const expiresAt = new Date(Date.now() + 5 * 60 * 1000).toISOString();
@@ -81,9 +84,10 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    // Send SMS using SMSMODE
+    // Send SMS via SMSMODE
     const smsApiKey = Deno.env.get("SMSMODE_API_KEY")!;
     const smsBody = `Your verification code is: ${otp}`;
+
     const smsRes = await fetch("https://ui.smsmode.com/api/v1/sms/send", {
       method: "POST",
       headers: {
