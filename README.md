@@ -1,73 +1,94 @@
-# Welcome to your Lovable project
 
-## Project info
+# 𝓜𝓾𝓷𝓲𝓬𝓲𝓹𝓪𝓵𝓲𝓽𝔂 𝓜𝓪𝓷𝓪𝓰𝓮𝓶𝓮𝓷𝓽 & 𝓡𝓮𝓹𝓸𝓻𝓽𝓲𝓷𝓰 𝓢𝔂𝓼𝓽𝓮𝓶 𝓦𝓮𝓫 𝓐𝓹𝓹 - CITYCONNECT 
+![tripoli-municipality](https://github.com/user-attachments/assets/fa96fa86-bd50-4a33-966e-3cf7b76ea967)
+<img width="1307" height="612" alt="image" src="https://github.com/user-attachments/assets/0b7668a7-492e-434b-8ab3-4af8721ccfcf" />
+<img width="1317" height="350" alt="image" src="https://github.com/user-attachments/assets/d5e6596f-96a9-4e6d-beef-69c5329e69ee" />
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
 
-## How can I edit this code?
 
-There are several ways of editing your application.
+A comprehensive digital platform designed to bridge the gap between citizens and local authorities. This project allows citizens to report infrastructure issues and "Buildings at Risk," while providing city employees with a robust dashboard to manage, assign, and resolve these reports.
 
-**Use Lovable**
+## **🚀 Features** 	
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
+####  For Citizens
+##### Report Issues: Submit reports for road damage, lighting issues, waste management, etc.
+##### Buildings at Risk: A dedicated section to report and monitor structurally unsafe buildings.
+##### Real-time Updates: Track the status of your reports from "Pending" to "Resolved."
+##### Multilingual Support: Full support for English and Arabic (RTL).
 
-Changes made via Lovable will be committed automatically to this repo.
+#### For Municipality Employees
 
-**Use your preferred IDE**
+#### Management Dashboard: A centralized view to review incoming citizen reports.
+##### Status Control: Update report statuses (e.g., Critical, Under Maintenance, Resolved).
+##### Assignment System: Assign tasks to specific departments or staff members.
+##### Secure Access: Role-based access control (RBAC) ensuring only authorized staff can modify data.
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+#### **🛠️ Tech Stack**
+Frontend: React (Vite), TypeScript, Tailwind CSS.
+UI Components: Shadcn/UI, Lucide React.
+Backend & Database: Supabase (PostgreSQL, Auth, Edge Functions).
+State Management: React Context API & TanStack Query (Optimistic Updates).
+Internationalization: i18next (English, French and Arabic).
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+#### ⚙️ Getting Started
+Prerequisites
+Node.js (v18+)
 
-Follow these steps:
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+#### Supabase Account
+Installation
+##### Clone the repository:
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+###### Bash
+```
+git clone https://github.com/your-username/municipality-project.git
 
-# Step 3: Install the necessary dependencies.
-npm i
+cd municipality-project
+```
+##### Install dependencies:
+###### Bash
+npm install
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+Environment Variables: 
+Create a **.env** file in the root directory and add your Supabase credentials:
+
+###### Code snippet
+```
+VITE_SUPABASE_URL=your_supabase_url
+VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+```
+Run the development server:
+
+Bash
+```
 npm run dev
 ```
+🔐 Security & Roles
+The project uses Supabase Row Level Security (RLS).
+Public: Can read "Resolved" issues and buildings.
+Authenticated Citizens: Can create reports.
+Employees: Can access the classify-report Edge Function to update statuses and assign personnel.
 
-**Edit a file directly in GitHub**
+### Supabase Setup
+This project uses a single Supabase Project as its backend.
+Create a new project via the Supabase Dashboard and configure:
+- Database tables
+- Row Level Security (RLS)
+- Authentication
+- Edge Functions
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+Then copy the Project URL and Anon Key into your `.env` file.
 
-**Use GitHub Codespaces**
+#### 🤝 ** Contributing ** 
+Fork the Project.
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+Create your Feature Branch 
+```git checkout -b feature/AmazingFeature```
 
-## What technologies are used for this project?
+Commit your Changes
+```git commit -m 'Add some AmazingFeature'```
 
-This project is built with:
+Push to the Branch
+```git push origin feature/AmazingFeature```
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
-
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+Open a Pull Request.
