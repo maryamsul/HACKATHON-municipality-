@@ -8,36 +8,8 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-type ReportType = "building" | "issue";
-
-// Database status values - EXACT match to DB constraints
-// Buildings: pending | critical | under_maintenance | resolved
-// Issues: pending | under_review | under_maintenance | resolved
-type BuildingStatus = "pending" | "critical" | "under_maintenance" | "resolved";
-type IssueStatus = "pending" | "under_review" | "under_maintenance" | "resolved";
-
-interface Payload {
-  type: ReportType;
-  id: string | number;
-  status: string;
-  assigned_to?: string | null;
-}
-
-// Validate building status matches exact DB enum
-function isAllowedBuildingStatus(s: string): s is BuildingStatus {
-  return s === "pending" || s === "critical" || s === "under_maintenance" || s === "resolved";
-}
-
-// Validate issue status matches exact DB enum
-function isAllowedIssueStatus(s: string): s is IssueStatus {
-  return s === "pending" || s === "under_review" || s === "under_maintenance" || s === "resolved";
-}
-// ... (Your imports and types stay the same)
-
 serve(async (req: Request) => {
-  const requestId = crypto.randomUUID().slice(0, 8);
-
-  // 1. ALWAYS handle OPTIONS first for CORS
+  // 1. Handle CORS Preflight
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 204, headers: corsHeaders });
   }
@@ -45,25 +17,18 @@ serve(async (req: Request) => {
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
-
-    // 2. Setup Auth Check
-    const authHeader = req.headers.get("Authorization") || req.headers.get("authorization");
-    if (!authHeader) {
-      throw new Error("Missing Authorization header");
-    }
-
     const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
-    const token = authHeader.replace("Bearer ", "").trim();
 
-    // Verify the user is who they say they are
+    // 2. Auth & Role Check
+    const authHeader = req.headers.get("Authorization")?.replace("Bearer ", "");
+    if (!authHeader) throw new Error("No auth header");
+
     const {
       data: { user },
       error: userError,
-    } = await supabaseAdmin.auth.getUser(token);
+    } = await supabaseAdmin.auth.getUser(authHeader);
     if (userError || !user) throw new Error("Unauthorized");
 
-    // 3. Role Check
     const { data: roleRow } = await supabaseAdmin
       .from("user_roles")
       .select("role")
@@ -72,22 +37,21 @@ serve(async (req: Request) => {
       .maybeSingle();
 
     if (!roleRow) {
-      return new Response(JSON.stringify({ success: false, error: "Forbidden: Employees only" }), {
+      return new Response(JSON.stringify({ success: false, error: "Unauthorized: Employee only" }), {
         status: 403,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // 4. Parse Payload
-    const payload: Payload = await req.json();
+    // 3. Parse Payload
+    const payload = await req.json();
     const table = payload.type === "building" ? "buildings_at_risk" : "issues";
 
-    // Auto-detect if ID should be Number or String
-    const isNumeric = !isNaN(Number(payload.id)) && payload.type === "issue";
-    const queryId = isNumeric ? Number(payload.id) : String(payload.id);
+    // Buildings use UUID (string), Issues use ID (number)
+    const queryId = payload.type === "building" ? String(payload.id) : Number(payload.id);
 
-    // 5. Execute Update
-    const { data, error } = await supabaseAdmin
+    // 4. Update Database
+    const { data, error: dbError } = await supabaseAdmin
       .from(table)
       .update({
         status: payload.status,
@@ -96,7 +60,7 @@ serve(async (req: Request) => {
       .eq("id", queryId)
       .select();
 
-    if (error) throw error;
+    if (dbError) throw dbError;
 
     if (!data || data.length === 0) {
       return new Response(JSON.stringify({ success: false, error: "Record not found" }), {
@@ -105,15 +69,13 @@ serve(async (req: Request) => {
       });
     }
 
-    // 6. Success Response
-    return new Response(JSON.stringify({ success: true, data: data[0] }), {
+    // 5. SUCCESS RESPONSE
+    return new Response(JSON.stringify({ success: true }), {
       status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
-  } catch (e: any) {
-    // CRITICAL: Even errors must return CORS headers so the frontend can read them
-    console.error(`[${requestId}] Error:`, e.message);
-    return new Response(JSON.stringify({ success: false, error: e.message, requestId }), {
+  } catch (error: any) {
+    return new Response(JSON.stringify({ success: false, error: error.message }), {
       status: 400,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
