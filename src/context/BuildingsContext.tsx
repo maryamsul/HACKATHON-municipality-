@@ -59,20 +59,16 @@ export const BuildingsProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     fetchBuildings();
 
-    // ✅ Single realtime subscription that merges payloads directly
+    // Subscribe to realtime updates - refetch to avoid stale data race conditions
     const channel = supabase
       .channel("buildings-changes")
-      .on("postgres_changes", { event: "*", schema: "public", table: "buildings_at_risk" }, (payload) => {
-        console.log("Realtime payload:", payload);
-
-        if (payload.eventType === "UPDATE") {
-          setBuildings((prev) => prev.map((b) => (b.id === payload.new.id ? { ...b, ...payload.new } : b)));
-        } else if (payload.eventType === "INSERT") {
-          setBuildings((prev) => [payload.new as BuildingAtRisk, ...prev]);
-        } else if (payload.eventType === "DELETE") {
-          setBuildings((prev) => prev.filter((b) => b.id !== payload.old.id));
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "buildings_at_risk" },
+        () => {
+          fetchBuildings();
         }
-      })
+      )
       .subscribe();
 
     return () => {
