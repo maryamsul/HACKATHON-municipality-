@@ -70,7 +70,7 @@ Deno.serve(async (req: Request) => {
     // Store OTP in Supabase
     const { error: otpError } = await supabase.from("otp_codes").insert({
       phone: formattedPhone,
-      otp: otpHash,
+      otp_hash: otpHash,
       used: false,
       expires_at: expiresAt,
       attempts: 0,
