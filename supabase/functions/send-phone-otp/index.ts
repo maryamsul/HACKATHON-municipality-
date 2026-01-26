@@ -1,27 +1,20 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
+import { createClient } from "@supabase/supabase-js";
+import twilio from "twilio";
 
+// CORS headers
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, content-type",
 };
 
-// Utility: generate 6-digit OTP
-const generateOtp = (): string => {
-  return Math.floor(100000 + Math.random() * 900000).toString();
-};
+// Initialize Supabase client (service role key required for insert)
+const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
-// Hash OTP securely using built-in crypto
-async function hashOtp(otp: string, secret: string): Promise<string> {
-  const data = new TextEncoder().encode(otp + secret);
-  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
-  return Array.from(new Uint8Array(hashBuffer))
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
-}
+// Initialize Twilio client
+const twilioClient = twilio(Deno.env.get("TWILIO_ACCOUNT_SID")!, Deno.env.get("TWILIO_AUTH_TOKEN")!);
 
-// Format phone number to international format
-const formatPhoneNumber = (phone: string): string => {
+function formatPhoneNumber(phone: string): string {
   let cleaned = phone.replace(/[^\d+]/g, "");
   if (!cleaned.startsWith("+")) {
     if (cleaned.startsWith("961")) cleaned = "+" + cleaned;
@@ -29,94 +22,52 @@ const formatPhoneNumber = (phone: string): string => {
     else cleaned = "+" + cleaned;
   }
   return cleaned;
-};
+}
 
-Deno.serve(async (req: Request) => {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { status: 204, headers: corsHeaders });
-  }
-
-  if (req.method !== "POST") {
+export default async function handler(req: Request) {
+  if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: corsHeaders });
+  if (req.method !== "POST")
     return new Response(JSON.stringify({ success: false, error: "Method not allowed" }), {
       status: 405,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      headers: corsHeaders,
     });
-  }
 
   try {
-    const { phone, full_name, role } = await req.json();
-
-    if (!phone) {
+    const { phone } = await req.json();
+    if (!phone)
       return new Response(JSON.stringify({ success: false, error: "Phone number is required" }), {
         status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        headers: corsHeaders,
       });
-    }
 
     const formattedPhone = formatPhoneNumber(phone);
 
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
-    // Generate OTP
-    const otp = generateOtp();
-    const otpSecret = Deno.env.get("OTP_SECRET")!;
-    const otpHash = await hashOtp(otp, otpSecret);
-
-    // Expiry in 5 minutes
-    const expiresAt = new Date(Date.now() + 5 * 60 * 1000).toISOString();
-
-    // Store OTP in Supabase
-    const { error: otpError } = await supabase.from("otp_codes").insert({
-      phone: formattedPhone,
-      otp_hash: otpHash,
-      used: false,
-      expires_at: expiresAt,
-      attempts: 0,
-    });
-
-    if (otpError) {
-      console.error("Error storing OTP:", otpError);
-      return new Response(JSON.stringify({ success: false, error: "Failed to generate OTP" }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    // Send SMS via SMSMODE
-    const smsApiKey = Deno.env.get("SMSMODE_API_KEY")!;
-    const smsBody = `Your verification code is: ${otp}`;
-
-    const smsRes = await fetch("https://ui.smsmode.com/api/v1/sms/send", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${smsApiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
+    // Send verification code via Twilio Verify
+    const verification = await twilioClient.verify.v2
+      .services(Deno.env.get("TWILIO_SERVICE_SID")!)
+      .verifications.create({
         to: formattedPhone,
-        message: smsBody,
-      }),
+        channel: "sms",
+      });
+
+    if (!verification.sid) throw new Error("Failed to send OTP");
+
+    // Optional: store a record in your Supabase table
+    await supabase.from("otp_codes").insert({
+      phone: formattedPhone,
+      created_at: new Date().toISOString(),
+      used: false,
     });
 
-    if (!smsRes.ok) {
-      console.error("Failed to send SMS", await smsRes.text());
-      return new Response(JSON.stringify({ success: false, error: "Failed to send SMS" }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    return new Response(JSON.stringify({ success: true, message: "OTP sent successfully" }), {
+    return new Response(JSON.stringify({ success: true, message: "OTP sent" }), {
       status: 200,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      headers: corsHeaders,
     });
   } catch (err) {
-    console.error("Exception in send-phone-otp:", err);
-    return new Response(JSON.stringify({ success: false, error: "Internal server error", details: String(err) }), {
+    console.error("Error sending OTP:", err);
+    return new Response(JSON.stringify({ success: false, error: err.message }), {
       status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      headers: corsHeaders,
     });
   }
-});
+}
