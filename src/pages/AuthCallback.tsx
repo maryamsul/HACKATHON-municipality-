@@ -29,19 +29,45 @@ const AuthCallback = () => {
   useEffect(() => {
     const handleAuthCallback = async () => {
       try {
-        // Check URL hash for recovery token
-        const hashParams = new URLSearchParams(window.location.hash.substring(1));
+        // Check URL hash for recovery token BEFORE any auth operations
+        const hash = window.location.hash;
+        const hashParams = new URLSearchParams(hash.substring(1));
         const type = hashParams.get('type');
+        const accessToken = hashParams.get('access_token');
+        const refreshToken = hashParams.get('refresh_token');
         
-        if (type === 'recovery') {
-          // This is a password reset flow
+        console.log("Auth callback - type:", type, "hasAccessToken:", !!accessToken);
+        
+        // If this is a password recovery flow
+        if (type === 'recovery' && accessToken) {
+          console.log("Password recovery flow detected");
+          
+          // Set the session from the URL tokens so we can update the password
+          // But we will NOT redirect - we'll show the password reset form
+          const { error: sessionError } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken || '',
+          });
+          
+          if (sessionError) {
+            console.error("Session error:", sessionError);
+            toast({
+              title: t('common.error'),
+              description: t('auth.somethingWentWrong'),
+              variant: "destructive"
+            });
+            navigate("/auth");
+            return;
+          }
+          
+          // Show password reset form - do NOT redirect
           setIsPasswordReset(true);
           setIsLoading(false);
           return;
         }
 
-        // Regular auth callback (email verification, etc.)
-        const { error } = await supabase.auth.getSession();
+        // For non-recovery flows (email verification, etc.)
+        const { data, error } = await supabase.auth.getSession();
         
         if (error) {
           console.error("Auth callback error:", error);
@@ -49,8 +75,14 @@ const AuthCallback = () => {
           return;
         }
 
-        // Successfully verified - redirect to home
-        navigate("/");
+        // Check if this was a recovery that already processed
+        // (user refreshed the page after recovery link)
+        if (data.session) {
+          // Successfully verified - redirect to home
+          navigate("/");
+        } else {
+          navigate("/auth");
+        }
       } catch (err) {
         console.error("Auth callback exception:", err);
         navigate("/auth?error=verification_failed");
@@ -58,7 +90,7 @@ const AuthCallback = () => {
     };
 
     handleAuthCallback();
-  }, [navigate]);
+  }, [navigate, toast, t]);
 
   const validatePasswords = (): boolean => {
     setError("");
@@ -92,29 +124,40 @@ const AuthCallback = () => {
     setError("");
 
     try {
-      const { error } = await supabase.auth.updateUser({
+      // Update the password using Supabase Auth
+      const { error: updateError } = await supabase.auth.updateUser({
         password: newPassword
       });
 
-      if (error) {
-        setError(error.message);
+      if (updateError) {
+        console.error("Password update error:", updateError);
+        setError(updateError.message);
         toast({
           title: t('common.error'),
-          description: error.message,
+          description: updateError.message,
           variant: "destructive"
         });
-      } else {
-        setShowSuccess(true);
-        toast({
-          title: t('common.success'),
-          description: t('auth.passwordUpdatedSuccess')
-        });
-        
-        // Redirect to login after 3 seconds
-        setTimeout(() => {
-          navigate("/auth");
-        }, 3000);
+        setIsSubmitting(false);
+        return;
       }
+
+      // Password updated successfully - sign out to force re-login with new password
+      await supabase.auth.signOut();
+      
+      setShowSuccess(true);
+      toast({
+        title: t('common.success'),
+        description: t('auth.passwordUpdatedSuccess')
+      });
+      
+      // Clear the URL hash to prevent re-processing
+      window.history.replaceState(null, '', window.location.pathname);
+      
+      // Redirect to login after 3 seconds
+      setTimeout(() => {
+        navigate("/auth");
+      }, 3000);
+      
     } catch (err) {
       console.error("Password reset error:", err);
       setError(t('auth.somethingWentWrong'));
@@ -187,6 +230,7 @@ const AuthCallback = () => {
                     onChange={(e) => setNewPassword(e.target.value)}
                     className={isRTL ? 'pr-10 pl-10' : 'pl-10 pr-10'}
                     disabled={isSubmitting}
+                    autoComplete="new-password"
                   />
                   <button
                     type="button"
@@ -210,6 +254,7 @@ const AuthCallback = () => {
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     className={isRTL ? 'pr-10 pl-10' : 'pl-10 pr-10'}
                     disabled={isSubmitting}
+                    autoComplete="new-password"
                   />
                   <button
                     type="button"
