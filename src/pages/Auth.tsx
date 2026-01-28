@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAuth, UserRole } from "@/context/AuthContext";
@@ -26,8 +26,6 @@ const Auth = () => {
   const [showResetConfirmation, setShowResetConfirmation] = useState(false);
   const [registeredEmail, setRegisteredEmail] = useState("");
   const [resetEmail, setResetEmail] = useState("");
-  const [resetCooldown, setResetCooldown] = useState(0);
-  const [isResetLoading, setIsResetLoading] = useState(false);
   
   const { signUp, signIn, isAuthenticated } = useAuth();
   const navigate = useNavigate();
@@ -85,18 +83,12 @@ const Auth = () => {
 
   const handleForgotPassword = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // Prevent submission during cooldown or loading
-    if (resetCooldown > 0 || isResetLoading) {
-      return;
-    }
-    
     if (!resetEmail) {
       toast({ title: t('common.error'), description: t('auth.pleaseEnterEmail'), variant: "destructive" });
       return;
     }
 
-    setIsResetLoading(true);
+    setIsLoading(true);
     try {
       const redirectUrl = `${window.location.origin}/auth/callback`;
       const { error } = await supabase.auth.resetPasswordForEmail(resetEmail, {
@@ -104,37 +96,16 @@ const Auth = () => {
       });
 
       if (error) {
-        // Handle rate limit specifically
-        if (error.message.toLowerCase().includes('rate limit')) {
-          toast({ 
-            title: t('auth.rateLimitTitle'), 
-            description: t('auth.rateLimitDesc'), 
-            variant: "destructive" 
-          });
-          // Start a 60-second cooldown
-          setResetCooldown(60);
-        } else {
-          toast({ title: t('common.error'), description: error.message, variant: "destructive" });
-        }
+        toast({ title: t('common.error'), description: error.message, variant: "destructive" });
       } else {
         setShowResetConfirmation(true);
-        // Start cooldown to prevent immediate retry
-        setResetCooldown(60);
       }
     } catch (error) {
       toast({ title: t('common.error'), description: t('auth.somethingWentWrong'), variant: "destructive" });
     } finally {
-      setIsResetLoading(false);
+      setIsLoading(false);
     }
   };
-
-  // Cooldown timer effect
-  React.useEffect(() => {
-    if (resetCooldown > 0) {
-      const timer = setTimeout(() => setResetCooldown(resetCooldown - 1), 1000);
-      return () => clearTimeout(timer);
-    }
-  }, [resetCooldown]);
 
   // Show password reset confirmation screen
   if (showResetConfirmation) {
@@ -210,16 +181,10 @@ const Auth = () => {
                 </div>
               </div>
 
-              <Button type="submit" className="w-full" disabled={isResetLoading || resetCooldown > 0}>
-                {isResetLoading ? t('auth.sending') : resetCooldown > 0 ? `${t('auth.waitSeconds')} (${resetCooldown}s)` : t('auth.sendResetLink')}
+              <Button type="submit" className="w-full" disabled={isLoading}>
+                {isLoading ? t('auth.sending') : t('auth.sendResetLink')}
               </Button>
             </form>
-
-            {resetCooldown > 0 && (
-              <p className="text-xs text-muted-foreground text-center mt-2">
-                {t('auth.cooldownMessage')}
-              </p>
-            )}
 
             <div className="mt-4 text-center">
               <button
