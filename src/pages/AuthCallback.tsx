@@ -1,14 +1,46 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { useToast } from "@/hooks/use-toast";
+import { Loader2, Lock, CheckCircle, Eye, EyeOff } from "lucide-react";
 
 const AuthCallback = () => {
+  const { t, i18n } = useTranslation();
+  const isRTL = i18n.language === 'ar';
   const navigate = useNavigate();
+  const { toast } = useToast();
+  
+  const [isPasswordReset, setIsPasswordReset] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
+  
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [error, setError] = useState("");
 
   useEffect(() => {
     const handleAuthCallback = async () => {
       try {
+        // Check URL hash for recovery token
+        const hashParams = new URLSearchParams(window.location.hash.substring(1));
+        const type = hashParams.get('type');
+        
+        if (type === 'recovery') {
+          // This is a password reset flow
+          setIsPasswordReset(true);
+          setIsLoading(false);
+          return;
+        }
+
+        // Regular auth callback (email verification, etc.)
         const { error } = await supabase.auth.getSession();
         
         if (error) {
@@ -28,11 +60,194 @@ const AuthCallback = () => {
     handleAuthCallback();
   }, [navigate]);
 
+  const validatePasswords = (): boolean => {
+    setError("");
+    
+    if (!newPassword || !confirmPassword) {
+      setError(t('auth.bothFieldsRequired'));
+      return false;
+    }
+    
+    if (newPassword.length < 6) {
+      setError(t('auth.passwordMinLength'));
+      return false;
+    }
+    
+    if (newPassword !== confirmPassword) {
+      setError(t('auth.passwordsDoNotMatch'));
+      return false;
+    }
+    
+    return true;
+  };
+
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!validatePasswords()) {
+      return;
+    }
+
+    setIsSubmitting(true);
+    setError("");
+
+    try {
+      const { error } = await supabase.auth.updateUser({
+        password: newPassword
+      });
+
+      if (error) {
+        setError(error.message);
+        toast({
+          title: t('common.error'),
+          description: error.message,
+          variant: "destructive"
+        });
+      } else {
+        setShowSuccess(true);
+        toast({
+          title: t('common.success'),
+          description: t('auth.passwordUpdatedSuccess')
+        });
+        
+        // Redirect to login after 3 seconds
+        setTimeout(() => {
+          navigate("/auth");
+        }, 3000);
+      }
+    } catch (err) {
+      console.error("Password reset error:", err);
+      setError(t('auth.somethingWentWrong'));
+      toast({
+        title: t('common.error'),
+        description: t('auth.somethingWentWrong'),
+        variant: "destructive"
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Show success screen
+  if (showSuccess) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-4" dir={isRTL ? 'rtl' : 'ltr'}>
+        <Card className="w-full max-w-md text-center">
+          <CardHeader>
+            <div className="mx-auto mb-4 w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center">
+              <CheckCircle className="w-8 h-8 text-primary" />
+            </div>
+            <CardTitle className="text-2xl font-bold text-primary">
+              {t('auth.passwordUpdated')}
+            </CardTitle>
+            <CardDescription className="text-base">
+              {t('auth.passwordUpdatedDesc')}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground mb-4">
+              {t('auth.redirectingToLogin')}
+            </p>
+            <Button onClick={() => navigate("/auth")} className="w-full">
+              {t('auth.goToLogin')}
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // Show password reset form
+  if (isPasswordReset) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-4" dir={isRTL ? 'rtl' : 'ltr'}>
+        <Card className="w-full max-w-md">
+          <CardHeader className="text-center">
+            <div className="mx-auto mb-4 w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center">
+              <Lock className="w-8 h-8 text-primary" />
+            </div>
+            <CardTitle className="text-2xl font-bold text-primary">
+              {t('auth.setNewPassword')}
+            </CardTitle>
+            <CardDescription>
+              {t('auth.enterNewPassword')}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleResetPassword} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="newPassword">{t('auth.newPassword')}</Label>
+                <div className="relative">
+                  <Lock className={`absolute ${isRTL ? 'right-3' : 'left-3'} top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground`} />
+                  <Input
+                    id="newPassword"
+                    type={showNewPassword ? "text" : "password"}
+                    placeholder={t('auth.enterNewPassword')}
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    className={isRTL ? 'pr-10 pl-10' : 'pl-10 pr-10'}
+                    disabled={isSubmitting}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowNewPassword(!showNewPassword)}
+                    className={`absolute ${isRTL ? 'left-3' : 'right-3'} top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground`}
+                  >
+                    {showNewPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="confirmPassword">{t('auth.confirmPassword')}</Label>
+                <div className="relative">
+                  <Lock className={`absolute ${isRTL ? 'right-3' : 'left-3'} top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground`} />
+                  <Input
+                    id="confirmPassword"
+                    type={showConfirmPassword ? "text" : "password"}
+                    placeholder={t('auth.confirmNewPassword')}
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    className={isRTL ? 'pr-10 pl-10' : 'pl-10 pr-10'}
+                    disabled={isSubmitting}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className={`absolute ${isRTL ? 'left-3' : 'right-3'} top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground`}
+                  >
+                    {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+              </div>
+
+              {error && (
+                <p className="text-sm text-destructive text-center">{error}</p>
+              )}
+
+              <Button type="submit" className="w-full" disabled={isSubmitting}>
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    {t('auth.updating')}
+                  </>
+                ) : (
+                  t('auth.updatePassword')
+                )}
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // Loading state
   return (
     <div className="min-h-screen flex items-center justify-center bg-background">
       <div className="text-center">
         <Loader2 className="w-8 h-8 animate-spin mx-auto text-primary" />
-        <p className="mt-4 text-muted-foreground">Verifying your email...</p>
+        <p className="mt-4 text-muted-foreground">{t('auth.verifyingEmail')}</p>
       </div>
     </div>
   );
