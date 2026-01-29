@@ -8,3 +8,6 @@ verify_jwt = false
 
 [functions.classify-report]
 verify_jwt = false
+
+[functions.create-issue]
+verify_jwt = false
