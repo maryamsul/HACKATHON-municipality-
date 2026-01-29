@@ -71,28 +71,58 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    // Check if user has employee role
-    const { data: roleData, error: roleError } = await supabaseAdmin
+    // Check if user has employee role (avoid .single() to prevent failures if multiple roles exist)
+    const { data: employeeRole, error: roleError } = await supabaseAdmin
       .from("user_roles")
-      .select("role")
+      .select("id")
       .eq("user_id", userId)
-      .single();
+      .eq("role", "employee")
+      .maybeSingle();
 
-    if (roleError || roleData?.role !== "employee") {
-      console.error("[dismiss-issue] Role check failed:", roleError || "Not an employee");
+    if (roleError) {
+      console.error("[dismiss-issue] Role lookup error:", roleError);
+      return new Response(
+        JSON.stringify({ success: false, error: "Role lookup failed" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    if (!employeeRole) {
+      console.error("[dismiss-issue] Forbidden: not employee", { userId });
       return new Response(
         JSON.stringify({ success: false, error: "Only employees can dismiss issues" }),
         { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    console.log("[dismiss-issue] Employee verified, deleting issue:", issueId);
+    console.log("[dismiss-issue] Employee verified", { userId, issueId });
 
-    // Delete the issue (idempotent - success even if already deleted)
-    const { error: deleteError } = await supabaseAdmin
+    // Idempotency: if already absent, return success.
+    const { data: existingIssue, error: existingError } = await supabaseAdmin
       .from("issues")
-      .delete()
-      .eq("id", issueId);
+      .select("id")
+      .eq("id", issueId)
+      .maybeSingle();
+
+    if (existingError) {
+      console.error("[dismiss-issue] Pre-check select error:", existingError);
+      return new Response(
+        JSON.stringify({ success: false, error: "Unable to verify issue existence" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    if (!existingIssue) {
+      console.log("[dismiss-issue] Issue already absent (idempotent success)", { issueId });
+      return new Response(
+        JSON.stringify({ success: true, action: "dismissed", id: issueId }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    console.log("[dismiss-issue] Deleting issue", { issueId });
+
+    const { error: deleteError } = await supabaseAdmin.from("issues").delete().eq("id", issueId);
 
     if (deleteError) {
       console.error("[dismiss-issue] Delete error:", deleteError);
@@ -102,7 +132,30 @@ Deno.serve(async (req) => {
       );
     }
 
-    console.log("[dismiss-issue] Issue dismissed successfully:", issueId);
+    // Post-check: if the record still exists, do NOT return a false-success.
+    const { data: postIssue, error: postError } = await supabaseAdmin
+      .from("issues")
+      .select("id")
+      .eq("id", issueId)
+      .maybeSingle();
+
+    if (postError) {
+      console.error("[dismiss-issue] Post-check select error:", postError);
+      return new Response(
+        JSON.stringify({ success: false, error: "Unable to verify deletion" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    if (postIssue) {
+      console.error("[dismiss-issue] Delete reported success but record still exists", { issueId });
+      return new Response(
+        JSON.stringify({ success: false, error: "Dismiss failed: issue still exists" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    console.log("[dismiss-issue] Issue dismissed successfully", { issueId });
 
     return new Response(
       JSON.stringify({ success: true, action: "dismissed", id: issueId }),
