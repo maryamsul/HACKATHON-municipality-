@@ -11,6 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useIssues } from "@/context/IssuesContext";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
+import { parseLatLngFromString } from "@/lib/geo";
 import BottomNav from "../components/BottomNav";
 import SuccessAnimation from "@/components/SuccessAnimation";
 
@@ -119,7 +120,9 @@ const AddIssue = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!category || !description) {
+    const effectiveCoordinates = coordinates ?? parseLatLngFromString(location);
+
+    if (!category || !description || !effectiveCoordinates) {
       toast({
         title: t('addIssue.missingFields'),
         description: t('addIssue.pleaseFillRequired'),
@@ -167,8 +170,8 @@ const AddIssue = () => {
         title: `${category} issue`,
         description,
         category,
-        latitude: coordinates?.lat ?? null,
-        longitude: coordinates?.lng ?? null,
+        latitude: effectiveCoordinates.lat,
+        longitude: effectiveCoordinates.lng,
         reported_by: user.id,
         status: "pending",
         thumbnail: thumbnailUrl,
