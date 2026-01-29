@@ -177,18 +177,19 @@ export const dismissIssue = async (
       };
     }
 
-    console.log("Calling dismiss-issue API for issue dismissal");
+    console.log("[issueApi] Calling classify-report for dismiss, issueId:", issueId);
 
-    // Dismiss uses its own dedicated edge function (soft delete via dismissed_at)
-    const { data, error } = await supabase.functions.invoke("dismiss-issue", {
+    // Use classify-report with action: "dismiss" for soft delete
+    const { data, error } = await supabase.functions.invoke("classify-report", {
       body: {
+        type: "issue",
         id: issueId,
         action: "dismiss",
       },
     });
 
     if (error) {
-      console.error("Edge function error:", error);
+      console.error("[issueApi] Dismiss invoke error:", error);
       return {
         success: false,
         error: error.message || "Failed to dismiss issue",
@@ -196,6 +197,7 @@ export const dismissIssue = async (
       };
     }
 
+    // Always check response success field
     if (!data?.success) {
       return {
         success: false,
@@ -209,7 +211,7 @@ export const dismissIssue = async (
       data: data,
     };
   } catch (err) {
-    console.error("Unexpected error in dismissIssue:", err);
+    console.error("[issueApi] dismissIssue exception:", err);
     return {
       success: false,
       error: err instanceof Error ? err.message : "Unknown error occurred",
