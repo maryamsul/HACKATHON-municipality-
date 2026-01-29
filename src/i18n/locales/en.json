@@ -111,6 +111,7 @@
   "status": {
     "pending": "Pending",
     "pendingNew": "Pending (New)",
+    "pendingApproved": "Pending (Approved)",
     "underReview": "Under Review",
     "underMaintenance": "Under Maintenance",
     "resolved": "Resolved",
@@ -269,7 +270,9 @@
     "employeeOnlyDesc": "This page is restricted to municipality employees."
   },
   "issues": {
-    "underReview": "Under Review"
+    "underReview": "Under Review",
+    "pendingNew": "Pending (New)",
+    "pendingApproved": "Pending (Approved)"
   },
   "settings": {
     "title": "Settings",

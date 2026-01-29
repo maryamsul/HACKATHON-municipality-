@@ -110,6 +110,7 @@
   "status": {
     "pending": "En attente",
     "pendingNew": "En attente (Nouveau)",
+    "pendingApproved": "En attente (Approuvé)",
     "underReview": "En cours d'examen",
     "underMaintenance": "En maintenance",
     "resolved": "Résolu",
@@ -242,6 +243,11 @@
     "issueDismissed": "Le problème a été rejeté",
     "failedToDismiss": "Échec du rejet du problème",
     "issueAccepted": "Le problème a été accepté et est maintenant visible par tous les utilisateurs"
+  },
+  "issues": {
+    "underReview": "En cours d'examen",
+    "pendingNew": "En attente (Nouveau)",
+    "pendingApproved": "En attente (Approuvé)"
   },
   "notifications": {
     "title": "Notifications",

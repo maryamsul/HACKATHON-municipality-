@@ -110,6 +110,7 @@
   "status": {
     "pending": "قيد الانتظار",
     "pendingNew": "قيد الانتظار (جديد)",
+    "pendingApproved": "قيد الانتظار (موافق عليه)",
     "underReview": "قيد المراجعة",
     "underMaintenance": "قيد الصيانة",
     "resolved": "تم الحل",
@@ -242,6 +243,11 @@
     "issueDismissed": "تم رفض المشكلة",
     "failedToDismiss": "فشل رفض المشكلة",
     "issueAccepted": "تم قبول المشكلة وهي الآن مرئية لجميع المستخدمين"
+  },
+  "issues": {
+    "underReview": "قيد المراجعة",
+    "pendingNew": "قيد الانتظار (جديد)",
+    "pendingApproved": "قيد الانتظار (موافق عليه)"
   },
   "notifications": {
     "title": "الإشعارات",
