@@ -15,57 +15,107 @@ const Notifications = () => {
   const { t, i18n } = useTranslation();
   const isRTL = i18n.language === 'ar';
 
-  const formatLocation = (lat: number, lng: number) => {
+  const formatLocation = (lat: number | null, lng: number | null) => {
+    if (lat === null || lng === null) return null;
     return `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
   };
 
-  const issueItems = (user ? issues.filter((i) => i.reported_by === user.id) : []).filter((i) => i.status !== "pending");
-  const buildingItems = (user ? buildings.filter((b) => b.reported_by === user.id) : []).filter((b) => b.status !== "pending");
+  // Filter user's issues that have been processed (not in initial pending state)
+  // "pending" = newly reported, only employees see these
+  // "pending_approved" and beyond = visible and should generate notifications
+  const myIssues = user 
+    ? issues.filter((i) => i.reported_by === user.id && i.status !== "pending")
+    : [];
+  
+  // Filter user's buildings that have been processed (not in initial pending state)
+  const myBuildings = user 
+    ? buildings.filter((b) => b.reported_by === user.id && b.status !== "pending")
+    : [];
 
-  const getItemTime = (item: any) => {
+  const getItemTime = (item: { updated_at?: string; created_at: string }) => {
     const ts = item.updated_at || item.created_at;
     return new Date(ts).getTime();
   };
 
-  // Generate notifications based on the current user's reports (issues + buildings)
-  const notifications = [...issueItems.map((issue) => ({
-    kind: "issue" as const,
-    key: `issue-${issue.id}`,
-    status: issue.status,
-    title:
-      issue.status === "resolved"
-        ? `${t('dashboard.resolved')}: ${t(`categories.${issue.category.toLowerCase().replace(' ', '')}` as any) || issue.category}`
-        : issue.status === "under_maintenance"
-        ? `${t('dashboard.underMaintenance')}: ${t(`categories.${issue.category.toLowerCase().replace(' ', '')}` as any) || issue.category}`
-        : `${t('dashboard.underReview')}: ${t(`categories.${issue.category.toLowerCase().replace(' ', '')}` as any) || issue.category}`,
-    message:
-      issue.status === "resolved"
-        ? `${t('issueDetails.location')}: ${formatLocation(issue.latitude, issue.longitude)} - ${t('dashboard.resolved')}`
-        : issue.status === "under_maintenance"
-        ? `${t('issueDetails.location')}: ${formatLocation(issue.latitude, issue.longitude)} - ${t('dashboard.underMaintenance')}`
-        : `${t('issueDetails.location')}: ${formatLocation(issue.latitude, issue.longitude)} - ${t('dashboard.underReview')}`,
-    time: new Date(issue.created_at).toLocaleDateString(i18n.language === 'ar' ? 'ar-LB' : i18n.language === 'fr' ? 'fr-FR' : 'en-US'),
-    navigateTo: `/issue/${issue.id}`,
-    sortTime: getItemTime(issue),
-  })),
-  ...buildingItems.map((building) => ({
-    kind: "building" as const,
-    key: `building-${building.id}`,
-    status: building.status,
-    title:
-      building.status === "resolved"
-        ? `${t('buildings.statusResolved')}: ${building.building_name || building.title}`
-        : building.status === "under_maintenance"
-        ? `${t('buildings.statusInspection')}: ${building.building_name || building.title}`
-        : `${t('buildings.statusCritical')}: ${building.building_name || building.title}`,
-    message:
-      `${t('buildings.title')}: ${building.building_name || building.title}`,
-    time: new Date((building as any).updated_at || building.created_at).toLocaleDateString(i18n.language === 'ar' ? 'ar-LB' : i18n.language === 'fr' ? 'fr-FR' : 'en-US'),
-    navigateTo: `/buildings-at-risk`,
-    sortTime: getItemTime(building),
-  }))]
+  const formatDate = (dateStr: string) => {
+    return new Date(dateStr).toLocaleDateString(
+      i18n.language === 'ar' ? 'ar-LB' : i18n.language === 'fr' ? 'fr-FR' : 'en-US',
+      { month: 'short', day: 'numeric', year: 'numeric' }
+    );
+  };
+
+  // Generate notifications from issues
+  const issueNotifications = myIssues.map((issue) => {
+    const categoryKey = issue.category.toLowerCase().replace(/\s+/g, '');
+    const categoryLabel = t(`categories.${categoryKey}` as never) || issue.category;
+    
+    let statusLabel: string;
+    switch (issue.status) {
+      case "resolved":
+        statusLabel = t('dashboard.resolved');
+        break;
+      case "under_maintenance":
+        statusLabel = t('dashboard.underMaintenance');
+        break;
+      case "under_review":
+        statusLabel = t('dashboard.underReview');
+        break;
+      case "pending_approved":
+        statusLabel = t('status.pending', 'Pending');
+        break;
+      default:
+        statusLabel = issue.status;
+    }
+
+    const location = formatLocation(issue.latitude, issue.longitude);
+
+    return {
+      kind: "issue" as const,
+      key: `issue-${issue.id}`,
+      status: issue.status,
+      title: `${statusLabel}: ${categoryLabel}`,
+      message: location 
+        ? `${t('issueDetails.location')}: ${location}` 
+        : issue.description?.slice(0, 50) || categoryLabel,
+      time: formatDate(issue.created_at),
+      navigateTo: `/issue/${issue.id}`,
+      sortTime: getItemTime(issue),
+    };
+  });
+
+  // Generate notifications from buildings
+  const buildingNotifications = myBuildings.map((building) => {
+    let statusLabel: string;
+    switch (building.status) {
+      case "resolved":
+        statusLabel = t('buildings.statusResolved');
+        break;
+      case "under_maintenance":
+        statusLabel = t('buildings.statusInspection');
+        break;
+      case "critical":
+        statusLabel = t('buildings.statusCritical');
+        break;
+      default:
+        statusLabel = building.status;
+    }
+
+    return {
+      kind: "building" as const,
+      key: `building-${building.id}`,
+      status: building.status,
+      title: `${statusLabel}: ${building.building_name || building.title}`,
+      message: `${t('buildings.title')}: ${building.building_name || building.title}`,
+      time: formatDate((building as { updated_at?: string; created_at: string }).updated_at || building.created_at),
+      navigateTo: `/buildings-at-risk`,
+      sortTime: getItemTime(building as { updated_at?: string; created_at: string }),
+    };
+  });
+
+  // Combine and sort all notifications by most recent
+  const notifications = [...issueNotifications, ...buildingNotifications]
     .sort((a, b) => b.sortTime - a.sortTime)
-    .slice(0, 10)
+    .slice(0, 15)
     .map((n, idx) => ({ ...n, id: idx }));
 
   const getStatusIcon = (status: string) => {

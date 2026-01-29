@@ -11,6 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useIssues } from "@/context/IssuesContext";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
+import { createIssueReport } from "@/api/issueApi";
 import BottomNav from "../components/BottomNav";
 import SuccessAnimation from "@/components/SuccessAnimation";
 
@@ -145,6 +146,7 @@ const AddIssue = () => {
     try {
       let thumbnailUrl: string | null = null;
 
+      // Upload photo if provided (still using direct storage access for file uploads)
       if (photoFile) {
         const fileExt = photoFile.name.split('.').pop();
         const fileName = `${user.id}-${Date.now()}.${fileExt}`;
@@ -164,20 +166,18 @@ const AddIssue = () => {
         }
       }
 
-      // Insert into issues table - coordinates are optional
-      const { error } = await supabase.from("issues").insert({
+      // Create issue via edge function API (not direct DB insert)
+      const result = await createIssueReport({
         title: `${category} issue`,
         description,
         category,
         latitude: coordinates?.lat ?? null,
         longitude: coordinates?.lng ?? null,
-        reported_by: user.id,
-        status: "pending",
         thumbnail: thumbnailUrl,
       });
 
-      if (error) {
-        throw error;
+      if (!result.success) {
+        throw new Error(result.error || "Failed to create issue");
       }
 
       await refetchIssues();
