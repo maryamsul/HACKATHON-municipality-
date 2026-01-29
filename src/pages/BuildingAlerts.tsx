@@ -51,7 +51,7 @@ const BuildingAlerts = () => {
   const { t, i18n } = useTranslation();
   const isRTL = i18n.language === "ar";
   const { buildings, loading: buildingsLoading } = useBuildings();
-  const { issues, loading: issuesLoading, refetchIssues, updateIssueOptimistic } = useIssues();
+  const { issues, loading: issuesLoading, refetchIssues, updateIssueOptimistic, removeIssueOptimistic } = useIssues();
   const { profile, isAuthenticated } = useAuth();
   const { toast } = useToast();
   const [filterStatus, setFilterStatus] = useState<string>("all");
@@ -196,13 +196,28 @@ const BuildingAlerts = () => {
     if (!dismissIssueId) return;
     setIsDismissing(true);
 
-    console.log("[BuildingAlerts] Dismissing issue ID:", dismissIssueId);
+    const issueId = Number(dismissIssueId);
+    if (!Number.isFinite(issueId) || issueId <= 0) {
+      toast({
+        title: t("common.error"),
+        description: "Invalid issue ID",
+        variant: "destructive",
+      });
+      setIsDismissing(false);
+      setDismissIssueId(null);
+      return;
+    }
+
+    console.log("[BuildingAlerts] Dismissing issue ID:", issueId);
+
+    // Optimistic remove from UI immediately
+    removeIssueOptimistic(issueId);
 
     try {
       const { data, error } = await supabase.functions.invoke("classify-report", {
         body: {
           type: "issue",
-          id: dismissIssueId,
+          id: issueId,
           action: "dismiss",
         },
       });
@@ -216,6 +231,8 @@ const BuildingAlerts = () => {
           description: t("issueDetails.failedToDismiss", "Failed to dismiss issue"),
           variant: "destructive",
         });
+        // Re-sync list (reverts optimistic removal if needed)
+        await refetchIssues();
         return;
       }
 
@@ -224,6 +241,7 @@ const BuildingAlerts = () => {
           title: t("common.success"),
           description: t("issueDetails.issueDismissed", "Issue has been dismissed"),
         });
+        // Ensure list is consistent (in background)
         refetchIssues();
       } else {
         toast({
@@ -231,6 +249,7 @@ const BuildingAlerts = () => {
           description: data?.error || t("issueDetails.failedToDismiss", "Failed to dismiss issue"),
           variant: "destructive",
         });
+        await refetchIssues();
       }
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Unknown error";
@@ -240,6 +259,7 @@ const BuildingAlerts = () => {
         description: message || t("issueDetails.failedToDismiss", "Failed to dismiss issue"),
         variant: "destructive",
       });
+      await refetchIssues();
     } finally {
       setIsDismissing(false);
       setDismissIssueId(null);
@@ -372,6 +392,8 @@ const BuildingAlerts = () => {
     const StatusIcon = getStatusIcon(issue.status);
     const isNewlyReported = issue.status === "pending";
     const isApproved = issue.status !== "pending" && issue.status !== "resolved";
+
+    const issueId = typeof issue.id === "number" ? issue.id : Number(issue.id);
     
     return (
       <motion.div
@@ -455,7 +477,18 @@ const BuildingAlerts = () => {
               size="sm"
               variant="outline"
               className="flex-1 h-9 bg-green-50 text-green-700 hover:bg-green-100 border-green-200 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800"
-              onClick={(e) => handleAcceptIssue(issue.id, e)}
+              onClick={(e) => {
+                if (!Number.isFinite(issueId) || issueId <= 0) {
+                  e.stopPropagation();
+                  toast({
+                    title: t("common.error"),
+                    description: "Invalid issue ID",
+                    variant: "destructive",
+                  });
+                  return;
+                }
+                handleAcceptIssue(issueId, e);
+              }}
             >
               <Check className="w-4 h-4 mr-1.5" />
               {t("issueDetails.accept", "Accept")}
@@ -466,7 +499,15 @@ const BuildingAlerts = () => {
               className="flex-1 h-9 bg-red-50 text-red-700 hover:bg-red-100 border-red-200 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800"
               onClick={(e) => {
                 e.stopPropagation();
-                setDismissIssueId(issue.id);
+                if (!Number.isFinite(issueId) || issueId <= 0) {
+                  toast({
+                    title: t("common.error"),
+                    description: "Invalid issue ID",
+                    variant: "destructive",
+                  });
+                  return;
+                }
+                setDismissIssueId(issueId);
               }}
             >
               <X className="w-4 h-4 mr-1.5" />
@@ -478,7 +519,7 @@ const BuildingAlerts = () => {
         {/* Status dropdown for approved/in-progress issues */}
         {isApproved && (
           <div className="mt-3 pt-3 border-t border-border" onClick={(e) => e.stopPropagation()}>
-            <Select value={issue.status} onValueChange={(value) => handleStatusChange(issue.id, value)}>
+            <Select value={issue.status} onValueChange={(value) => handleStatusChange(issueId, value)}>
               <SelectTrigger className="w-full h-9 text-sm">
                 <SelectValue placeholder={t("status.statusPlaceholder", "Select status")} />
               </SelectTrigger>
