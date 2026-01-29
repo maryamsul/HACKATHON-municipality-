@@ -85,7 +85,19 @@ const IssueDetails = () => {
   }
 
   const currentStatus = ISSUE_STATUSES[issue.status as IssueStatus] || ISSUE_STATUSES.under_review;
-  const openStreetMapUrl = `https://www.openstreetmap.org/export/embed.html?bbox=${issue.longitude - 0.01},${issue.latitude - 0.01},${issue.longitude + 0.01},${issue.latitude + 0.01}&layer=mapnik&marker=${issue.latitude},${issue.longitude}`;
+  
+  // Validate coordinates are safe numbers before using in URLs
+  const safeLatitude = typeof issue.latitude === 'number' && isFinite(issue.latitude) ? issue.latitude : 0;
+  const safeLongitude = typeof issue.longitude === 'number' && isFinite(issue.longitude) ? issue.longitude : 0;
+  const hasValidCoordinates = safeLatitude !== 0 || safeLongitude !== 0;
+  
+  // Construct URLs with validated coordinates only
+  const openStreetMapUrl = hasValidCoordinates
+    ? `https://www.openstreetmap.org/export/embed.html?bbox=${safeLongitude - 0.01},${safeLatitude - 0.01},${safeLongitude + 0.01},${safeLatitude + 0.01}&layer=mapnik&marker=${safeLatitude},${safeLongitude}`
+    : '';
+  const googleMapsUrl = hasValidCoordinates
+    ? `https://www.google.com/maps?q=${safeLatitude},${safeLongitude}`
+    : '';
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-amber-50 to-background pb-24" dir={isRTL ? 'rtl' : 'ltr'}>
@@ -137,12 +149,14 @@ const IssueDetails = () => {
         <div>
           <h1 className="text-2xl font-bold text-foreground mb-3">{issue.title}</h1>
           <div className="flex flex-col gap-2">
-            <div className="flex items-center gap-2 text-muted-foreground">
-              <MapPin className="w-4 h-4" />
-              <span className="text-sm text-gray-800" dir="ltr">
-                {issue.latitude.toFixed(4)}, {issue.longitude.toFixed(4)}
-              </span>
-            </div>
+            {hasValidCoordinates && (
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <MapPin className="w-4 h-4" />
+                <span className="text-sm text-gray-800" dir="ltr">
+                  {safeLatitude.toFixed(4)}, {safeLongitude.toFixed(4)}
+                </span>
+              </div>
+            )}
             <div className="flex items-center gap-2 text-muted-foreground">
               <Calendar className="w-4 h-4" />
               <span className="text-sm text-gray-800">
@@ -164,24 +178,26 @@ const IssueDetails = () => {
           <p className="text-muted-foreground leading-relaxed text-gray-800">{issue.description}</p>
         </div>
 
-        {/* Map with Google Maps Link */}
-        <div>
-          <h2 className="text-lg font-semibold text-foreground mb-2">{t('issueDetails.location')}</h2>
-          <div className="rounded-2xl overflow-hidden shadow-sm border border-border">
-            <iframe src={openStreetMapUrl} className="w-full h-48 border-0" title="Issue location map" />
+        {/* Map with Google Maps Link - only show if coordinates are valid */}
+        {hasValidCoordinates && (
+          <div>
+            <h2 className="text-lg font-semibold text-foreground mb-2">{t('issueDetails.location')}</h2>
+            <div className="rounded-2xl overflow-hidden shadow-sm border border-border">
+              <iframe src={openStreetMapUrl} className="w-full h-48 border-0" title="Issue location map" />
+            </div>
+            <a
+              href={googleMapsUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-sm text-primary mt-2 underline inline-block"
+            >
+              {t('common.openInGoogleMaps')} →
+            </a>
+            <p className="text-sm text-muted-foreground mt-1" dir="ltr">
+              {t('common.coordinates')}: {safeLatitude.toFixed(4)}, {safeLongitude.toFixed(4)}
+            </p>
           </div>
-          <a
-            href={`https://www.google.com/maps?q=${issue.latitude},${issue.longitude}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-sm text-primary mt-2 underline inline-block"
-          >
-            {t('common.openInGoogleMaps')} →
-          </a>
-          <p className="text-sm text-muted-foreground mt-1" dir="ltr">
-            {t('common.coordinates')}: {issue.latitude.toFixed(4)}, {issue.longitude.toFixed(4)}
-          </p>
-        </div>
+        )}
       </div>
 
       <BottomNav />
