@@ -11,3 +11,6 @@ verify_jwt = false
 
 [functions.create-issue]
 verify_jwt = false
+
+[functions.dismiss-issue]
+verify_jwt = false
