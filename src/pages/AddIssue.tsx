@@ -119,7 +119,7 @@ const AddIssue = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!category || !description || !coordinates) {
+    if (!category || !description) {
       toast({
         title: t('addIssue.missingFields'),
         description: t('addIssue.pleaseFillRequired'),
@@ -167,8 +167,8 @@ const AddIssue = () => {
         title: `${category} issue`,
         description,
         category,
-        latitude: coordinates.lat,
-        longitude: coordinates.lng,
+        latitude: coordinates?.lat ?? null,
+        longitude: coordinates?.lng ?? null,
         reported_by: user.id,
         status: "pending",
         thumbnail: thumbnailUrl,
