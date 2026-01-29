@@ -19,8 +19,8 @@ export interface Issue {
   id: number;
   title: string;
   category: string;
-  latitude: number;
-  longitude: number;
+  latitude: number | null;
+  longitude: number | null;
   status: IssueStatus;
   description: string;
   reported_by: string;

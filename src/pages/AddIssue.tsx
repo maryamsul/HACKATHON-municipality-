@@ -119,7 +119,9 @@ const AddIssue = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!category || !description || !coordinates) {
+    // Only category and description are truly required
+    // Location/coordinates are optional - users can report without GPS
+    if (!category || !description) {
       toast({
         title: t('addIssue.missingFields'),
         description: t('addIssue.pleaseFillRequired'),
@@ -162,13 +164,13 @@ const AddIssue = () => {
         }
       }
 
-      // Insert into issues table only
+      // Insert into issues table - coordinates are optional
       const { error } = await supabase.from("issues").insert({
         title: `${category} issue`,
         description,
         category,
-        latitude: coordinates.lat,
-        longitude: coordinates.lng,
+        latitude: coordinates?.lat ?? null,
+        longitude: coordinates?.lng ?? null,
         reported_by: user.id,
         status: "pending",
         thumbnail: thumbnailUrl,
