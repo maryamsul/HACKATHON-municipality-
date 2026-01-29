@@ -1,18 +1,28 @@
 // classify-report edge function - handles status updates and issue dismissal
-// Deployed: 2026-01-30T00:00:00Z - Force redeploy for dismiss fix
+// Version: 2.0.0 - All responses return HTTP 200, dismiss is idempotent
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
+const VERSION = "2.0.0";
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Methods": "POST, OPTIONS, GET",
   "Access-Control-Allow-Headers":
     "authorization, x-client-info, apikey, content-type, x-supabase-api-version, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
 serve(async (req: Request) => {
   const requestId = crypto.randomUUID().slice(0, 8);
+
+  // Health check endpoint (GET request)
+  if (req.method === "GET") {
+    return new Response(
+      JSON.stringify({ success: true, version: VERSION, requestId, message: "classify-report is healthy" }),
+      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
 
   // 1. Handle CORS Preflight
   if (req.method === "OPTIONS") {
