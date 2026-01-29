@@ -102,43 +102,15 @@ serve(async (req: Request) => {
     if (payload.action === "dismiss") {
       console.log("[classify-report] Processing DISMISS action for", table, "id:", queryId);
 
-      // IMPORTANT: Don't rely on delete().select() returning representation.
-      // First, check existence to avoid false "Record not found" responses.
-      const { data: existingRow, error: existingError } = await supabaseAdmin
-        .from(table)
-        .select("id")
-        .eq("id", queryId)
-        .maybeSingle();
-
-      console.log(
-        "[classify-report] Dismiss existence check - row:",
-        JSON.stringify(existingRow),
-        "| error:",
-        existingError,
-      );
-
-      if (existingError) {
-        console.error("[classify-report] Existence check error:", existingError);
-        return new Response(JSON.stringify({ success: false, error: existingError.message }), {
-          status: 500,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-
-      if (!existingRow) {
-        console.error("[classify-report] No record found to delete with id:", queryId);
-        return new Response(JSON.stringify({ success: false, error: "Record not found" }), {
-          status: 404,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-
+      // Make delete idempotent:
+      // - If the row exists, delete it.
+      // - If the row is already gone, still return 200 so the UI can safely remove it.
       const { error: deleteError } = await supabaseAdmin
         .from(table)
         .delete()
         .eq("id", queryId);
 
-      console.log("[classify-report] Delete result - error:", deleteError);
+      console.log("[classify-report] Delete attempt - error:", deleteError);
 
       if (deleteError) {
         console.error("[classify-report] Delete error:", deleteError);
@@ -148,7 +120,37 @@ serve(async (req: Request) => {
         });
       }
 
-      console.log("[classify-report] Successfully deleted record:", queryId);
+      // Verify the record is absent after the delete attempt.
+      const { data: stillThere, error: verifyError } = await supabaseAdmin
+        .from(table)
+        .select("id")
+        .eq("id", queryId)
+        .maybeSingle();
+
+      console.log(
+        "[classify-report] Post-delete verify - row:",
+        JSON.stringify(stillThere),
+        "| error:",
+        verifyError,
+      );
+
+      if (verifyError) {
+        console.error("[classify-report] Post-delete verify error:", verifyError);
+        return new Response(JSON.stringify({ success: false, error: verifyError.message }), {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      if (stillThere) {
+        console.error("[classify-report] Delete verification failed, record still exists:", queryId);
+        return new Response(JSON.stringify({ success: false, error: "Failed to delete record" }), {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      console.log("[classify-report] Record is absent after delete attempt:", queryId);
       return new Response(JSON.stringify({ success: true, action: "dismissed", id: queryId }), {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
