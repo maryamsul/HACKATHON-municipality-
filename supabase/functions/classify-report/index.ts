@@ -50,7 +50,22 @@ serve(async (req: Request) => {
     // Buildings use UUID (string), Issues use ID (number)
     const queryId = payload.type === "building" ? String(payload.id) : Number(payload.id);
 
-    // 4. Update Database
+    // 4. Handle Dismiss Action (delete the issue)
+    if (payload.action === "dismiss") {
+      const { error: deleteError } = await supabaseAdmin
+        .from(table)
+        .delete()
+        .eq("id", queryId);
+
+      if (deleteError) throw deleteError;
+
+      return new Response(JSON.stringify({ success: true, action: "dismissed" }), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // 5. Update Database (status change)
     const { data, error: dbError } = await supabaseAdmin
       .from(table)
       .update({
@@ -69,7 +84,7 @@ serve(async (req: Request) => {
       });
     }
 
-    // 5. SUCCESS RESPONSE
+    // 6. SUCCESS RESPONSE
     return new Response(JSON.stringify({ success: true }), {
       status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },

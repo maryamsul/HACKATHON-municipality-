@@ -1,9 +1,11 @@
 // Issue status enum values - matches database
-// "pending" = new report awaiting employee review
-export type IssueStatus = "pending" | "under_review" | "under_maintenance" | "resolved";
+// "pending" = newly reported, only visible to employees (can Accept or Dismiss)
+// "pending_approved" = employee-approved, visible to all users
+export type IssueStatus = "pending" | "pending_approved" | "under_review" | "under_maintenance" | "resolved";
 
 export const ISSUE_STATUSES: Record<IssueStatus, { label: string; color: string }> = {
-  pending: { label: "Pending", color: "bg-gray-100 text-gray-700" },
+  pending: { label: "Pending (New)", color: "bg-yellow-100 text-yellow-700" },
+  pending_approved: { label: "Pending", color: "bg-gray-100 text-gray-700" },
   under_review: { label: "Under Review", color: "bg-orange-100 text-orange-700" },
   under_maintenance: { label: "Under Maintenance", color: "bg-blue-100 text-blue-700" },
   resolved: { label: "Resolved", color: "bg-green-100 text-green-700" },

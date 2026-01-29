@@ -15,6 +15,7 @@ const IssuesContext = createContext<IssuesContextType | undefined>(undefined);
 const normalizeStatus = (status: string): IssueStatus => {
   const statusMap: Record<string, IssueStatus> = {
     "pending": "pending",
+    "pending_approved": "pending_approved",
     "reported": "pending",
     "in-progress": "under_maintenance",
     "in_progress": "under_maintenance",
