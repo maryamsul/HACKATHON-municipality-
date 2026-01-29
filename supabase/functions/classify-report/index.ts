@@ -5,36 +5,60 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
 serve(async (req: Request) => {
   // 1. Handle CORS Preflight
   if (req.method === "OPTIONS") {
-    return new Response(null, { status: 204, headers: corsHeaders });
+    return new Response("ok", { headers: corsHeaders });
   }
 
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+
+    // 2. Auth Check - Validate JWT using getClaims
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader?.startsWith("Bearer ")) {
+      return new Response(JSON.stringify({ success: false, error: "Unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const token = authHeader.replace("Bearer ", "");
+    
+    // Create client with user's auth for claims validation
+    const supabaseAuth = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } },
+    });
+
+    const { data: claimsData, error: claimsError } = await supabaseAuth.auth.getClaims(token);
+    
+    if (claimsError || !claimsData?.claims) {
+      console.error("[classify-report] Claims validation failed:", claimsError);
+      return new Response(JSON.stringify({ success: false, error: "Unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const userId = claimsData.claims.sub;
+    console.log("[classify-report] Authenticated user:", userId);
+
+    // 3. Role Check using service role client
     const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
-
-    // 2. Auth & Role Check
-    const authHeader = req.headers.get("Authorization")?.replace("Bearer ", "");
-    if (!authHeader) throw new Error("No auth header");
-
-    const {
-      data: { user },
-      error: userError,
-    } = await supabaseAdmin.auth.getUser(authHeader);
-    if (userError || !user) throw new Error("Unauthorized");
-
-    const { data: roleRow } = await supabaseAdmin
+    
+    const { data: roleRow, error: roleError } = await supabaseAdmin
       .from("user_roles")
       .select("role")
-      .eq("user_id", user.id)
+      .eq("user_id", userId)
       .eq("role", "employee")
       .maybeSingle();
+
+    console.log("[classify-report] Role check - roleRow:", roleRow, "| error:", roleError);
 
     if (!roleRow) {
       return new Response(JSON.stringify({ success: false, error: "Unauthorized: Employee only" }), {
@@ -43,7 +67,7 @@ serve(async (req: Request) => {
       });
     }
 
-    // 3. Parse Payload
+    // 4. Parse Payload
     const payload = await req.json();
     console.log("[classify-report] Received payload:", JSON.stringify(payload));
     
@@ -53,7 +77,7 @@ serve(async (req: Request) => {
     const queryId = payload.type === "building" ? String(payload.id) : Number(payload.id);
     console.log("[classify-report] Table:", table, "| QueryId:", queryId, "| Action:", payload.action);
 
-    // 4. Handle Dismiss Action (delete the issue)
+    // 5. Handle Dismiss Action (delete the issue)
     if (payload.action === "dismiss") {
       console.log("[classify-report] Processing DISMISS action for", table, "id:", queryId);
       
@@ -85,7 +109,7 @@ serve(async (req: Request) => {
       });
     }
 
-    // 5. Update Database (status change)
+    // 6. Update Database (status change)
     const { data, error: dbError } = await supabaseAdmin
       .from(table)
       .update({
@@ -104,12 +128,13 @@ serve(async (req: Request) => {
       });
     }
 
-    // 6. SUCCESS RESPONSE
+    // 7. SUCCESS RESPONSE
     return new Response(JSON.stringify({ success: true }), {
       status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error: any) {
+    console.error("[classify-report] Caught error:", error);
     return new Response(JSON.stringify({ success: false, error: error.message }), {
       status: 400,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
