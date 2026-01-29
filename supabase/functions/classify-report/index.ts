@@ -99,7 +99,80 @@ serve(async (req: Request) => {
     }
     console.log("[classify-report] Table:", table, "| QueryId:", queryId, "| Type:", typeof queryId, "| Action:", payload.action);
 
-    // 5. Update Database (status change)
+    // 5. Handle DISMISS action (soft delete for issues via dismissed_at)
+    if (payload.action === "dismiss") {
+      console.log("[classify-report] Processing DISMISS for", table, "id:", queryId);
+
+      if (table === "issues") {
+        // Check if issue exists and its current state
+        const { data: existing, error: existingError } = await supabaseAdmin
+          .from("issues")
+          .select("id, dismissed_at")
+          .eq("id", queryId)
+          .maybeSingle();
+
+        if (existingError) {
+          console.error("[classify-report] Dismiss lookup error:", existingError);
+          return new Response(JSON.stringify({ success: false, error: existingError.message }), {
+            status: 200, // Return 200 to avoid runtime errors
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
+        // Idempotent: if missing or already dismissed, return success
+        if (!existing || existing.dismissed_at) {
+          console.log("[classify-report] Dismiss idempotent - already dismissed or not found:", queryId);
+          return new Response(JSON.stringify({ success: true, action: "dismissed", id: queryId }), {
+            status: 200,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
+        // Soft delete: set dismissed_at timestamp
+        const { data: updated, error: updateError } = await supabaseAdmin
+          .from("issues")
+          .update({ dismissed_at: new Date().toISOString() })
+          .eq("id", queryId)
+          .select("id")
+          .maybeSingle();
+
+        if (updateError) {
+          console.error("[classify-report] Dismiss update error:", updateError);
+          return new Response(JSON.stringify({ success: false, error: updateError.message }), {
+            status: 200,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
+        console.log("[classify-report] Issue dismissed successfully:", queryId);
+        return new Response(JSON.stringify({ success: true, action: "dismissed", id: queryId }), {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // Buildings: hard delete (no dismissed_at column)
+      const { error: deleteError } = await supabaseAdmin
+        .from(table)
+        .delete()
+        .eq("id", queryId);
+
+      if (deleteError) {
+        console.error("[classify-report] Building delete error:", deleteError);
+        return new Response(JSON.stringify({ success: false, error: deleteError.message }), {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      console.log("[classify-report] Building dismissed successfully:", queryId);
+      return new Response(JSON.stringify({ success: true, action: "dismissed", id: queryId }), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // 6. Handle STATUS UPDATE
     const updateData: Record<string, unknown> = {};
     if (payload.status !== undefined) updateData.status = payload.status;
     if (payload.assigned_to !== undefined) updateData.assigned_to = payload.assigned_to;
@@ -115,22 +188,20 @@ serve(async (req: Request) => {
     if (dbError) {
       console.error("[classify-report] Update error:", dbError);
       return new Response(JSON.stringify({ success: false, error: dbError.message }), {
-        status: 500,
+        status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
     if (!data || data.length === 0) {
-      console.warn("[classify-report] No record found for update with id:", queryId);
-      // Return 200 so clients don't treat this as an edge-runtime failure.
+      console.warn("[classify-report] No record found for update:", queryId);
       return new Response(JSON.stringify({ success: false, error: "Record not found" }), {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    console.log("[classify-report] Successfully updated record:", queryId);
-    // 7. SUCCESS RESPONSE
+    console.log("[classify-report] Successfully updated:", queryId);
     return new Response(JSON.stringify({ success: true, data: data[0] }), {
       status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
