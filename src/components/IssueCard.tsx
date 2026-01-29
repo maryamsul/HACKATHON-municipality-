@@ -150,11 +150,13 @@ const IssueCard = ({ issue, index = 0 }: IssueCardProps) => {
   };
 
   // Handle Dismiss action - deletes the issue completely via API
+  // IMPORTANT: Do NOT remove optimistically - only remove after backend confirms deletion
   const handleDismiss = async () => {
     setIsDismissing(true);
     const issueId = typeof issue.id === "number" ? issue.id : Number(issue.id);
 
     if (!Number.isFinite(issueId) || issueId <= 0) {
+      console.error("[IssueCard] Invalid issue ID:", issue.id, "->", issueId);
       toast({
         title: t("common.error"),
         description: "Invalid issue ID",
@@ -165,10 +167,7 @@ const IssueCard = ({ issue, index = 0 }: IssueCardProps) => {
       return;
     }
 
-    console.log("[IssueCard] Dismissing issue ID:", issueId);
-
-    // Optimistic remove from the list immediately
-    removeIssueOptimistic(issueId);
+    console.log("[IssueCard] Dismissing issue ID:", issueId, "(original:", issue.id, ")");
 
     try {
       const result = await dismissIssue(issueId);
@@ -176,12 +175,14 @@ const IssueCard = ({ issue, index = 0 }: IssueCardProps) => {
       console.log("[IssueCard] Dismiss response:", JSON.stringify(result));
 
       if (result.success) {
+        // Only remove from UI AFTER backend confirms deletion succeeded
+        removeIssueOptimistic(issueId);
         toast({
           title: t("common.success"),
           description: t("issueDetails.issueDismissed"),
         });
-        // Keep list in sync (background)
-        refetchIssues();
+        // Background sync (non-blocking)
+        refetchIssues().catch(err => console.log("[IssueCard] Background refetch error:", err));
       } else {
         console.error("[IssueCard] Dismiss API error:", result);
         toast({
@@ -189,7 +190,6 @@ const IssueCard = ({ issue, index = 0 }: IssueCardProps) => {
           description: result.error || t("issueDetails.failedToDismiss"),
           variant: "destructive",
         });
-        await refetchIssues();
       }
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Unknown error";
@@ -199,7 +199,6 @@ const IssueCard = ({ issue, index = 0 }: IssueCardProps) => {
         description: message || t("issueDetails.failedToDismiss"),
         variant: "destructive",
       });
-      await refetchIssues();
     } finally {
       setIsDismissing(false);
       setShowDismissDialog(false);
