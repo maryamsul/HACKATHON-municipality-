@@ -43,7 +43,9 @@ const Settings = () => {
   };
 
   const handleContactUs = () => {
-    window.location.href = "mailto:support@cityreport.app?subject=CityReport Support";
+    // Use encodeURIComponent to prevent injection in mailto URLs
+    const subject = encodeURIComponent("CityReport Support");
+    window.location.href = `mailto:support@cityreport.app?subject=${subject}`;
   };
 
   const handleFAQ = () => {
