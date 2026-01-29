@@ -185,6 +185,8 @@ const BuildingAlerts = () => {
     if (!dismissIssueId) return;
     setIsDismissing(true);
 
+    console.log("[BuildingAlerts] Dismissing issue ID:", dismissIssueId);
+
     try {
       const { data, error } = await supabase.functions.invoke("classify-report", {
         body: {
@@ -194,7 +196,12 @@ const BuildingAlerts = () => {
         },
       });
 
-      if (error) throw error;
+      console.log("[BuildingAlerts] Dismiss response - data:", JSON.stringify(data), "| error:", error);
+
+      if (error) {
+        console.error("[BuildingAlerts] Dismiss invoke error:", error);
+        throw error;
+      }
 
       if (data?.success) {
         toast({
@@ -203,6 +210,7 @@ const BuildingAlerts = () => {
         });
         refetchIssues();
       } else {
+        console.error("[BuildingAlerts] Dismiss API error:", data);
         toast({
           title: t("common.error"),
           description: data?.error || t("issueDetails.failedToDismiss"),
@@ -210,7 +218,7 @@ const BuildingAlerts = () => {
         });
       }
     } catch (err: any) {
-      console.error("Dismiss Failed:", err);
+      console.error("[BuildingAlerts] Dismiss exception:", err);
       toast({
         title: t("common.error"),
         description: err.message || t("issueDetails.failedToDismiss"),

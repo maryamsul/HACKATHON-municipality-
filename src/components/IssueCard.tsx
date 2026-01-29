@@ -172,6 +172,8 @@ const IssueCard = ({ issue, index = 0 }: IssueCardProps) => {
     setIsDismissing(true);
     const issueId = typeof issue.id === "number" ? issue.id : parseInt(String(issue.id), 10);
 
+    console.log("[IssueCard] Dismissing issue ID:", issueId);
+
     try {
       const { data, error: invokeError } = await supabase.functions.invoke("classify-report", {
         body: {
@@ -181,8 +183,10 @@ const IssueCard = ({ issue, index = 0 }: IssueCardProps) => {
         },
       });
 
+      console.log("[IssueCard] Dismiss response - data:", JSON.stringify(data), "| error:", invokeError);
+
       if (invokeError) {
-        console.error("[IssueCard] Dismiss error:", invokeError);
+        console.error("[IssueCard] Dismiss invoke error:", invokeError);
         toast({
           title: t("common.error"),
           description: t("issueDetails.failedToDismiss"),
@@ -198,6 +202,7 @@ const IssueCard = ({ issue, index = 0 }: IssueCardProps) => {
         });
         refetchIssues();
       } else {
+        console.error("[IssueCard] Dismiss API error:", data);
         toast({
           title: t("common.error"),
           description: data?.error || t("issueDetails.failedToDismiss"),
@@ -205,7 +210,7 @@ const IssueCard = ({ issue, index = 0 }: IssueCardProps) => {
         });
       }
     } catch (err: any) {
-      console.error("Dismiss Failed:", err);
+      console.error("[IssueCard] Dismiss exception:", err);
       toast({
         title: t("common.error"),
         description: err.message || t("issueDetails.failedToDismiss"),
@@ -320,7 +325,10 @@ const IssueCard = ({ issue, index = 0 }: IssueCardProps) => {
           <AlertDialogFooter>
             <AlertDialogCancel disabled={isDismissing}>{t("common.cancel")}</AlertDialogCancel>
             <AlertDialogAction
-              onClick={handleDismiss}
+              onClick={(e) => {
+                e.preventDefault();
+                handleDismiss();
+              }}
               disabled={isDismissing}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >

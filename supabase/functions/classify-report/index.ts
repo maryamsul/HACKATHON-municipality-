@@ -45,21 +45,41 @@ serve(async (req: Request) => {
 
     // 3. Parse Payload
     const payload = await req.json();
+    console.log("[classify-report] Received payload:", JSON.stringify(payload));
+    
     const table = payload.type === "building" ? "buildings_at_risk" : "issues";
 
     // Buildings use UUID (string), Issues use ID (number)
     const queryId = payload.type === "building" ? String(payload.id) : Number(payload.id);
+    console.log("[classify-report] Table:", table, "| QueryId:", queryId, "| Action:", payload.action);
 
     // 4. Handle Dismiss Action (delete the issue)
     if (payload.action === "dismiss") {
-      const { error: deleteError } = await supabaseAdmin
+      console.log("[classify-report] Processing DISMISS action for", table, "id:", queryId);
+      
+      const { data: deletedData, error: deleteError } = await supabaseAdmin
         .from(table)
         .delete()
-        .eq("id", queryId);
+        .eq("id", queryId)
+        .select();
 
-      if (deleteError) throw deleteError;
+      console.log("[classify-report] Delete result - data:", JSON.stringify(deletedData), "| error:", deleteError);
 
-      return new Response(JSON.stringify({ success: true, action: "dismissed" }), {
+      if (deleteError) {
+        console.error("[classify-report] Delete error:", deleteError);
+        throw deleteError;
+      }
+
+      // Check if any row was actually deleted
+      if (!deletedData || deletedData.length === 0) {
+        console.error("[classify-report] No record found to delete with id:", queryId);
+        return new Response(JSON.stringify({ success: false, error: "Record not found for deletion" }), {
+          status: 404,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      return new Response(JSON.stringify({ success: true, action: "dismissed", deleted: deletedData }), {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
