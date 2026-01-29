@@ -108,6 +108,8 @@
     "other": "Autre"
   },
   "status": {
+    "pending": "En attente",
+    "pendingNew": "En attente (Nouveau)",
     "underReview": "En cours d'examen",
     "underMaintenance": "En maintenance",
     "resolved": "Résolu",
@@ -232,7 +234,13 @@
     "noUpdates": "Aucune mise à jour",
     "statusUpdated": "Statut mis à jour",
     "issueMarkedAs": "Problème marqué comme",
-    "failedToUpdateStatus": "Échec de la mise à jour du statut"
+    "failedToUpdateStatus": "Échec de la mise à jour du statut",
+    "accept": "Accepter",
+    "dismiss": "Rejeter",
+    "dismissTitle": "Rejeter le problème?",
+    "dismissDescription": "Ceci supprimera définitivement ce signalement. Cette action est irréversible.",
+    "issueDismissed": "Le problème a été rejeté",
+    "failedToDismiss": "Échec du rejet du problème"
   },
   "notifications": {
     "title": "Notifications",

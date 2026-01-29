@@ -20,7 +20,8 @@ const AllIssues = () => {
   const categoryFilter = searchParams.get("category") || "all";
   const sortBy = searchParams.get("sort") || "newest";
 
-  // Public users should not see pending issues (awaiting employee review)
+  // Public users should not see pending issues (newly reported, awaiting employee review)
+  // They should only see pending_approved and other statuses
   const visibleIssues = isEmployee ? issues : issues.filter((i) => i.status !== "pending");
 
   const filteredIssues = visibleIssues
@@ -38,6 +39,10 @@ const AllIssues = () => {
 
   const getStatusLabel = (status: string) => {
     switch (status) {
+      case 'pending':
+        return t('status.pendingNew');
+      case 'pending_approved':
+        return t('status.pending');
       case 'under_review':
         return t('status.underReview');
       case 'under_maintenance':
@@ -51,6 +56,8 @@ const AllIssues = () => {
 
   // Count issues by status
   const statusCounts = {
+    pending: visibleIssues.filter(i => i.status === "pending").length,
+    pending_approved: visibleIssues.filter(i => i.status === "pending_approved").length,
     under_review: visibleIssues.filter(i => i.status === "under_review").length,
     under_maintenance: visibleIssues.filter(i => i.status === "under_maintenance").length,
     resolved: visibleIssues.filter(i => i.status === "resolved").length,
@@ -79,14 +86,14 @@ const AllIssues = () => {
           <>
             {/* Status summary for employees */}
             {isEmployee && (
-              <div className="grid grid-cols-3 gap-2 mb-4">
-                {(["under_review", "under_maintenance", "resolved"] as IssueStatus[]).map((status) => (
+              <div className="grid grid-cols-5 gap-2 mb-4">
+                {(["pending", "pending_approved", "under_review", "under_maintenance", "resolved"] as IssueStatus[]).map((status) => (
                   <div 
                     key={status}
-                    className={`p-3 rounded-lg text-center ${ISSUE_STATUSES[status].color}`}
+                    className={`p-2 rounded-lg text-center ${ISSUE_STATUSES[status].color}`}
                   >
                     <div className="text-lg font-bold">{statusCounts[status]}</div>
-                    <div className="text-xs">{getStatusLabel(status)}</div>
+                    <div className="text-[10px] leading-tight">{getStatusLabel(status)}</div>
                   </div>
                 ))}
               </div>

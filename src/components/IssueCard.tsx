@@ -1,14 +1,25 @@
 import { Issue, ISSUE_STATUSES, IssueStatus } from "@/types/issue";
-import { MapPin, Calendar } from "lucide-react";
+import { MapPin, Calendar, Check, X, Trash2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { motion } from "framer-motion";
 import { useAuth } from "@/context/AuthContext";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useIssues } from "@/context/IssuesContext";
 import { useToast } from "@/hooks/use-toast";
 import { useEffect, useState } from "react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface IssueCardProps {
   issue: Issue;
@@ -34,16 +45,25 @@ const IssueCard = ({ issue, index = 0 }: IssueCardProps) => {
 
   // LOCAL STATE FOR UI RESPONSIVENESS
   const [localStatus, setLocalStatus] = useState<IssueStatus>(issue.status as IssueStatus);
+  const [showDismissDialog, setShowDismissDialog] = useState(false);
+  const [isDismissing, setIsDismissing] = useState(false);
 
   // KEEP LOCAL STATE IN SYNC IF EXTERNAL DATA UPDATES
   useEffect(() => {
     setLocalStatus(issue.status as IssueStatus);
   }, [issue.status]);
 
-  const formatLocation = (lat: number, lng: number) => `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+  const formatLocation = (lat: number | null, lng: number | null) => {
+    if (lat === null || lng === null) return t('common.coordinates') + ': N/A';
+    return `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+  };
 
   const getStatusLabel = (status: string) => {
     switch (status) {
+      case "pending":
+        return t("status.pendingNew");
+      case "pending_approved":
+        return t("status.pending");
       case "under_review":
         return t("status.underReview");
       case "under_maintenance":
@@ -141,65 +161,176 @@ const IssueCard = ({ issue, index = 0 }: IssueCardProps) => {
     }
   };
 
+  // Handle Accept action for pending issues - moves to pending_approved
+  const handleAccept = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    await handleStatusChange("pending_approved");
+  };
+
+  // Handle Dismiss action - deletes the issue completely
+  const handleDismiss = async () => {
+    setIsDismissing(true);
+    const issueId = typeof issue.id === "number" ? issue.id : parseInt(String(issue.id), 10);
+
+    try {
+      const { data, error: invokeError } = await supabase.functions.invoke("classify-report", {
+        body: {
+          type: "issue",
+          id: issueId,
+          action: "dismiss",
+        },
+      });
+
+      if (invokeError) {
+        console.error("[IssueCard] Dismiss error:", invokeError);
+        toast({
+          title: t("common.error"),
+          description: t("issueDetails.failedToDismiss"),
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (data?.success) {
+        toast({
+          title: t("common.success"),
+          description: t("issueDetails.issueDismissed"),
+        });
+        refetchIssues();
+      } else {
+        toast({
+          title: t("common.error"),
+          description: data?.error || t("issueDetails.failedToDismiss"),
+          variant: "destructive",
+        });
+      }
+    } catch (err: any) {
+      console.error("Dismiss Failed:", err);
+      toast({
+        title: t("common.error"),
+        description: err.message || t("issueDetails.failedToDismiss"),
+        variant: "destructive",
+      });
+    } finally {
+      setIsDismissing(false);
+      setShowDismissDialog(false);
+    }
+  };
+
+  // Check if this is a newly reported pending issue (employees can Accept/Dismiss)
+  const isNewlyReported = localStatus === "pending";
+
   return (
-    <motion.div
-      className="w-full flex gap-4 p-4 bg-card rounded-2xl shadow-sm hover:shadow-md transition-shadow"
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: index * 0.08 }}
-    >
-      <motion.button
-        onClick={() => navigate(`/issue/${issue.id}`)}
-        className="w-20 h-20 rounded-xl bg-primary/10 flex items-center justify-center text-3xl overflow-hidden"
+    <>
+      <motion.div
+        className="w-full flex gap-4 p-4 bg-card rounded-2xl shadow-sm hover:shadow-md transition-shadow"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: index * 0.08 }}
       >
-        {issue.thumbnail ? (
-          <img src={issue.thumbnail} alt={issue.category} className="w-full h-full object-cover" />
-        ) : (
-          categoryIcons[issue.category] || "📋"
-        )}
-      </motion.button>
-
-      <div className="flex-1 min-w-0 cursor-pointer" onClick={() => navigate(`/issue/${issue.id}`)}>
-        <div className="flex justify-between items-start mb-2">
-          <h3 className="font-semibold truncate pr-2">{issue.title || issue.category}</h3>
-
-          {isEmployee ? (
-            <div onClick={(e) => e.stopPropagation()}>
-              <Select value={localStatus} onValueChange={handleStatusChange}>
-                <SelectTrigger className={`w-36 h-7 text-xs border-0 rounded-full font-medium ${currentStatus.color}`}>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="under_review">{t("status.underReview")}</SelectItem>
-                  <SelectItem value="under_maintenance">{t("status.underMaintenance")}</SelectItem>
-                  <SelectItem value="resolved">{t("status.resolved")}</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+        <motion.button
+          onClick={() => navigate(`/issue/${issue.id}`)}
+          className="w-20 h-20 rounded-xl bg-primary/10 flex items-center justify-center text-3xl overflow-hidden"
+        >
+          {issue.thumbnail ? (
+            <img src={issue.thumbnail} alt={issue.category} className="w-full h-full object-cover" />
           ) : (
-            <span className={`px-2 py-1 rounded-full text-xs font-medium ${currentStatus.color}`}>
-              {getStatusLabel(localStatus)}
-            </span>
+            categoryIcons[issue.category] || "📋"
           )}
-        </div>
+        </motion.button>
 
-        <div className="flex flex-col gap-1">
-          <div className="flex items-center gap-1 text-sm text-muted-foreground">
-            <MapPin className="w-3.5 h-3.5" />
-            <span className="truncate">{formatLocation(issue.latitude, issue.longitude)}</span>
+        <div className="flex-1 min-w-0 cursor-pointer" onClick={() => navigate(`/issue/${issue.id}`)}>
+          <div className="flex justify-between items-start mb-2">
+            <h3 className="font-semibold truncate pr-2">{issue.title || issue.category}</h3>
+
+            {isEmployee && isNewlyReported ? (
+              // Show Accept/Dismiss buttons for newly reported issues
+              <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-7 px-2 text-xs bg-green-50 text-green-700 hover:bg-green-100 border-green-200"
+                  onClick={handleAccept}
+                >
+                  <Check className="w-3.5 h-3.5 mr-1" />
+                  {t("issueDetails.accept")}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-7 px-2 text-xs bg-red-50 text-red-700 hover:bg-red-100 border-red-200"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowDismissDialog(true);
+                  }}
+                >
+                  <X className="w-3.5 h-3.5 mr-1" />
+                  {t("issueDetails.dismiss")}
+                </Button>
+              </div>
+            ) : isEmployee ? (
+              // Show status dropdown for approved issues
+              <div onClick={(e) => e.stopPropagation()}>
+                <Select value={localStatus} onValueChange={handleStatusChange}>
+                  <SelectTrigger className={`w-36 h-7 text-xs border-0 rounded-full font-medium ${currentStatus.color}`}>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="pending_approved">{t("status.pending")}</SelectItem>
+                    <SelectItem value="under_review">{t("status.underReview")}</SelectItem>
+                    <SelectItem value="under_maintenance">{t("status.underMaintenance")}</SelectItem>
+                    <SelectItem value="resolved">{t("status.resolved")}</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            ) : (
+              <span className={`px-2 py-1 rounded-full text-xs font-medium ${currentStatus.color}`}>
+                {getStatusLabel(localStatus)}
+              </span>
+            )}
           </div>
 
-          <div className="flex items-center gap-1 text-sm text-muted-foreground">
-            <Calendar className="w-3.5 h-3.5" />
-            <span>
-              {new Date(issue.created_at).toLocaleDateString(
-                i18n.language === "ar" ? "ar-LB" : i18n.language === "fr" ? "fr-FR" : "en-US",
-              )}
-            </span>
+          <div className="flex flex-col gap-1">
+            <div className="flex items-center gap-1 text-sm text-muted-foreground">
+              <MapPin className="w-3.5 h-3.5" />
+              <span className="truncate">{formatLocation(issue.latitude, issue.longitude)}</span>
+            </div>
+
+            <div className="flex items-center gap-1 text-sm text-muted-foreground">
+              <Calendar className="w-3.5 h-3.5" />
+              <span>
+                {new Date(issue.created_at).toLocaleDateString(
+                  i18n.language === "ar" ? "ar-LB" : i18n.language === "fr" ? "fr-FR" : "en-US",
+                )}
+              </span>
+            </div>
           </div>
         </div>
-      </div>
-    </motion.div>
+      </motion.div>
+
+      {/* Dismiss Confirmation Dialog */}
+      <AlertDialog open={showDismissDialog} onOpenChange={setShowDismissDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("issueDetails.dismissTitle")}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t("issueDetails.dismissDescription")}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDismissing}>{t("common.cancel")}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDismiss}
+              disabled={isDismissing}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              <Trash2 className="w-4 h-4 mr-2" />
+              {isDismissing ? t("common.loading") : t("issueDetails.dismiss")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 };
 

@@ -109,6 +109,8 @@
     "other": "Other"
   },
   "status": {
+    "pending": "Pending",
+    "pendingNew": "Pending (New)",
     "underReview": "Under Review",
     "underMaintenance": "Under Maintenance",
     "resolved": "Resolved",
@@ -233,7 +235,13 @@
     "noUpdates": "No updates yet",
     "statusUpdated": "Status updated",
     "issueMarkedAs": "Issue marked as",
-    "failedToUpdateStatus": "Failed to update status"
+    "failedToUpdateStatus": "Failed to update status",
+    "accept": "Accept",
+    "dismiss": "Dismiss",
+    "dismissTitle": "Dismiss Issue?",
+    "dismissDescription": "This will permanently delete this issue report. This action cannot be undone.",
+    "issueDismissed": "Issue has been dismissed",
+    "failedToDismiss": "Failed to dismiss issue"
   },
   "notifications": {
     "title": "Notifications",

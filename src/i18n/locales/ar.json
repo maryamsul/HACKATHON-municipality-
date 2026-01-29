@@ -108,6 +108,8 @@
     "other": "أخرى"
   },
   "status": {
+    "pending": "قيد الانتظار",
+    "pendingNew": "قيد الانتظار (جديد)",
     "underReview": "قيد المراجعة",
     "underMaintenance": "قيد الصيانة",
     "resolved": "تم الحل",
@@ -232,7 +234,13 @@
     "noUpdates": "لا توجد تحديثات بعد",
     "statusUpdated": "تم تحديث الحالة",
     "issueMarkedAs": "تم تحديد المشكلة كـ",
-    "failedToUpdateStatus": "فشل تحديث الحالة"
+    "failedToUpdateStatus": "فشل تحديث الحالة",
+    "accept": "قبول",
+    "dismiss": "رفض",
+    "dismissTitle": "رفض المشكلة؟",
+    "dismissDescription": "سيؤدي هذا إلى حذف هذا البلاغ نهائياً. لا يمكن التراجع عن هذا الإجراء.",
+    "issueDismissed": "تم رفض المشكلة",
+    "failedToDismiss": "فشل رفض المشكلة"
   },
   "notifications": {
     "title": "الإشعارات",
