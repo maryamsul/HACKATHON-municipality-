@@ -2,6 +2,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
   "Access-Control-Allow-Headers":
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
@@ -120,42 +121,32 @@ Deno.serve(async (req) => {
       );
     }
 
-    console.log("[dismiss-issue] Deleting issue", { issueId });
+    console.log("[dismiss-issue] Soft-deleting issue", { issueId });
 
-    const { error: deleteError } = await supabaseAdmin.from("issues").delete().eq("id", issueId);
-
-    if (deleteError) {
-      console.error("[dismiss-issue] Delete error:", deleteError);
-      return new Response(
-        JSON.stringify({ success: false, error: deleteError.message }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    // Post-check: if the record still exists, do NOT return a false-success.
-    const { data: postIssue, error: postError } = await supabaseAdmin
+    const { data: updatedIssue, error: updateError } = await supabaseAdmin
       .from("issues")
-      .select("id")
+      .update({ dismissed_at: new Date().toISOString() })
       .eq("id", issueId)
+      .select("id")
       .maybeSingle();
 
-    if (postError) {
-      console.error("[dismiss-issue] Post-check select error:", postError);
+    if (updateError) {
+      console.error("[dismiss-issue] Update error:", updateError);
       return new Response(
-        JSON.stringify({ success: false, error: "Unable to verify deletion" }),
+        JSON.stringify({ success: false, error: updateError.message }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    if (postIssue) {
-      console.error("[dismiss-issue] Delete reported success but record still exists", { issueId });
+    if (!updatedIssue) {
+      console.error("[dismiss-issue] Update returned no data", { issueId });
       return new Response(
-        JSON.stringify({ success: false, error: "Dismiss failed: issue still exists" }),
+        JSON.stringify({ success: false, error: "Dismiss failed: issue not found or not updated" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    console.log("[dismiss-issue] Issue dismissed successfully", { issueId });
+    console.log("[dismiss-issue] Issue soft-deleted successfully", { issueId });
 
     return new Response(
       JSON.stringify({ success: true, action: "dismissed", id: issueId }),
