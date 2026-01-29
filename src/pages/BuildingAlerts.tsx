@@ -15,6 +15,9 @@ import {
   Filter,
   FileWarning,
   Eye,
+  Check,
+  X,
+  Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -26,20 +29,35 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import BottomNav from "@/components/BottomNav";
 import { useBuildings } from "@/context/BuildingsContext";
 import { useIssues } from "@/context/IssuesContext";
 import { useAuth } from "@/context/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 const BuildingAlerts = () => {
   const navigate = useNavigate();
   const { t, i18n } = useTranslation();
   const isRTL = i18n.language === "ar";
   const { buildings, loading: buildingsLoading } = useBuildings();
-  const { issues, loading: issuesLoading } = useIssues();
+  const { issues, loading: issuesLoading, refetchIssues, updateIssueOptimistic } = useIssues();
   const { profile, isAuthenticated } = useAuth();
+  const { toast } = useToast();
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [activeTab, setActiveTab] = useState<string>("all");
+  const [dismissIssueId, setDismissIssueId] = useState<number | null>(null);
+  const [isDismissing, setIsDismissing] = useState(false);
 
   const isEmployee = profile?.role === "employee";
   const loading = buildingsLoading || issuesLoading;
@@ -118,7 +136,92 @@ const BuildingAlerts = () => {
     }
   };
 
-  // Render building card (view only - no status update)
+  // Handle Accept action - moves issue to pending_approved
+  const handleAcceptIssue = async (issueId: number, e: React.MouseEvent) => {
+    e.stopPropagation();
+    
+    // Optimistic update
+    updateIssueOptimistic(issueId, { status: "pending_approved" });
+
+    try {
+      const { data, error } = await supabase.functions.invoke("classify-report", {
+        body: {
+          type: "issue",
+          id: issueId,
+          status: "pending_approved",
+          assigned_to: null,
+        },
+      });
+
+      if (error) throw error;
+
+      if (data?.success) {
+        toast({
+          title: t("issueDetails.statusUpdated"),
+          description: t("issueDetails.issueAccepted", "Issue has been accepted and is now visible to all users"),
+        });
+        refetchIssues();
+      } else {
+        toast({
+          title: t("common.error"),
+          description: data?.error || t("issueDetails.failedToUpdateStatus"),
+          variant: "destructive",
+        });
+        refetchIssues(); // Revert
+      }
+    } catch (err: any) {
+      console.error("Accept Failed:", err);
+      toast({
+        title: t("common.error"),
+        description: err.message || t("issueDetails.failedToUpdateStatus"),
+        variant: "destructive",
+      });
+      refetchIssues(); // Revert
+    }
+  };
+
+  // Handle Dismiss action - deletes the issue
+  const handleDismissIssue = async () => {
+    if (!dismissIssueId) return;
+    setIsDismissing(true);
+
+    try {
+      const { data, error } = await supabase.functions.invoke("classify-report", {
+        body: {
+          type: "issue",
+          id: dismissIssueId,
+          action: "dismiss",
+        },
+      });
+
+      if (error) throw error;
+
+      if (data?.success) {
+        toast({
+          title: t("common.success"),
+          description: t("issueDetails.issueDismissed"),
+        });
+        refetchIssues();
+      } else {
+        toast({
+          title: t("common.error"),
+          description: data?.error || t("issueDetails.failedToDismiss"),
+          variant: "destructive",
+        });
+      }
+    } catch (err: any) {
+      console.error("Dismiss Failed:", err);
+      toast({
+        title: t("common.error"),
+        description: err.message || t("issueDetails.failedToDismiss"),
+        variant: "destructive",
+      });
+    } finally {
+      setIsDismissing(false);
+      setDismissIssueId(null);
+    }
+  };
+
   const renderBuildingCard = (building: typeof buildings[0], isPending: boolean) => {
     const StatusIcon = getStatusIcon(building.status);
     return (
@@ -197,9 +300,11 @@ const BuildingAlerts = () => {
     );
   };
 
-  // Render issue card (view only - no status update)
+  // Render issue card with Accept/Dismiss actions for pending issues
   const renderIssueCard = (issue: typeof issues[0], isPending: boolean) => {
     const StatusIcon = getStatusIcon(issue.status);
+    const isNewlyReported = issue.status === "pending";
+    
     return (
       <motion.div
         key={`issue-${issue.id}`}
@@ -210,10 +315,12 @@ const BuildingAlerts = () => {
           isPending
             ? "bg-orange-50 dark:bg-orange-900/20 border-2 border-orange-200 dark:border-orange-800"
             : "bg-card border border-border"
-        } rounded-xl p-4 shadow-sm cursor-pointer hover:shadow-md transition-shadow`}
-        onClick={() => navigate(`/issue/${issue.id}`)}
+        } rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow`}
       >
-        <div className="flex items-start gap-3">
+        <div 
+          className="flex items-start gap-3 cursor-pointer"
+          onClick={() => navigate(`/issue/${issue.id}`)}
+        >
           {issue.thumbnail ? (
             <img
               src={issue.thumbnail}
@@ -272,6 +379,33 @@ const BuildingAlerts = () => {
             </div>
           </div>
         </div>
+
+        {/* Accept/Dismiss actions for newly reported issues */}
+        {isNewlyReported && (
+          <div className="flex gap-2 mt-3 pt-3 border-t border-border">
+            <Button
+              size="sm"
+              variant="outline"
+              className="flex-1 h-9 bg-green-50 text-green-700 hover:bg-green-100 border-green-200 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800"
+              onClick={(e) => handleAcceptIssue(issue.id, e)}
+            >
+              <Check className="w-4 h-4 mr-1.5" />
+              {t("issueDetails.accept", "Accept")}
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="flex-1 h-9 bg-red-50 text-red-700 hover:bg-red-100 border-red-200 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800"
+              onClick={(e) => {
+                e.stopPropagation();
+                setDismissIssueId(issue.id);
+              }}
+            >
+              <X className="w-4 h-4 mr-1.5" />
+              {t("issueDetails.dismiss", "Dismiss")}
+            </Button>
+          </div>
+        )}
       </motion.div>
     );
   };
@@ -432,6 +566,29 @@ const BuildingAlerts = () => {
           </TabsContent>
         </Tabs>
       </main>
+
+      {/* Dismiss Confirmation Dialog */}
+      <AlertDialog open={dismissIssueId !== null} onOpenChange={(open) => !open && setDismissIssueId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("issueDetails.dismissTitle", "Dismiss Issue")}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t("issueDetails.dismissDescription", "This will permanently delete this issue report. This action cannot be undone.")}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDismissing}>{t("common.cancel")}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDismissIssue}
+              disabled={isDismissing}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              <Trash2 className="w-4 h-4 mr-2" />
+              {isDismissing ? t("common.loading") : t("issueDetails.dismiss", "Dismiss")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <BottomNav />
     </div>

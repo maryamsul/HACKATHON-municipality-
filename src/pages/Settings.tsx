@@ -5,6 +5,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useTheme } from "next-themes";
 import BottomNav from "@/components/BottomNav";
 import LanguageSelector from "@/components/LanguageSelector";
+import MyReportedIssues from "@/components/MyReportedIssues";
 import { 
   User, 
   Mail, 
@@ -20,7 +21,8 @@ import {
   FileText,
   ChevronRight,
   Settings as SettingsIcon,
-  Globe
+  Globe,
+  FileWarning
 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
@@ -243,6 +245,17 @@ const Settings = () => {
               })}
             </div>
           </div>
+        </motion.section>
+
+        {/* My Reported Issues Section */}
+        <motion.section variants={itemVariants} className="bg-card rounded-2xl border border-border overflow-hidden">
+          <div className="p-4 bg-muted/50">
+            <h2 className={`text-sm font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-2 ${isRTL ? 'flex-row-reverse' : ''}`}>
+              <FileWarning className="w-4 h-4" />
+              {t('settings.myReportedIssues', 'My Reported Issues')}
+            </h2>
+          </div>
+          <MyReportedIssues />
         </motion.section>
 
         {/* Help & Support Section */}

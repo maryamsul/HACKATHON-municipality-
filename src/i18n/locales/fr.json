@@ -240,7 +240,8 @@
     "dismissTitle": "Rejeter le problème?",
     "dismissDescription": "Ceci supprimera définitivement ce signalement. Cette action est irréversible.",
     "issueDismissed": "Le problème a été rejeté",
-    "failedToDismiss": "Échec du rejet du problème"
+    "failedToDismiss": "Échec du rejet du problème",
+    "issueAccepted": "Le problème a été accepté et est maintenant visible par tous les utilisateurs"
   },
   "notifications": {
     "title": "Notifications",
@@ -262,7 +263,9 @@
     "version": "Version",
     "privacyPolicy": "Politique de confidentialité",
     "termsOfService": "Conditions d'utilisation",
-    "contactUs": "Nous contacter"
+    "contactUs": "Nous contacter",
+    "myReportedIssues": "Mes Signalements",
+    "noReportedIssues": "Vous n'avez pas encore signalé de problème"
   },
   "messages": {
     "issueReported": "Problème signalé avec succès",

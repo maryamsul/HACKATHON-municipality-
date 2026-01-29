@@ -240,7 +240,8 @@
     "dismissTitle": "رفض المشكلة؟",
     "dismissDescription": "سيؤدي هذا إلى حذف هذا البلاغ نهائياً. لا يمكن التراجع عن هذا الإجراء.",
     "issueDismissed": "تم رفض المشكلة",
-    "failedToDismiss": "فشل رفض المشكلة"
+    "failedToDismiss": "فشل رفض المشكلة",
+    "issueAccepted": "تم قبول المشكلة وهي الآن مرئية لجميع المستخدمين"
   },
   "notifications": {
     "title": "الإشعارات",
@@ -262,7 +263,9 @@
     "version": "الإصدار",
     "privacyPolicy": "سياسة الخصوصية",
     "termsOfService": "شروط الخدمة",
-    "contactUs": "اتصل بنا"
+    "contactUs": "اتصل بنا",
+    "myReportedIssues": "بلاغاتي",
+    "noReportedIssues": "لم تقم بالإبلاغ عن أي مشاكل بعد"
   },
   "messages": {
     "issueReported": "تم الإبلاغ عن المشكلة بنجاح",
