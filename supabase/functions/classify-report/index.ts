@@ -19,33 +19,33 @@ serve(async (req: Request) => {
     const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
-    // 2. Auth Check - Validate JWT using getClaims
+    // 2. Auth Check - Get Authorization header
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) {
-      return new Response(JSON.stringify({ success: false, error: "Unauthorized" }), {
+      console.error("[classify-report] Missing or invalid Authorization header");
+      return new Response(JSON.stringify({ success: false, error: "Missing authorization" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const token = authHeader.replace("Bearer ", "");
-    
-    // Create client with user's auth for claims validation
-    const supabaseAuth = createClient(supabaseUrl, supabaseAnonKey, {
+    // Create client with user's auth token to validate the user
+    const supabaseWithAuth = createClient(supabaseUrl, supabaseAnonKey, {
       global: { headers: { Authorization: authHeader } },
     });
 
-    const { data: claimsData, error: claimsError } = await supabaseAuth.auth.getClaims(token);
+    // Get the authenticated user
+    const { data: userData, error: userError } = await supabaseWithAuth.auth.getUser();
     
-    if (claimsError || !claimsData?.claims) {
-      console.error("[classify-report] Claims validation failed:", claimsError);
-      return new Response(JSON.stringify({ success: false, error: "Unauthorized" }), {
+    if (userError || !userData?.user) {
+      console.error("[classify-report] Auth validation failed:", userError);
+      return new Response(JSON.stringify({ success: false, error: "Invalid token" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const userId = claimsData.claims.sub;
+    const userId = userData.user.id;
     console.log("[classify-report] Authenticated user:", userId);
 
     // 3. Role Check using service role client
@@ -58,10 +58,11 @@ serve(async (req: Request) => {
       .eq("role", "employee")
       .maybeSingle();
 
-    console.log("[classify-report] Role check - roleRow:", roleRow, "| error:", roleError);
+    console.log("[classify-report] Role check - roleRow:", JSON.stringify(roleRow), "| error:", roleError);
 
     if (!roleRow) {
-      return new Response(JSON.stringify({ success: false, error: "Unauthorized: Employee only" }), {
+      console.error("[classify-report] User is not an employee");
+      return new Response(JSON.stringify({ success: false, error: "Forbidden: Employee access required" }), {
         status: 403,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -75,9 +76,9 @@ serve(async (req: Request) => {
 
     // Buildings use UUID (string), Issues use ID (number)
     const queryId = payload.type === "building" ? String(payload.id) : Number(payload.id);
-    console.log("[classify-report] Table:", table, "| QueryId:", queryId, "| Action:", payload.action);
+    console.log("[classify-report] Table:", table, "| QueryId:", queryId, "| Type:", typeof queryId, "| Action:", payload.action);
 
-    // 5. Handle Dismiss Action (delete the issue)
+    // 5. Handle Dismiss Action (delete the record)
     if (payload.action === "dismiss") {
       console.log("[classify-report] Processing DISMISS action for", table, "id:", queryId);
       
@@ -91,18 +92,22 @@ serve(async (req: Request) => {
 
       if (deleteError) {
         console.error("[classify-report] Delete error:", deleteError);
-        throw deleteError;
+        return new Response(JSON.stringify({ success: false, error: deleteError.message }), {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
       }
 
       // Check if any row was actually deleted
       if (!deletedData || deletedData.length === 0) {
         console.error("[classify-report] No record found to delete with id:", queryId);
-        return new Response(JSON.stringify({ success: false, error: "Record not found for deletion" }), {
+        return new Response(JSON.stringify({ success: false, error: "Record not found" }), {
           status: 404,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
 
+      console.log("[classify-report] Successfully deleted record:", queryId);
       return new Response(JSON.stringify({ success: true, action: "dismissed", deleted: deletedData }), {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -110,33 +115,45 @@ serve(async (req: Request) => {
     }
 
     // 6. Update Database (status change)
+    const updateData: Record<string, unknown> = {};
+    if (payload.status !== undefined) updateData.status = payload.status;
+    if (payload.assigned_to !== undefined) updateData.assigned_to = payload.assigned_to;
+
+    console.log("[classify-report] Updating with data:", JSON.stringify(updateData));
+
     const { data, error: dbError } = await supabaseAdmin
       .from(table)
-      .update({
-        status: payload.status,
-        assigned_to: payload.assigned_to,
-      })
+      .update(updateData)
       .eq("id", queryId)
       .select();
 
-    if (dbError) throw dbError;
+    if (dbError) {
+      console.error("[classify-report] Update error:", dbError);
+      return new Response(JSON.stringify({ success: false, error: dbError.message }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     if (!data || data.length === 0) {
+      console.error("[classify-report] No record found for update with id:", queryId);
       return new Response(JSON.stringify({ success: false, error: "Record not found" }), {
         status: 404,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
+    console.log("[classify-report] Successfully updated record:", queryId);
     // 7. SUCCESS RESPONSE
-    return new Response(JSON.stringify({ success: true }), {
+    return new Response(JSON.stringify({ success: true, data: data[0] }), {
       status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
-  } catch (error: any) {
-    console.error("[classify-report] Caught error:", error);
-    return new Response(JSON.stringify({ success: false, error: error.message }), {
-      status: 400,
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    console.error("[classify-report] Caught error:", message);
+    return new Response(JSON.stringify({ success: false, error: message }), {
+      status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }

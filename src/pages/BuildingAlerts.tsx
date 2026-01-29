@@ -88,6 +88,7 @@ const BuildingAlerts = () => {
   const getStatusIcon = (status: string) => {
     switch (status) {
       case "pending":
+      case "pending_approved":
         return Clock;
       case "critical":
         return AlertTriangle;
@@ -106,6 +107,8 @@ const BuildingAlerts = () => {
     switch (status) {
       case "pending":
         return "bg-gray-100 text-gray-700 border-gray-200 dark:bg-gray-800 dark:text-gray-300";
+      case "pending_approved":
+        return "bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400";
       case "critical":
         return "bg-red-100 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-400";
       case "under_review":
@@ -119,10 +122,12 @@ const BuildingAlerts = () => {
     }
   };
 
-  const getStatusLabel = (status: string, type: "building" | "issue") => {
+  const getStatusLabel = (status: string) => {
     switch (status) {
       case "pending":
-        return t("buildings.statusReported", "Pending");
+        return t("issues.pendingNew", "Pending (New)");
+      case "pending_approved":
+        return t("issues.pendingApproved", "Pending (Approved)");
       case "critical":
         return t("buildings.statusCritical", "Critical");
       case "under_review":
@@ -149,11 +154,15 @@ const BuildingAlerts = () => {
           type: "issue",
           id: issueId,
           status: "pending_approved",
-          assigned_to: null,
         },
       });
 
-      if (error) throw error;
+      console.log("[BuildingAlerts] Accept response:", { data, error });
+
+      if (error) {
+        console.error("[BuildingAlerts] Accept error:", error);
+        throw error;
+      }
 
       if (data?.success) {
         toast({
@@ -169,11 +178,12 @@ const BuildingAlerts = () => {
         });
         refetchIssues(); // Revert
       }
-    } catch (err: any) {
-      console.error("Accept Failed:", err);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Unknown error";
+      console.error("[BuildingAlerts] Accept Failed:", message);
       toast({
         title: t("common.error"),
-        description: err.message || t("issueDetails.failedToUpdateStatus"),
+        description: message || t("issueDetails.failedToUpdateStatus"),
         variant: "destructive",
       });
       refetchIssues(); // Revert
@@ -196,37 +206,85 @@ const BuildingAlerts = () => {
         },
       });
 
-      console.log("[BuildingAlerts] Dismiss response - data:", JSON.stringify(data), "| error:", error);
+      console.log("[BuildingAlerts] Dismiss response:", { data, error });
 
       if (error) {
         console.error("[BuildingAlerts] Dismiss invoke error:", error);
-        throw error;
+        toast({
+          title: t("common.error"),
+          description: t("issueDetails.failedToDismiss", "Failed to dismiss issue"),
+          variant: "destructive",
+        });
+        return;
       }
 
       if (data?.success) {
         toast({
           title: t("common.success"),
-          description: t("issueDetails.issueDismissed"),
+          description: t("issueDetails.issueDismissed", "Issue has been dismissed"),
         });
         refetchIssues();
       } else {
-        console.error("[BuildingAlerts] Dismiss API error:", data);
         toast({
           title: t("common.error"),
-          description: data?.error || t("issueDetails.failedToDismiss"),
+          description: data?.error || t("issueDetails.failedToDismiss", "Failed to dismiss issue"),
           variant: "destructive",
         });
       }
-    } catch (err: any) {
-      console.error("[BuildingAlerts] Dismiss exception:", err);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Unknown error";
+      console.error("[BuildingAlerts] Dismiss exception:", message);
       toast({
         title: t("common.error"),
-        description: err.message || t("issueDetails.failedToDismiss"),
+        description: message || t("issueDetails.failedToDismiss", "Failed to dismiss issue"),
         variant: "destructive",
       });
     } finally {
       setIsDismissing(false);
       setDismissIssueId(null);
+    }
+  };
+
+  // Handle status change for approved issues
+  const handleStatusChange = async (issueId: number, newStatus: string) => {
+    updateIssueOptimistic(issueId, { status: newStatus as "under_review" | "under_maintenance" | "resolved" });
+
+    try {
+      const { data, error } = await supabase.functions.invoke("classify-report", {
+        body: {
+          type: "issue",
+          id: issueId,
+          status: newStatus,
+        },
+      });
+
+      console.log("[BuildingAlerts] Status change response:", { data, error });
+
+      if (error) throw error;
+
+      if (data?.success) {
+        toast({
+          title: t("issueDetails.statusUpdated"),
+          description: `${t("issueDetails.issueMarkedAs", "Issue marked as")} ${getStatusLabel(newStatus)}`,
+        });
+        refetchIssues();
+      } else {
+        toast({
+          title: t("common.error"),
+          description: data?.error || t("issueDetails.failedToUpdateStatus"),
+          variant: "destructive",
+        });
+        refetchIssues();
+      }
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Unknown error";
+      console.error("[BuildingAlerts] Status change failed:", message);
+      toast({
+        title: t("common.error"),
+        description: message || t("issueDetails.failedToUpdateStatus"),
+        variant: "destructive",
+      });
+      refetchIssues();
     }
   };
 
@@ -276,7 +334,7 @@ const BuildingAlerts = () => {
                 className={`flex-shrink-0 flex items-center gap-1 ${getStatusColor(building.status)}`}
               >
                 <StatusIcon className="w-3 h-3" />
-                {getStatusLabel(building.status, "building")}
+                {getStatusLabel(building.status)}
               </Badge>
             </div>
 
@@ -312,6 +370,7 @@ const BuildingAlerts = () => {
   const renderIssueCard = (issue: typeof issues[0], isPending: boolean) => {
     const StatusIcon = getStatusIcon(issue.status);
     const isNewlyReported = issue.status === "pending";
+    const isApproved = issue.status !== "pending" && issue.status !== "resolved";
     
     return (
       <motion.div
@@ -359,7 +418,7 @@ const BuildingAlerts = () => {
                 className={`flex-shrink-0 flex items-center gap-1 ${getStatusColor(issue.status)}`}
               >
                 <StatusIcon className="w-3 h-3" />
-                {getStatusLabel(issue.status, "issue")}
+                {getStatusLabel(issue.status)}
               </Badge>
             </div>
 
@@ -414,6 +473,23 @@ const BuildingAlerts = () => {
             </Button>
           </div>
         )}
+
+        {/* Status dropdown for approved/in-progress issues */}
+        {isApproved && (
+          <div className="mt-3 pt-3 border-t border-border" onClick={(e) => e.stopPropagation()}>
+            <Select value={issue.status} onValueChange={(value) => handleStatusChange(issue.id, value)}>
+              <SelectTrigger className="w-full h-9 text-sm">
+                <SelectValue placeholder={t("status.statusPlaceholder", "Select status")} />
+              </SelectTrigger>
+              <SelectContent className="bg-popover border border-border shadow-lg z-50">
+                <SelectItem value="pending_approved">{t("issues.pendingApproved", "Pending (Approved)")}</SelectItem>
+                <SelectItem value="under_review">{t("status.underReview", "Under Review")}</SelectItem>
+                <SelectItem value="under_maintenance">{t("status.underMaintenance", "Under Maintenance")}</SelectItem>
+                <SelectItem value="resolved">{t("status.resolved", "Resolved")}</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        )}
       </motion.div>
     );
   };
@@ -454,7 +530,7 @@ const BuildingAlerts = () => {
         {/* Info banner */}
         <div className="bg-white/10 rounded-lg p-3 mb-4">
           <p className="text-sm text-white/90">
-            {t("alerts.viewOnlyInfo", "View pending reports here. To update status, go to the respective Buildings or Issues page.")}
+            {t("alerts.reviewInfo", "Review new reports: Accept to make visible to users, or Dismiss to delete.")}
           </p>
         </div>
 
@@ -467,7 +543,8 @@ const BuildingAlerts = () => {
             </SelectTrigger>
             <SelectContent className="bg-popover z-50 border-border">
               <SelectItem value="all">{t("filters.all", "All")}</SelectItem>
-              <SelectItem value="pending">{t("buildings.statusReported", "Pending")}</SelectItem>
+              <SelectItem value="pending">{t("issues.pendingNew", "Pending (New)")}</SelectItem>
+              <SelectItem value="pending_approved">{t("issues.pendingApproved", "Pending (Approved)")}</SelectItem>
               <SelectItem value="critical">{t("buildings.statusCritical", "Critical")}</SelectItem>
               <SelectItem value="under_review">{t("issues.underReview", "Under Review")}</SelectItem>
               <SelectItem value="under_maintenance">{t("buildings.statusInspection", "Under Maintenance")}</SelectItem>
