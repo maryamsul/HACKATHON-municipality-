@@ -241,7 +241,8 @@
     "dismissTitle": "Dismiss Issue?",
     "dismissDescription": "This will permanently delete this issue report. This action cannot be undone.",
     "issueDismissed": "Issue has been dismissed",
-    "failedToDismiss": "Failed to dismiss issue"
+    "failedToDismiss": "Failed to dismiss issue",
+    "issueAccepted": "Issue has been accepted and is now visible to all users"
   },
   "notifications": {
     "title": "Notifications",
@@ -284,7 +285,9 @@
     "version": "Version",
     "privacyPolicy": "Privacy Policy",
     "termsOfService": "Terms of Service",
-    "contactUs": "Contact Us"
+    "contactUs": "Contact Us",
+    "myReportedIssues": "My Reported Issues",
+    "noReportedIssues": "You haven't reported any issues yet"
   },
   "messages": {
     "issueReported": "Issue reported successfully",
