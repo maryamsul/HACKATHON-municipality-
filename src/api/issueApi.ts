@@ -177,11 +177,11 @@ export const dismissIssue = async (
       };
     }
 
-    console.log("Calling classify-report API for issue dismissal");
+    console.log("Calling dismiss-issue API for issue dismissal");
 
-    const { data, error } = await supabase.functions.invoke("classify-report", {
+    // Dismiss uses its own dedicated edge function (soft delete via dismissed_at)
+    const { data, error } = await supabase.functions.invoke("dismiss-issue", {
       body: {
-        type: "issue",
         id: issueId,
         action: "dismiss",
       },
