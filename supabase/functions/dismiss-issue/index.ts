@@ -1,52 +1,35 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const defaultAllowedHeaders =
-  "authorization, x-client-info, apikey, content-type, x-supabase-api-version, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version";
-
-const buildCorsHeaders = (req: Request) => {
-  const requestHeaders = req.headers.get("Access-Control-Request-Headers");
-  const requestMethod = req.headers.get("Access-Control-Request-Method");
-
-  return {
-    "Access-Control-Allow-Origin": "*",
-    // Echo back the requested method to avoid allow-list mismatches.
-    "Access-Control-Allow-Methods": requestMethod
-      ? `POST, OPTIONS, ${requestMethod}`
-      : "POST, OPTIONS",
-    // Echo back the requested headers to avoid allow-list mismatches.
-    // If not present, fall back to our known-safe list.
-    "Access-Control-Allow-Headers": requestHeaders ?? defaultAllowedHeaders,
-    "Access-Control-Max-Age": "86400",
-    // Help caches/CDNs keep preflight variants separate.
-    Vary: "Origin, Access-Control-Request-Headers, Access-Control-Request-Method",
-  };
+// Static CORS headers - guaranteed to work with Supabase client
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
 Deno.serve(async (req) => {
-  const corsHeaders = buildCorsHeaders(req);
+  console.log("[dismiss-issue] Function entered", { method: req.method, url: req.url });
 
-  console.log("[dismiss-issue] function entered", {
-    method: req.method,
-    origin: req.headers.get("Origin"),
-    acrm: req.headers.get("Access-Control-Request-Method"),
-    acrh: req.headers.get("Access-Control-Request-Headers"),
-  });
-
-  // Handle CORS preflight
+  // Handle CORS preflight - MUST return 200 or 204 with headers
   if (req.method === "OPTIONS") {
+    console.log("[dismiss-issue] Handling OPTIONS preflight");
     return new Response(null, { status: 204, headers: corsHeaders });
   }
 
+  // Only allow POST
   if (req.method !== "POST") {
-    return new Response(JSON.stringify({ success: false, error: "Method Not Allowed" }), {
-      status: 405,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    console.log("[dismiss-issue] Method not allowed:", req.method);
+    return new Response(
+      JSON.stringify({ success: false, error: "Method Not Allowed" }),
+      { status: 405, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
   }
 
   try {
+    // Check auth header
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) {
+      console.log("[dismiss-issue] Missing or invalid auth header");
       return new Response(
         JSON.stringify({ success: false, error: "Unauthorized" }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -54,22 +37,21 @@ Deno.serve(async (req) => {
     }
 
     // Parse request body
-    let body: unknown;
+    let body: { id?: unknown; action?: unknown };
     try {
       body = await req.json();
-    } catch (e) {
-      console.error("[dismiss-issue] Invalid JSON body", e);
-      return new Response(JSON.stringify({ success: false, error: "Invalid JSON body" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+    } catch {
+      console.error("[dismiss-issue] Invalid JSON body");
+      return new Response(
+        JSON.stringify({ success: false, error: "Invalid JSON body" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
-    const { id, action } = (body as { id?: unknown; action?: unknown }) ?? {};
+    const { id, action } = body;
+    console.log("[dismiss-issue] Request body:", { id, action });
 
-    console.log("[dismiss-issue] Request received:", { id, action });
-
-    // Validate input
+    // Validate action
     if (action !== "dismiss") {
       return new Response(
         JSON.stringify({ success: false, error: "Invalid action. Expected 'dismiss'" }),
@@ -77,6 +59,7 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Validate issue ID
     const issueId = typeof id === "number" ? id : parseInt(String(id), 10);
     if (!Number.isFinite(issueId) || issueId <= 0) {
       return new Response(
@@ -86,17 +69,27 @@ Deno.serve(async (req) => {
     }
 
     // Create Supabase client for auth validation
-    const supabaseAuth = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_ANON_KEY")!,
-      { global: { headers: { Authorization: authHeader } } }
-    );
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY");
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+
+    if (!supabaseUrl || !supabaseAnonKey || !supabaseServiceKey) {
+      console.error("[dismiss-issue] Missing environment variables");
+      return new Response(
+        JSON.stringify({ success: false, error: "Server configuration error" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const supabaseAuth = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } },
+    });
 
     // Validate JWT and get user claims
     const token = authHeader.replace("Bearer ", "");
-    const { data: claimsData, error: claimsError } = await supabaseAuth.auth.getClaims(token);
+    const { data: claimsData, error: claimsError } = await supabaseAuth.auth.getUser(token);
 
-    if (claimsError || !claimsData?.claims) {
+    if (claimsError || !claimsData?.user) {
       console.error("[dismiss-issue] Auth error:", claimsError);
       return new Response(
         JSON.stringify({ success: false, error: "Unauthorized" }),
@@ -104,16 +97,13 @@ Deno.serve(async (req) => {
       );
     }
 
-    const userId = claimsData.claims.sub;
+    const userId = claimsData.user.id;
     console.log("[dismiss-issue] Authenticated user:", userId);
 
-    // Create admin client for role check and deletion
-    const supabaseAdmin = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-    );
+    // Create admin client for role check and soft delete
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Check if user has employee role (avoid .single() to prevent failures if multiple roles exist)
+    // Check if user has employee role
     const { data: employeeRole, error: roleError } = await supabaseAdmin
       .from("user_roles")
       .select("id")
@@ -131,16 +121,16 @@ Deno.serve(async (req) => {
     }
 
     if (!employeeRole) {
-      console.error("[dismiss-issue] Forbidden: not employee", { userId });
+      console.log("[dismiss-issue] Forbidden: user is not an employee", { userId });
       return new Response(
         JSON.stringify({ success: false, error: "Only employees can dismiss issues" }),
         { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    console.log("[dismiss-issue] Employee verified", { userId, issueId });
+    console.log("[dismiss-issue] Employee verified, proceeding with soft delete", { userId, issueId });
 
-    // Idempotency: if already absent or already dismissed, return success.
+    // Check if issue exists and is not already dismissed
     const { data: existingIssue, error: existingError } = await supabaseAdmin
       .from("issues")
       .select("id, dismissed_at")
@@ -148,26 +138,23 @@ Deno.serve(async (req) => {
       .maybeSingle();
 
     if (existingError) {
-      console.error("[dismiss-issue] Pre-check select error:", existingError);
+      console.error("[dismiss-issue] Pre-check error:", existingError);
       return new Response(
         JSON.stringify({ success: false, error: "Unable to verify issue existence" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
+    // Idempotent: if already dismissed or doesn't exist, return success
     if (!existingIssue || existingIssue.dismissed_at) {
-      console.log("[dismiss-issue] Already dismissed/absent (idempotent success)", {
-        issueId,
-        alreadyDismissed: !!existingIssue?.dismissed_at,
-      });
+      console.log("[dismiss-issue] Already dismissed or absent (idempotent success)", { issueId });
       return new Response(
         JSON.stringify({ success: true, action: "dismissed", id: issueId }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    console.log("[dismiss-issue] Soft-deleting issue", { issueId });
-
+    // Soft delete: set dismissed_at timestamp
     const { data: updatedIssue, error: updateError } = await supabaseAdmin
       .from("issues")
       .update({ dismissed_at: new Date().toISOString() })
