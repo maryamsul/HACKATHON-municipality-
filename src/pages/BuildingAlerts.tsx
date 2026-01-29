@@ -127,13 +127,14 @@ const BuildingAlerts = () => {
       case "pending":
         return t("issues.pendingNew", "Pending (New)");
       case "pending_approved":
-        return t("issues.pendingApproved", "Pending (Approved)");
+        // Accepted -> treat as normal Pending for employees (but keep distinct status value)
+        return t("status.pending", "Pending");
       case "critical":
         return t("buildings.statusCritical", "Critical");
       case "under_review":
         return t("issues.underReview", "Under Review");
       case "under_maintenance":
-        return t("buildings.statusInspection", "Under Maintenance");
+        return t("buildings.statusInspection", "Under Inspection");
       case "resolved":
         return t("buildings.statusResolved", "Resolved");
       default:
@@ -482,9 +483,9 @@ const BuildingAlerts = () => {
                 <SelectValue placeholder={t("status.statusPlaceholder", "Select status")} />
               </SelectTrigger>
               <SelectContent className="bg-popover border border-border shadow-lg z-50">
-                <SelectItem value="pending_approved">{t("issues.pendingApproved", "Pending (Approved)")}</SelectItem>
+              <SelectItem value="pending_approved">{t("status.pending", "Pending")}</SelectItem>
                 <SelectItem value="under_review">{t("status.underReview", "Under Review")}</SelectItem>
-                <SelectItem value="under_maintenance">{t("status.underMaintenance", "Under Maintenance")}</SelectItem>
+              <SelectItem value="under_maintenance">{t("buildings.statusInspection", "Under Inspection")}</SelectItem>
                 <SelectItem value="resolved">{t("status.resolved", "Resolved")}</SelectItem>
               </SelectContent>
             </Select>
@@ -544,10 +545,10 @@ const BuildingAlerts = () => {
             <SelectContent className="bg-popover z-50 border-border">
               <SelectItem value="all">{t("filters.all", "All")}</SelectItem>
               <SelectItem value="pending">{t("issues.pendingNew", "Pending (New)")}</SelectItem>
-              <SelectItem value="pending_approved">{t("issues.pendingApproved", "Pending (Approved)")}</SelectItem>
+              <SelectItem value="pending_approved">{t("status.pending", "Pending")}</SelectItem>
               <SelectItem value="critical">{t("buildings.statusCritical", "Critical")}</SelectItem>
               <SelectItem value="under_review">{t("issues.underReview", "Under Review")}</SelectItem>
-              <SelectItem value="under_maintenance">{t("buildings.statusInspection", "Under Maintenance")}</SelectItem>
+              <SelectItem value="under_maintenance">{t("buildings.statusInspection", "Under Inspection")}</SelectItem>
               <SelectItem value="resolved">{t("buildings.statusResolved", "Resolved")}</SelectItem>
             </SelectContent>
           </Select>
