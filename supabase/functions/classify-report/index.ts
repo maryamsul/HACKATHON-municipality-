@@ -189,10 +189,11 @@ serve(async (req: Request) => {
         });
       }
 
+      // Idempotent: if the record doesn't exist anymore, treat as already dismissed.
       if (!existingRow) {
-        console.error("[classify-report] No record found to delete with id:", queryId);
-        return new Response(JSON.stringify({ success: false, error: "Record not found" }), {
-          status: 404,
+        console.warn("[classify-report] Dismiss idempotent - record not found:", queryId);
+        return new Response(JSON.stringify({ success: true, action: "dismissed", id: queryId }), {
+          status: 200,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
@@ -241,9 +242,10 @@ serve(async (req: Request) => {
     }
 
     if (!data || data.length === 0) {
-      console.error("[classify-report] No record found for update with id:", queryId);
+      console.warn("[classify-report] No record found for update with id:", queryId);
+      // Return 200 so clients don't treat this as an edge-runtime failure.
       return new Response(JSON.stringify({ success: false, error: "Record not found" }), {
-        status: 404,
+        status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
