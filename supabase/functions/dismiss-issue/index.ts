@@ -1,19 +1,47 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  // Include GET as well to be resilient to platform/proxy variations.
-  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-  "Access-Control-Allow-Headers":
-    // Must include every header the browser announces in Access-Control-Request-Headers.
-    // Supabase clients may include additional x-supabase-* headers depending on version/platform.
-    "authorization, x-client-info, apikey, content-type, x-supabase-api-version, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+const defaultAllowedHeaders =
+  "authorization, x-client-info, apikey, content-type, x-supabase-api-version, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version";
+
+const buildCorsHeaders = (req: Request) => {
+  const requestHeaders = req.headers.get("Access-Control-Request-Headers");
+  const requestMethod = req.headers.get("Access-Control-Request-Method");
+
+  return {
+    "Access-Control-Allow-Origin": "*",
+    // Echo back the requested method to avoid allow-list mismatches.
+    "Access-Control-Allow-Methods": requestMethod
+      ? `POST, OPTIONS, ${requestMethod}`
+      : "POST, OPTIONS",
+    // Echo back the requested headers to avoid allow-list mismatches.
+    // If not present, fall back to our known-safe list.
+    "Access-Control-Allow-Headers": requestHeaders ?? defaultAllowedHeaders,
+    "Access-Control-Max-Age": "86400",
+    // Help caches/CDNs keep preflight variants separate.
+    Vary: "Origin, Access-Control-Request-Headers, Access-Control-Request-Method",
+  };
 };
 
 Deno.serve(async (req) => {
+  const corsHeaders = buildCorsHeaders(req);
+
+  console.log("[dismiss-issue] function entered", {
+    method: req.method,
+    origin: req.headers.get("Origin"),
+    acrm: req.headers.get("Access-Control-Request-Method"),
+    acrh: req.headers.get("Access-Control-Request-Headers"),
+  });
+
   // Handle CORS preflight
   if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
+    return new Response(null, { status: 204, headers: corsHeaders });
+  }
+
+  if (req.method !== "POST") {
+    return new Response(JSON.stringify({ success: false, error: "Method Not Allowed" }), {
+      status: 405,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 
   try {
@@ -26,8 +54,18 @@ Deno.serve(async (req) => {
     }
 
     // Parse request body
-    const body = await req.json();
-    const { id, action } = body;
+    let body: unknown;
+    try {
+      body = await req.json();
+    } catch (e) {
+      console.error("[dismiss-issue] Invalid JSON body", e);
+      return new Response(JSON.stringify({ success: false, error: "Invalid JSON body" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const { id, action } = (body as { id?: unknown; action?: unknown }) ?? {};
 
     console.log("[dismiss-issue] Request received:", { id, action });
 
@@ -81,6 +119,7 @@ Deno.serve(async (req) => {
       .select("id")
       .eq("user_id", userId)
       .eq("role", "employee")
+      .limit(1)
       .maybeSingle();
 
     if (roleError) {
@@ -101,10 +140,10 @@ Deno.serve(async (req) => {
 
     console.log("[dismiss-issue] Employee verified", { userId, issueId });
 
-    // Idempotency: if already absent, return success.
+    // Idempotency: if already absent or already dismissed, return success.
     const { data: existingIssue, error: existingError } = await supabaseAdmin
       .from("issues")
-      .select("id")
+      .select("id, dismissed_at")
       .eq("id", issueId)
       .maybeSingle();
 
@@ -116,8 +155,11 @@ Deno.serve(async (req) => {
       );
     }
 
-    if (!existingIssue) {
-      console.log("[dismiss-issue] Issue already absent (idempotent success)", { issueId });
+    if (!existingIssue || existingIssue.dismissed_at) {
+      console.log("[dismiss-issue] Already dismissed/absent (idempotent success)", {
+        issueId,
+        alreadyDismissed: !!existingIssue?.dismissed_at,
+      });
       return new Response(
         JSON.stringify({ success: true, action: "dismissed", id: issueId }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
