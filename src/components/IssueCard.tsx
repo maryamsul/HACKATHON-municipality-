@@ -39,7 +39,7 @@ const IssueCard = ({ issue, index = 0 }: IssueCardProps) => {
   const navigate = useNavigate();
   const { t, i18n } = useTranslation();
   const { profile } = useAuth();
-  const { updateIssueOptimistic, refetchIssues, removeIssueOptimistic } = useIssues();
+  const { updateIssueOptimistic, refetchIssues } = useIssues();
   const { toast } = useToast();
   const isEmployee = profile?.role === "employee";
 
@@ -171,23 +171,9 @@ const IssueCard = ({ issue, index = 0 }: IssueCardProps) => {
   // Handle Dismiss action - deletes the issue completely
   const handleDismiss = async () => {
     setIsDismissing(true);
-    const issueId = typeof issue.id === "number" ? issue.id : Number(issue.id);
-
-    if (!Number.isFinite(issueId) || issueId <= 0) {
-      toast({
-        title: t("common.error"),
-        description: "Invalid issue ID",
-        variant: "destructive",
-      });
-      setIsDismissing(false);
-      setShowDismissDialog(false);
-      return;
-    }
+    const issueId = typeof issue.id === "number" ? issue.id : parseInt(String(issue.id), 10);
 
     console.log("[IssueCard] Dismissing issue ID:", issueId);
-
-    // Optimistic remove from the list immediately
-    removeIssueOptimistic(issueId);
 
     try {
       const { data, error: invokeError } = await supabase.functions.invoke("classify-report", {
@@ -207,7 +193,6 @@ const IssueCard = ({ issue, index = 0 }: IssueCardProps) => {
           description: t("issueDetails.failedToDismiss"),
           variant: "destructive",
         });
-        await refetchIssues();
         return;
       }
 
@@ -216,7 +201,6 @@ const IssueCard = ({ issue, index = 0 }: IssueCardProps) => {
           title: t("common.success"),
           description: t("issueDetails.issueDismissed"),
         });
-        // Keep list in sync (background)
         refetchIssues();
       } else {
         console.error("[IssueCard] Dismiss API error:", data);
@@ -225,7 +209,6 @@ const IssueCard = ({ issue, index = 0 }: IssueCardProps) => {
           description: data?.error || t("issueDetails.failedToDismiss"),
           variant: "destructive",
         });
-        await refetchIssues();
       }
     } catch (err: any) {
       console.error("[IssueCard] Dismiss exception:", err);
@@ -234,7 +217,6 @@ const IssueCard = ({ issue, index = 0 }: IssueCardProps) => {
         description: err.message || t("issueDetails.failedToDismiss"),
         variant: "destructive",
       });
-      await refetchIssues();
     } finally {
       setIsDismissing(false);
       setShowDismissDialog(false);

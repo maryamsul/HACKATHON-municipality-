@@ -7,7 +7,6 @@ interface IssuesContextType {
   loading: boolean;
   refetchIssues: () => Promise<void>;
   updateIssueOptimistic: (issueId: number, updates: Partial<Issue>) => void;
-  removeIssueOptimistic: (issueId: number) => void;
 }
 
 const IssuesContext = createContext<IssuesContextType | undefined>(undefined);
@@ -61,11 +60,6 @@ export const IssuesProvider = ({ children }: { children: ReactNode }) => {
     );
   }, []);
 
-  // Optimistic removal for a single issue - removes it immediately from state
-  const removeIssueOptimistic = useCallback((issueId: number) => {
-    setIssues((prevIssues) => prevIssues.filter((issue) => issue.id !== issueId));
-  }, []);
-
   useEffect(() => {
     fetchIssues();
 
@@ -94,7 +88,7 @@ export const IssuesProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   return (
-    <IssuesContext.Provider value={{ issues, loading, refetchIssues: fetchIssues, updateIssueOptimistic, removeIssueOptimistic }}>
+    <IssuesContext.Provider value={{ issues, loading, refetchIssues: fetchIssues, updateIssueOptimistic }}>
       {children}
     </IssuesContext.Provider>
   );

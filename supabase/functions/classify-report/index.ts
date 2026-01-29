@@ -101,16 +101,14 @@ serve(async (req: Request) => {
     // 5. Handle Dismiss Action (delete the record)
     if (payload.action === "dismiss") {
       console.log("[classify-report] Processing DISMISS action for", table, "id:", queryId);
-
-      // Make delete idempotent:
-      // - If the row exists, delete it.
-      // - If the row is already gone, still return 200 so the UI can safely remove it.
-      const { error: deleteError } = await supabaseAdmin
+      
+      const { data: deletedData, error: deleteError } = await supabaseAdmin
         .from(table)
         .delete()
-        .eq("id", queryId);
+        .eq("id", queryId)
+        .select();
 
-      console.log("[classify-report] Delete attempt - error:", deleteError);
+      console.log("[classify-report] Delete result - data:", JSON.stringify(deletedData), "| error:", deleteError);
 
       if (deleteError) {
         console.error("[classify-report] Delete error:", deleteError);
@@ -120,38 +118,17 @@ serve(async (req: Request) => {
         });
       }
 
-      // Verify the record is absent after the delete attempt.
-      const { data: stillThere, error: verifyError } = await supabaseAdmin
-        .from(table)
-        .select("id")
-        .eq("id", queryId)
-        .maybeSingle();
-
-      console.log(
-        "[classify-report] Post-delete verify - row:",
-        JSON.stringify(stillThere),
-        "| error:",
-        verifyError,
-      );
-
-      if (verifyError) {
-        console.error("[classify-report] Post-delete verify error:", verifyError);
-        return new Response(JSON.stringify({ success: false, error: verifyError.message }), {
-          status: 500,
+      // Check if any row was actually deleted
+      if (!deletedData || deletedData.length === 0) {
+        console.error("[classify-report] No record found to delete with id:", queryId);
+        return new Response(JSON.stringify({ success: false, error: "Record not found" }), {
+          status: 404,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
 
-      if (stillThere) {
-        console.error("[classify-report] Delete verification failed, record still exists:", queryId);
-        return new Response(JSON.stringify({ success: false, error: "Failed to delete record" }), {
-          status: 500,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-
-      console.log("[classify-report] Record is absent after delete attempt:", queryId);
-      return new Response(JSON.stringify({ success: true, action: "dismissed", id: queryId }), {
+      console.log("[classify-report] Successfully deleted record:", queryId);
+      return new Response(JSON.stringify({ success: true, action: "dismissed", deleted: deletedData }), {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
