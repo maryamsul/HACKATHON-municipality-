@@ -67,7 +67,8 @@ const IssueCard = ({ issue, index = 0 }: IssueCardProps) => {
       case "under_review":
         return t("status.underReview");
       case "under_maintenance":
-        return t("status.underMaintenance");
+        // Keep the status value, but label it as “Under inspection”
+        return t("status.underInspection", "Under Inspection");
       case "resolved":
         return t("status.resolved");
       default:
@@ -283,7 +284,7 @@ const IssueCard = ({ issue, index = 0 }: IssueCardProps) => {
                   <SelectContent>
                     <SelectItem value="pending_approved">{t("status.pending")}</SelectItem>
                     <SelectItem value="under_review">{t("status.underReview")}</SelectItem>
-                    <SelectItem value="under_maintenance">{t("status.underMaintenance")}</SelectItem>
+                    <SelectItem value="under_maintenance">{t("status.underInspection", "Under Inspection")}</SelectItem>
                     <SelectItem value="resolved">{t("status.resolved")}</SelectItem>
                   </SelectContent>
                 </Select>

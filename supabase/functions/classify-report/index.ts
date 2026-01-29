@@ -20,33 +20,40 @@ serve(async (req: Request) => {
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
     // 2. Auth Check - Get Authorization header
+    // NOTE: verify_jwt is disabled in config.toml, so we must validate JWT in code.
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) {
       console.error("[classify-report] Missing or invalid Authorization header");
-      return new Response(JSON.stringify({ success: false, error: "Missing authorization" }), {
+      return new Response(JSON.stringify({ success: false, error: "Unauthorized" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // Create client with user's auth token to validate the user
-    const supabaseWithAuth = createClient(supabaseUrl, supabaseAnonKey, {
+    const token = authHeader.replace("Bearer ", "").trim();
+    if (!token) {
+      console.error("[classify-report] Empty JWT token");
+      return new Response(JSON.stringify({ success: false, error: "Unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const supabaseAuth = createClient(supabaseUrl, supabaseAnonKey, {
       global: { headers: { Authorization: authHeader } },
     });
 
-    // Get the authenticated user
-    const { data: userData, error: userError } = await supabaseWithAuth.auth.getUser();
-    
-    if (userError || !userData?.user) {
-      console.error("[classify-report] Auth validation failed:", userError);
-      return new Response(JSON.stringify({ success: false, error: "Invalid token" }), {
+    const { data: claimsData, error: claimsError } = await supabaseAuth.auth.getClaims(token);
+    if (claimsError || !claimsData?.claims?.sub) {
+      console.error("[classify-report] JWT validation failed:", claimsError);
+      return new Response(JSON.stringify({ success: false, error: "Unauthorized" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const userId = userData.user.id;
-    console.log("[classify-report] Authenticated user:", userId);
+    const userId = String(claimsData.claims.sub);
+    console.log("[classify-report] Authenticated user (claims.sub):", userId);
 
     // 3. Role Check using service role client
     const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
@@ -75,7 +82,20 @@ serve(async (req: Request) => {
     const table = payload.type === "building" ? "buildings_at_risk" : "issues";
 
     // Buildings use UUID (string), Issues use ID (number)
-    const queryId = payload.type === "building" ? String(payload.id) : Number(payload.id);
+    let queryId: string | number;
+    if (payload.type === "building") {
+      queryId = String(payload.id);
+    } else {
+      const issueId = Number(payload.id);
+      if (!Number.isFinite(issueId) || issueId <= 0) {
+        console.error("[classify-report] Invalid issue id:", payload.id);
+        return new Response(JSON.stringify({ success: false, error: "Invalid id" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      queryId = issueId;
+    }
     console.log("[classify-report] Table:", table, "| QueryId:", queryId, "| Type:", typeof queryId, "| Action:", payload.action);
 
     // 5. Handle Dismiss Action (delete the record)
