@@ -98,12 +98,75 @@ serve(async (req: Request) => {
     }
     console.log("[classify-report] Table:", table, "| QueryId:", queryId, "| Type:", typeof queryId, "| Action:", payload.action);
 
-    // 5. Handle Dismiss Action (delete the record)
+    // 5. Handle Dismiss Action
     if (payload.action === "dismiss") {
       console.log("[classify-report] Processing DISMISS action for", table, "id:", queryId);
 
-      // IMPORTANT: Don't rely on delete().select() returning representation.
-      // First, check existence to avoid false "Record not found" responses.
+      // Issues: soft dismiss using dismissed_at to support dismissed_at filters.
+      if (table === "issues") {
+        const { data: existingIssue, error: existingError } = await supabaseAdmin
+          .from("issues")
+          .select("id, dismissed_at")
+          .eq("id", queryId)
+          .maybeSingle();
+
+        console.log(
+          "[classify-report] Issue dismiss existing check:",
+          JSON.stringify(existingIssue),
+          "| error:",
+          existingError,
+        );
+
+        if (existingError) {
+          return new Response(JSON.stringify({ success: false, error: existingError.message }), {
+            status: 500,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
+        // Idempotent: treat missing/already dismissed as success
+        if (!existingIssue || existingIssue.dismissed_at) {
+          return new Response(JSON.stringify({ success: true, action: "dismissed", id: queryId }), {
+            status: 200,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
+        const { data: updated, error: updateError } = await supabaseAdmin
+          .from("issues")
+          .update({ dismissed_at: new Date().toISOString() })
+          .eq("id", queryId)
+          .select("id")
+          .maybeSingle();
+
+        console.log(
+          "[classify-report] Issue dismiss update:",
+          JSON.stringify(updated),
+          "| error:",
+          updateError,
+        );
+
+        if (updateError) {
+          return new Response(JSON.stringify({ success: false, error: updateError.message }), {
+            status: 500,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
+        if (!updated) {
+          return new Response(JSON.stringify({ success: false, error: "Dismiss failed: issue not updated" }), {
+            status: 500,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
+        return new Response(JSON.stringify({ success: true, action: "dismissed", id: queryId }), {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // Buildings: keep hard delete behavior (no dismissed_at column there).
       const { data: existingRow, error: existingError } = await supabaseAdmin
         .from(table)
         .select("id")

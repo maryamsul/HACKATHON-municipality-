@@ -163,8 +163,8 @@ export const updateIssueStatus = async (
 };
 
 /**
- * Dismisses (deletes) an issue via the dismiss-issue edge function.
- * Only employees can dismiss issues. Idempotent - returns success even if already deleted.
+ * Dismisses an issue via the classify-report edge function.
+ * Only employees can dismiss issues. Idempotent - returns success even if already dismissed.
  */
 export const dismissIssue = async (
   issueId: number
@@ -177,10 +177,11 @@ export const dismissIssue = async (
       };
     }
 
-    console.log("Calling dismiss-issue API for issue dismissal");
+    console.log("Calling classify-report API for issue dismissal");
 
-    const { data, error } = await supabase.functions.invoke("dismiss-issue", {
+    const { data, error } = await supabase.functions.invoke("classify-report", {
       body: {
+        type: "issue",
         id: issueId,
         action: "dismiss",
       },
