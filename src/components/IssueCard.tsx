@@ -6,10 +6,10 @@ import { motion } from "framer-motion";
 import { useAuth } from "@/context/AuthContext";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { supabase } from "@/integrations/supabase/client";
 import { useIssues } from "@/context/IssuesContext";
 import { useToast } from "@/hooks/use-toast";
 import { useEffect, useState } from "react";
+import { updateIssueStatus, dismissIssue } from "@/api/issueApi";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -97,37 +97,17 @@ const IssueCard = ({ issue, index = 0 }: IssueCardProps) => {
     setLocalStatus(newStatus);
     updateIssueOptimistic(issueId, {
       status: newStatus,
-      assigned_to: null,
+      assigned_to: undefined,
     });
 
     try {
-      // 2. CALL EDGE FUNCTION
-      const { data, error: invokeError } = await supabase.functions.invoke("classify-report", {
-        body: {
-          type: "issue",
-          id: issueId,
-          status: newStatus,
-          assigned_to: null,
-        },
-      });
+      // 2. CALL API LAYER (uses Edge Function internally)
+      const result = await updateIssueStatus(issueId, newStatus, null);
 
-      // 3. CHECK FOR NETWORK ERRORS
-      if (invokeError) {
-        console.error("[IssueCard] Supabase invoke error:", invokeError);
-        setLocalStatus(issue.status as IssueStatus);
-        await refetchIssues();
-        toast({
-          title: t("common.error"),
-          description: t("issueDetails.failedToUpdateStatus"),
-          variant: "destructive",
-        });
-        return;
-      }
+      console.log("[IssueCard] API response:", JSON.stringify(result));
 
-      console.log("[IssueCard] API response:", JSON.stringify(data));
-
-      // 4. CHECK API RESPONSE SUCCESS - use truthy check
-      if (data?.success) {
+      // 3. CHECK API RESPONSE SUCCESS
+      if (result.success) {
         // Show success toast immediately
         toast({
           title: t("issueDetails.statusUpdated"),
@@ -138,25 +118,26 @@ const IssueCard = ({ issue, index = 0 }: IssueCardProps) => {
         refetchIssues().catch(err => console.log("[IssueCard] Background refetch error:", err));
       } else {
         // Only show error if API explicitly returned failure
-        console.error("[IssueCard] API returned failure:", data);
+        console.error("[IssueCard] API returned failure:", result);
         setLocalStatus(issue.status as IssueStatus);
         
         toast({
           title: t("common.error"),
-          description: data?.error || t("issueDetails.failedToUpdateStatus"),
+          description: result.error || t("issueDetails.failedToUpdateStatus"),
           variant: "destructive",
         });
         refetchIssues().catch(err => console.log("[IssueCard] Revert refetch error:", err));
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Status Update Failed:", err);
 
       // 5. REVERT UI: Snap back to original status on failure
       setLocalStatus(issue.status as IssueStatus);
 
+      const message = err instanceof Error ? err.message : "Unknown error";
       toast({
         title: t("common.error"),
-        description: err.message || t("issueDetails.failedToUpdateStatus"),
+        description: message || t("issueDetails.failedToUpdateStatus"),
         variant: "destructive",
       });
     }
@@ -168,7 +149,7 @@ const IssueCard = ({ issue, index = 0 }: IssueCardProps) => {
     await handleStatusChange("pending_approved");
   };
 
-  // Handle Dismiss action - deletes the issue completely
+  // Handle Dismiss action - deletes the issue completely via API
   const handleDismiss = async () => {
     setIsDismissing(true);
     const issueId = typeof issue.id === "number" ? issue.id : Number(issue.id);
@@ -190,28 +171,11 @@ const IssueCard = ({ issue, index = 0 }: IssueCardProps) => {
     removeIssueOptimistic(issueId);
 
     try {
-      const { data, error: invokeError } = await supabase.functions.invoke("classify-report", {
-        body: {
-          type: "issue",
-          id: issueId,
-          action: "dismiss",
-        },
-      });
+      const result = await dismissIssue(issueId);
 
-      console.log("[IssueCard] Dismiss response - data:", JSON.stringify(data), "| error:", invokeError);
+      console.log("[IssueCard] Dismiss response:", JSON.stringify(result));
 
-      if (invokeError) {
-        console.error("[IssueCard] Dismiss invoke error:", invokeError);
-        toast({
-          title: t("common.error"),
-          description: t("issueDetails.failedToDismiss"),
-          variant: "destructive",
-        });
-        await refetchIssues();
-        return;
-      }
-
-      if (data?.success) {
+      if (result.success) {
         toast({
           title: t("common.success"),
           description: t("issueDetails.issueDismissed"),
@@ -219,19 +183,20 @@ const IssueCard = ({ issue, index = 0 }: IssueCardProps) => {
         // Keep list in sync (background)
         refetchIssues();
       } else {
-        console.error("[IssueCard] Dismiss API error:", data);
+        console.error("[IssueCard] Dismiss API error:", result);
         toast({
           title: t("common.error"),
-          description: data?.error || t("issueDetails.failedToDismiss"),
+          description: result.error || t("issueDetails.failedToDismiss"),
           variant: "destructive",
         });
         await refetchIssues();
       }
-    } catch (err: any) {
-      console.error("[IssueCard] Dismiss exception:", err);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Unknown error";
+      console.error("[IssueCard] Dismiss exception:", message);
       toast({
         title: t("common.error"),
-        description: err.message || t("issueDetails.failedToDismiss"),
+        description: message || t("issueDetails.failedToDismiss"),
         variant: "destructive",
       });
       await refetchIssues();

@@ -172,71 +172,69 @@ const Notifications = () => {
         animate={{ opacity: 1 }}
         transition={{ delay: 0.2 }}
       >
-        <AnimatePresence>
-          {notifications.length > 0 ? (
-            notifications.map((notification, index) => (
-              <motion.button
-                key={notification.id}
-                onClick={() => navigate(notification.navigateTo)}
-                className={`w-full bg-card rounded-xl p-4 shadow-sm ${isRTL ? 'text-right' : 'text-left'} hover:shadow-md transition-shadow`}
-                initial={{ opacity: 0, x: isRTL ? -50 : 50 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: index * 0.1 }}
-                whileHover={{ 
-                  scale: 1.02, 
-                  x: isRTL ? -5 : 5,
-                  boxShadow: "0 4px 20px rgba(0,0,0,0.1)"
-                }}
-                whileTap={{ scale: 0.98 }}
-              >
-                <div className={`flex gap-3 ${isRTL ? 'flex-row-reverse' : ''}`}>
-                  <motion.div 
-                    className="flex-shrink-0 mt-1"
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
-                    transition={{ delay: index * 0.1 + 0.2 }}
-                  >
-                    {getStatusIcon(notification.status)}
-                  </motion.div>
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-medium text-foreground text-sm">
-                      {notification.title}
-                    </h3>
-                    <p className="text-muted-foreground text-xs mt-1">
-                      {notification.message}
-                    </p>
-                    <p className="text-muted-foreground text-xs mt-2">
-                      {notification.time}
-                    </p>
-                  </div>
-                </div>
-              </motion.button>
-            ))
-          ) : (
-            <motion.div 
-              className="text-center py-12 text-muted-foreground"
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: 0.2 }}
+        {notifications.length > 0 ? (
+          notifications.map((notification, index) => (
+            <motion.div
+              key={notification.key}
+              onClick={() => navigate(notification.navigateTo)}
+              className={`w-full bg-card rounded-xl p-4 shadow-sm ${isRTL ? 'text-right' : 'text-left'} hover:shadow-md transition-shadow cursor-pointer`}
+              initial={{ opacity: 0, x: isRTL ? -50 : 50 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: index * 0.1 }}
+              whileHover={{ 
+                scale: 1.02, 
+                x: isRTL ? -5 : 5,
+                boxShadow: "0 4px 20px rgba(0,0,0,0.1)"
+              }}
+              whileTap={{ scale: 0.98 }}
             >
-              <motion.div
-                animate={{ 
-                  scale: [1, 1.1, 1],
-                  opacity: [0.5, 0.8, 0.5]
-                }}
-                transition={{ 
-                  duration: 2, 
-                  repeat: Infinity,
-                  ease: "easeInOut"
-                }}
-              >
-                <Bell className="w-12 h-12 mx-auto mb-4" />
-              </motion.div>
-              <p>{t('notifications.empty')}</p>
-              <p className="text-sm mt-2">{t('notifications.emptyDesc')}</p>
+              <div className={`flex gap-3 ${isRTL ? 'flex-row-reverse' : ''}`}>
+                <motion.div 
+                  className="flex-shrink-0 mt-1"
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ delay: index * 0.1 + 0.2 }}
+                >
+                  {getStatusIcon(notification.status)}
+                </motion.div>
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-medium text-foreground text-sm">
+                    {notification.title}
+                  </h3>
+                  <p className="text-muted-foreground text-xs mt-1">
+                    {notification.message}
+                  </p>
+                  <p className="text-muted-foreground text-xs mt-2">
+                    {notification.time}
+                  </p>
+                </div>
+              </div>
             </motion.div>
-          )}
-        </AnimatePresence>
+          ))
+        ) : (
+          <motion.div 
+            className="text-center py-12 text-muted-foreground"
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.2 }}
+          >
+            <motion.div
+              animate={{ 
+                scale: [1, 1.1, 1],
+                opacity: [0.5, 0.8, 0.5]
+              }}
+              transition={{ 
+                duration: 2, 
+                repeat: Infinity,
+                ease: "easeInOut"
+              }}
+            >
+              <Bell className="w-12 h-12 mx-auto mb-4" />
+            </motion.div>
+            <p>{t('notifications.empty')}</p>
+            <p className="text-sm mt-2">{t('notifications.emptyDesc')}</p>
+          </motion.div>
+        )}
       </motion.div>
 
       <BottomNav />
