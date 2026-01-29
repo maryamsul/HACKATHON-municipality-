@@ -44,6 +44,21 @@ const AddIssue = () => {
   const [showSuccess, setShowSuccess] = useState(false);
   const [isGettingLocation, setIsGettingLocation] = useState(false);
 
+  // If the user pastes/types "lat, lng" into the location input, derive coordinates.
+  // This avoids regressions where coordinates are visually present but `coordinates` state is null.
+  useEffect(() => {
+    const parsed = parseLatLngFromString(location);
+    if (!parsed) return;
+
+    setCoordinates((prev) => {
+      if (!prev) return parsed;
+      // Avoid churn if the values are effectively the same.
+      const sameLat = Math.abs(prev.lat - parsed.lat) < 1e-6;
+      const sameLng = Math.abs(prev.lng - parsed.lng) < 1e-6;
+      return sameLat && sameLng ? prev : parsed;
+    });
+  }, [location]);
+
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
       toast({
@@ -186,9 +201,24 @@ const AddIssue = () => {
       setShowSuccess(true);
     } catch (error) {
       console.error("Error creating issue:", error);
+
+      // Supabase errors often include useful `details`/`hint` fields.
+      const extra =
+        error && typeof error === "object"
+          ? [
+              (error as { details?: string }).details,
+              (error as { hint?: string }).hint,
+            ]
+              .filter(Boolean)
+              .join(" • ")
+          : "";
+
       toast({
         title: t('common.error'),
-        description: error instanceof Error ? error.message : t('addIssue.errorCreatingIssue'),
+        description:
+          error instanceof Error
+            ? `${error.message}${extra ? ` — ${extra}` : ""}`
+            : t('addIssue.errorCreatingIssue'),
         variant: "destructive",
       });
     } finally {
