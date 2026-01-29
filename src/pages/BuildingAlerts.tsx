@@ -43,8 +43,8 @@ import BottomNav from "@/components/BottomNav";
 import { useBuildings } from "@/context/BuildingsContext";
 import { useIssues } from "@/context/IssuesContext";
 import { useAuth } from "@/context/AuthContext";
-import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { updateIssueStatus, dismissIssue } from "@/api/issueApi";
 
 const BuildingAlerts = () => {
   const navigate = useNavigate();
@@ -150,22 +150,11 @@ const BuildingAlerts = () => {
     updateIssueOptimistic(issueId, { status: "pending_approved" });
 
     try {
-      const { data, error } = await supabase.functions.invoke("classify-report", {
-        body: {
-          type: "issue",
-          id: issueId,
-          status: "pending_approved",
-        },
-      });
+      const result = await updateIssueStatus(issueId, "pending_approved", null);
 
-      console.log("[BuildingAlerts] Accept response:", { data, error });
+      console.log("[BuildingAlerts] Accept response:", result);
 
-      if (error) {
-        console.error("[BuildingAlerts] Accept error:", error);
-        throw error;
-      }
-
-      if (data?.success) {
+      if (result.success) {
         toast({
           title: t("issueDetails.statusUpdated"),
           description: t("issueDetails.issueAccepted", "Issue has been accepted and is now visible to all users"),
@@ -174,7 +163,7 @@ const BuildingAlerts = () => {
       } else {
         toast({
           title: t("common.error"),
-          description: data?.error || t("issueDetails.failedToUpdateStatus"),
+          description: result.error || t("issueDetails.failedToUpdateStatus"),
           variant: "destructive",
         });
         refetchIssues(); // Revert
@@ -191,7 +180,7 @@ const BuildingAlerts = () => {
     }
   };
 
-  // Handle Dismiss action - deletes the issue
+  // Handle Dismiss action - deletes the issue via API
   const handleDismissIssue = async () => {
     if (!dismissIssueId) return;
     setIsDismissing(true);
@@ -214,29 +203,11 @@ const BuildingAlerts = () => {
     removeIssueOptimistic(issueId);
 
     try {
-      const { data, error } = await supabase.functions.invoke("classify-report", {
-        body: {
-          type: "issue",
-          id: issueId,
-          action: "dismiss",
-        },
-      });
+      const result = await dismissIssue(issueId);
 
-      console.log("[BuildingAlerts] Dismiss response:", { data, error });
+      console.log("[BuildingAlerts] Dismiss response:", result);
 
-      if (error) {
-        console.error("[BuildingAlerts] Dismiss invoke error:", error);
-        toast({
-          title: t("common.error"),
-          description: t("issueDetails.failedToDismiss", "Failed to dismiss issue"),
-          variant: "destructive",
-        });
-        // Re-sync list (reverts optimistic removal if needed)
-        await refetchIssues();
-        return;
-      }
-
-      if (data?.success) {
+      if (result.success) {
         toast({
           title: t("common.success"),
           description: t("issueDetails.issueDismissed", "Issue has been dismissed"),
@@ -246,7 +217,7 @@ const BuildingAlerts = () => {
       } else {
         toast({
           title: t("common.error"),
-          description: data?.error || t("issueDetails.failedToDismiss", "Failed to dismiss issue"),
+          description: result.error || t("issueDetails.failedToDismiss", "Failed to dismiss issue"),
           variant: "destructive",
         });
         await refetchIssues();
@@ -271,19 +242,11 @@ const BuildingAlerts = () => {
     updateIssueOptimistic(issueId, { status: newStatus as "under_review" | "under_maintenance" | "resolved" });
 
     try {
-      const { data, error } = await supabase.functions.invoke("classify-report", {
-        body: {
-          type: "issue",
-          id: issueId,
-          status: newStatus,
-        },
-      });
+      const result = await updateIssueStatus(issueId, newStatus, null);
 
-      console.log("[BuildingAlerts] Status change response:", { data, error });
+      console.log("[BuildingAlerts] Status change response:", result);
 
-      if (error) throw error;
-
-      if (data?.success) {
+      if (result.success) {
         toast({
           title: t("issueDetails.statusUpdated"),
           description: `${t("issueDetails.issueMarkedAs", "Issue marked as")} ${getStatusLabel(newStatus)}`,
@@ -292,7 +255,7 @@ const BuildingAlerts = () => {
       } else {
         toast({
           title: t("common.error"),
-          description: data?.error || t("issueDetails.failedToUpdateStatus"),
+          description: result.error || t("issueDetails.failedToUpdateStatus"),
           variant: "destructive",
         });
         refetchIssues();
