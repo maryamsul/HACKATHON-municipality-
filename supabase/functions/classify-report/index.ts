@@ -101,14 +101,44 @@ serve(async (req: Request) => {
     // 5. Handle Dismiss Action (delete the record)
     if (payload.action === "dismiss") {
       console.log("[classify-report] Processing DISMISS action for", table, "id:", queryId);
-      
-      const { data: deletedData, error: deleteError } = await supabaseAdmin
+
+      // IMPORTANT: Don't rely on delete().select() returning representation.
+      // First, check existence to avoid false "Record not found" responses.
+      const { data: existingRow, error: existingError } = await supabaseAdmin
+        .from(table)
+        .select("id")
+        .eq("id", queryId)
+        .maybeSingle();
+
+      console.log(
+        "[classify-report] Dismiss existence check - row:",
+        JSON.stringify(existingRow),
+        "| error:",
+        existingError,
+      );
+
+      if (existingError) {
+        console.error("[classify-report] Existence check error:", existingError);
+        return new Response(JSON.stringify({ success: false, error: existingError.message }), {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      if (!existingRow) {
+        console.error("[classify-report] No record found to delete with id:", queryId);
+        return new Response(JSON.stringify({ success: false, error: "Record not found" }), {
+          status: 404,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const { error: deleteError } = await supabaseAdmin
         .from(table)
         .delete()
-        .eq("id", queryId)
-        .select();
+        .eq("id", queryId);
 
-      console.log("[classify-report] Delete result - data:", JSON.stringify(deletedData), "| error:", deleteError);
+      console.log("[classify-report] Delete result - error:", deleteError);
 
       if (deleteError) {
         console.error("[classify-report] Delete error:", deleteError);
@@ -118,17 +148,8 @@ serve(async (req: Request) => {
         });
       }
 
-      // Check if any row was actually deleted
-      if (!deletedData || deletedData.length === 0) {
-        console.error("[classify-report] No record found to delete with id:", queryId);
-        return new Response(JSON.stringify({ success: false, error: "Record not found" }), {
-          status: 404,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-
       console.log("[classify-report] Successfully deleted record:", queryId);
-      return new Response(JSON.stringify({ success: true, action: "dismissed", deleted: deletedData }), {
+      return new Response(JSON.stringify({ success: true, action: "dismissed", id: queryId }), {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
