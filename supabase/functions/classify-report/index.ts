@@ -1,10 +1,10 @@
 // classify-report edge function - handles status updates and issue dismissal
-// Version: 2.0.0 - All responses return HTTP 200, dismiss is idempotent
+// Version: 2.1.0 - Fixed auth: use getUser() instead of getClaims()
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const VERSION = "2.0.0";
+const VERSION = "2.1.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -35,41 +35,31 @@ serve(async (req: Request) => {
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
     // 2. Auth Check - Get Authorization header
-    // NOTE: verify_jwt is disabled in config.toml, so we must validate JWT in code.
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) {
       console.error("[classify-report][" + requestId + "] Missing or invalid Authorization header");
-      // Always return 200 to avoid client crashes from non-2xx responses.
       return new Response(JSON.stringify({ success: false, error: "Unauthorized", requestId }), {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const token = authHeader.replace("Bearer ", "").trim();
-    if (!token) {
-      console.error("[classify-report][" + requestId + "] Empty JWT token");
-      return new Response(JSON.stringify({ success: false, error: "Unauthorized", requestId }), {
-        status: 200,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
+    // Use getUser() for reliable token validation (getClaims can fail in some edge cases)
     const supabaseAuth = createClient(supabaseUrl, supabaseAnonKey, {
       global: { headers: { Authorization: authHeader } },
     });
 
-    const { data: claimsData, error: claimsError } = await supabaseAuth.auth.getClaims(token);
-    if (claimsError || !claimsData?.claims?.sub) {
-      console.error("[classify-report][" + requestId + "] JWT validation failed:", claimsError);
+    const { data: userData, error: userError } = await supabaseAuth.auth.getUser();
+    if (userError || !userData?.user?.id) {
+      console.error("[classify-report][" + requestId + "] JWT validation failed:", userError?.message || "No user");
       return new Response(JSON.stringify({ success: false, error: "Unauthorized", requestId }), {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const userId = String(claimsData.claims.sub);
-    console.log("[classify-report][" + requestId + "] Authenticated user (claims.sub):", userId);
+    const userId = userData.user.id;
+    console.log("[classify-report][" + requestId + "] Authenticated user:", userId);
 
     // 3. Role Check using service role client
     const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
