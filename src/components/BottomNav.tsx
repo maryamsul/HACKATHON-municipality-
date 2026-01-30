@@ -34,23 +34,15 @@ const BottomNav = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { t } = useTranslation();
-  const { profile, user } = useAuth();
+  const { profile } = useAuth();
   const { buildings } = useSafeBuildings();
   const { issues } = useSafeIssues();
 
   const isEmployee = profile?.role === "employee";
-  const userId = user?.id;
-
-  // Employee badge: count of pending (awaiting review) buildings and issues
+  // Combined pending count from both buildings and issues
   const pendingBuildingsCount = buildings.filter((b: BuildingAtRisk) => b.status === "pending").length;
   const pendingIssuesCount = issues.filter((i: Issue) => i.status === "pending").length;
   const totalPendingCount = pendingBuildingsCount + pendingIssuesCount;
-
-  // Citizen badge: count of their own reports with status updates (not pending anymore)
-  const citizenNotificationsCount = userId
-    ? buildings.filter((b: BuildingAtRisk) => b.reported_by === userId && b.status !== "pending").length +
-      issues.filter((i: Issue) => i.reported_by === userId && i.status !== "pending" && i.status !== "pending_approved").length
-    : 0;
 
   // Base nav items for all users
   const baseNavItems = [
@@ -70,7 +62,7 @@ const BottomNav = () => {
       ]
     : [
         ...baseNavItems,
-        { icon: Bell, labelKey: "nav.notifications", path: "/notifications", badge: citizenNotificationsCount },
+        { icon: Bell, labelKey: "nav.notifications", path: "/notifications" },
         { icon: Settings, labelKey: "nav.settings", path: "/settings" },
       ];
 
