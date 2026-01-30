@@ -191,9 +191,9 @@ const BottomNav = () => {
                         isActive ? "stroke-[2.5px]" : "stroke-[1.5px]"
                       }`} 
                     />
-                    {/* Badge for pending alerts */}
-                    {"badge" in item && item.badge !== undefined && item.badge > 0 && (
-                      <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] bg-destructive text-destructive-foreground text-[10px] font-bold rounded-full flex items-center justify-center px-1">
+                    {/* Red notification badge */}
+                    {"badge" in item && typeof item.badge === "number" && item.badge > 0 && (
+                      <span className="absolute -top-1.5 -right-1.5 min-w-[20px] h-[20px] bg-destructive text-destructive-foreground text-[11px] font-bold rounded-full flex items-center justify-center px-1 shadow-lg border-2 border-background z-10">
                         {item.badge > 99 ? "99+" : item.badge}
                       </span>
                     )}
