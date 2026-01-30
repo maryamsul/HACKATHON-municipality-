@@ -3,17 +3,13 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/context/AuthContext";
-import { useContext } from "react";
-import { BuildingAtRisk, BuildingStatus } from "@/types/building";
-import { Issue, IssueStatus } from "@/types/issue";
-
-// Import context directly to handle potential missing provider gracefully
-import { createContext } from "react";
+import { useEffect, useState } from "react";
+import { BuildingAtRisk } from "@/types/building";
+import { Issue } from "@/types/issue";
 
 // Safe hooks that won't throw if provider is missing
 const useSafeBuildings = () => {
   try {
-    // Dynamic import to avoid circular dependency issues
     const { useBuildings } = require("@/context/BuildingsContext");
     return useBuildings();
   } catch {
@@ -30,19 +26,83 @@ const useSafeIssues = () => {
   }
 };
 
+// Key for localStorage to track seen notifications
+const SEEN_NOTIFICATIONS_KEY = "seen_notification_ids";
+
+// Get seen notification IDs from localStorage
+const getSeenNotificationIds = (): Set<string> => {
+  try {
+    const stored = localStorage.getItem(SEEN_NOTIFICATIONS_KEY);
+    return stored ? new Set(JSON.parse(stored)) : new Set();
+  } catch {
+    return new Set();
+  }
+};
+
 const BottomNav = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { t } = useTranslation();
-  const { profile } = useAuth();
+  const { profile, user } = useAuth();
   const { buildings } = useSafeBuildings();
   const { issues } = useSafeIssues();
+  const [citizenNotificationCount, setCitizenNotificationCount] = useState(0);
 
   const isEmployee = profile?.role === "employee";
-  // Combined pending count from both buildings and issues
+  
+  // Employee: count pending items awaiting review
   const pendingBuildingsCount = buildings.filter((b: BuildingAtRisk) => b.status === "pending").length;
   const pendingIssuesCount = issues.filter((i: Issue) => i.status === "pending").length;
   const totalPendingCount = pendingBuildingsCount + pendingIssuesCount;
+
+  // Citizen: count unseen status changes on their reports
+  useEffect(() => {
+    if (isEmployee || !user?.id) {
+      setCitizenNotificationCount(0);
+      return;
+    }
+
+    // Get user's reports that have been updated (not pending anymore)
+    const myBuildings = buildings.filter(
+      (b: BuildingAtRisk) => b.reported_by === user.id && b.status !== "pending"
+    );
+    const myIssues = issues.filter(
+      (i: Issue) => i.reported_by === user.id && i.status !== "pending"
+    );
+
+    // Get seen IDs
+    const seenIds = getSeenNotificationIds();
+
+    // Count unseen notifications
+    const unseenBuildings = myBuildings.filter((b: BuildingAtRisk) => !seenIds.has(`building-${b.id}`));
+    const unseenIssues = myIssues.filter((i: Issue) => !seenIds.has(`issue-${i.id}`));
+
+    setCitizenNotificationCount(unseenBuildings.length + unseenIssues.length);
+  }, [buildings, issues, user?.id, isEmployee]);
+
+  // Mark notifications as seen when visiting the notifications page
+  useEffect(() => {
+    if (location.pathname === "/notifications" && user?.id && !isEmployee) {
+      const myBuildings = buildings.filter(
+        (b: BuildingAtRisk) => b.reported_by === user.id && b.status !== "pending"
+      );
+      const myIssues = issues.filter(
+        (i: Issue) => i.reported_by === user.id && i.status !== "pending"
+      );
+
+      const newSeenIds = [
+        ...myBuildings.map((b: BuildingAtRisk) => `building-${b.id}`),
+        ...myIssues.map((i: Issue) => `issue-${i.id}`),
+      ];
+
+      if (newSeenIds.length > 0) {
+        const currentSeen = getSeenNotificationIds();
+        newSeenIds.forEach((id) => currentSeen.add(id));
+        localStorage.setItem(SEEN_NOTIFICATIONS_KEY, JSON.stringify([...currentSeen]));
+        setCitizenNotificationCount(0);
+      }
+    }
+  }, [location.pathname, buildings, issues, user?.id, isEmployee]);
 
   // Base nav items for all users
   const baseNavItems = [
@@ -53,7 +113,7 @@ const BottomNav = () => {
     { icon: Heart, labelKey: "nav.donors", path: "/donors" },
   ];
 
-  // Add alerts for employees, otherwise notifications
+  // Add alerts for employees (with pending count), notifications for citizens (with unseen count)
   const navItems = isEmployee
     ? [
         ...baseNavItems,
@@ -62,7 +122,7 @@ const BottomNav = () => {
       ]
     : [
         ...baseNavItems,
-        { icon: Bell, labelKey: "nav.notifications", path: "/notifications" },
+        { icon: Bell, labelKey: "nav.notifications", path: "/notifications", badge: citizenNotificationCount },
         { icon: Settings, labelKey: "nav.settings", path: "/settings" },
       ];
 
