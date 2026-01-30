@@ -59,7 +59,8 @@ const Header = ({ onFilter, showSearch = true }: HeaderProps) => {
     return parts.map(n => n[0]).join("").toUpperCase().slice(0, 2);
   };
 
-  const formatLocation = (lat: number, lng: number) => {
+  const formatLocation = (lat: number | null, lng: number | null) => {
+    if (lat === null || lng === null) return "N/A";
     return `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
   };
 
