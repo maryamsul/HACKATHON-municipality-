@@ -26,13 +26,14 @@ const useSafeIssues = () => {
   }
 };
 
-// Key for localStorage to track seen notifications
+// Keys for localStorage to track seen notifications
 const SEEN_NOTIFICATIONS_KEY = "seen_notification_ids";
+const SEEN_EMPLOYEE_ALERTS_KEY = "seen_employee_alert_ids";
 
 // Get seen notification IDs from localStorage
-const getSeenNotificationIds = (): Set<string> => {
+const getSeenIds = (key: string): Set<string> => {
   try {
-    const stored = localStorage.getItem(SEEN_NOTIFICATIONS_KEY);
+    const stored = localStorage.getItem(key);
     return stored ? new Set(JSON.parse(stored)) : new Set();
   } catch {
     return new Set();
@@ -46,14 +47,47 @@ const BottomNav = () => {
   const { profile, user } = useAuth();
   const { buildings } = useSafeBuildings();
   const { issues } = useSafeIssues();
+  const [employeeUnseenCount, setEmployeeUnseenCount] = useState(0);
   const [citizenNotificationCount, setCitizenNotificationCount] = useState(0);
 
   const isEmployee = profile?.role === "employee";
   
-  // Employee: count pending items awaiting review
-  const pendingBuildingsCount = buildings.filter((b: BuildingAtRisk) => b.status === "pending").length;
-  const pendingIssuesCount = issues.filter((i: Issue) => i.status === "pending").length;
-  const totalPendingCount = pendingBuildingsCount + pendingIssuesCount;
+  // Get pending items for employees
+  const pendingBuildings = buildings.filter((b: BuildingAtRisk) => b.status === "pending");
+  const pendingIssues = issues.filter((i: Issue) => i.status === "pending");
+
+  // Employee: count unseen pending items (new reports they haven't viewed yet)
+  useEffect(() => {
+    if (!isEmployee) {
+      setEmployeeUnseenCount(0);
+      return;
+    }
+
+    const seenIds = getSeenIds(SEEN_EMPLOYEE_ALERTS_KEY);
+    
+    // Count unseen pending items
+    const unseenBuildings = pendingBuildings.filter((b: BuildingAtRisk) => !seenIds.has(`building-${b.id}`));
+    const unseenIssues = pendingIssues.filter((i: Issue) => !seenIds.has(`issue-${i.id}`));
+
+    setEmployeeUnseenCount(unseenBuildings.length + unseenIssues.length);
+  }, [buildings, issues, isEmployee, pendingBuildings, pendingIssues]);
+
+  // Mark employee alerts as seen when visiting the alerts page
+  useEffect(() => {
+    if (location.pathname === "/building-alerts" && isEmployee) {
+      const newSeenIds = [
+        ...pendingBuildings.map((b: BuildingAtRisk) => `building-${b.id}`),
+        ...pendingIssues.map((i: Issue) => `issue-${i.id}`),
+      ];
+
+      if (newSeenIds.length > 0) {
+        const currentSeen = getSeenIds(SEEN_EMPLOYEE_ALERTS_KEY);
+        newSeenIds.forEach((id) => currentSeen.add(id));
+        localStorage.setItem(SEEN_EMPLOYEE_ALERTS_KEY, JSON.stringify([...currentSeen]));
+        setEmployeeUnseenCount(0);
+      }
+    }
+  }, [location.pathname, pendingBuildings, pendingIssues, isEmployee]);
 
   // Citizen: count unseen status changes on their reports
   useEffect(() => {
@@ -71,7 +105,7 @@ const BottomNav = () => {
     );
 
     // Get seen IDs
-    const seenIds = getSeenNotificationIds();
+    const seenIds = getSeenIds(SEEN_NOTIFICATIONS_KEY);
 
     // Count unseen notifications
     const unseenBuildings = myBuildings.filter((b: BuildingAtRisk) => !seenIds.has(`building-${b.id}`));
@@ -96,7 +130,7 @@ const BottomNav = () => {
       ];
 
       if (newSeenIds.length > 0) {
-        const currentSeen = getSeenNotificationIds();
+      const currentSeen = getSeenIds(SEEN_NOTIFICATIONS_KEY);
         newSeenIds.forEach((id) => currentSeen.add(id));
         localStorage.setItem(SEEN_NOTIFICATIONS_KEY, JSON.stringify([...currentSeen]));
         setCitizenNotificationCount(0);
@@ -113,11 +147,11 @@ const BottomNav = () => {
     { icon: Heart, labelKey: "nav.donors", path: "/donors" },
   ];
 
-  // Add alerts for employees (with pending count), notifications for citizens (with unseen count)
+  // Add alerts for employees (with unseen count), notifications for citizens (with unseen count)
   const navItems = isEmployee
     ? [
         ...baseNavItems,
-        { icon: AlertTriangle, labelKey: "nav.alerts", path: "/building-alerts", badge: totalPendingCount },
+        { icon: AlertTriangle, labelKey: "nav.alerts", path: "/building-alerts", badge: employeeUnseenCount },
         { icon: Settings, labelKey: "nav.settings", path: "/settings" },
       ]
     : [
