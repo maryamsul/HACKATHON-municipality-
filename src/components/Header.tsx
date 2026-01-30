@@ -52,6 +52,8 @@ const Header = ({ onFilter, showSearch = true }: HeaderProps) => {
   const searchRef = useRef<HTMLDivElement>(null);
   const isRTL = i18n.language === 'ar';
 
+  const safeLower = (value: unknown) => (typeof value === "string" ? value.toLowerCase() : "");
+
   const getInitials = (name: string | undefined | null) => {
     if (!name || name.trim() === "") return "U";
     const parts = name.trim().split(" ").filter(n => n.length > 0);
@@ -59,8 +61,8 @@ const Header = ({ onFilter, showSearch = true }: HeaderProps) => {
     return parts.map(n => n[0]).join("").toUpperCase().slice(0, 2);
   };
 
-  const formatLocation = (lat: number | null, lng: number | null) => {
-    if (lat === null || lng === null) return "N/A";
+  const formatLocation = (lat: number | null | undefined, lng: number | null | undefined) => {
+    if (typeof lat !== "number" || typeof lng !== "number") return "N/A";
     return `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
   };
 
@@ -75,11 +77,12 @@ const Header = ({ onFilter, showSearch = true }: HeaderProps) => {
     ? issues
         .filter((issue) => {
           const locationStr = formatLocation(issue.latitude, issue.longitude);
+          const q = searchQuery.toLowerCase();
           const matchesSearch = !hasSearchQuery ||
-            locationStr.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            issue.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            issue.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            issue.title.toLowerCase().includes(searchQuery.toLowerCase());
+            locationStr.toLowerCase().includes(q) ||
+            safeLower(issue.category).includes(q) ||
+            safeLower(issue.description).includes(q) ||
+            safeLower(issue.title).includes(q);
 
           const matchesStatus =
             filters.status === "all" || issue.status === filters.status;
