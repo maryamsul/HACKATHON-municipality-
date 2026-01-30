@@ -6,25 +6,8 @@ import { useAuth } from "@/context/AuthContext";
 import { useEffect, useState } from "react";
 import { BuildingAtRisk } from "@/types/building";
 import { Issue } from "@/types/issue";
-
-// Safe hooks that won't throw if provider is missing
-const useSafeBuildings = () => {
-  try {
-    const { useBuildings } = require("@/context/BuildingsContext");
-    return useBuildings();
-  } catch {
-    return { buildings: [] as BuildingAtRisk[], loading: true };
-  }
-};
-
-const useSafeIssues = () => {
-  try {
-    const { useIssues } = require("@/context/IssuesContext");
-    return useIssues();
-  } catch {
-    return { issues: [] as Issue[], loading: true };
-  }
-};
+import { useBuildings } from "@/context/BuildingsContext";
+import { useIssues } from "@/context/IssuesContext";
 
 // Keys for localStorage to track seen notifications
 const SEEN_NOTIFICATIONS_KEY = "seen_notification_ids";
@@ -45,8 +28,8 @@ const BottomNav = () => {
   const location = useLocation();
   const { t } = useTranslation();
   const { profile, user } = useAuth();
-  const { buildings } = useSafeBuildings();
-  const { issues } = useSafeIssues();
+  const { buildings } = useBuildings();
+  const { issues } = useIssues();
   const [employeeUnseenCount, setEmployeeUnseenCount] = useState(0);
   const [citizenNotificationCount, setCitizenNotificationCount] = useState(0);
 
