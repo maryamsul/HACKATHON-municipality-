@@ -36,7 +36,6 @@ export const IssuesProvider = ({ children }: { children: ReactNode }) => {
     const { data, error } = await supabase
       .from("issues")
       .select("*")
-      .is("dismissed_at", null)
       .order("created_at", { ascending: false });
 
     if (error) {

@@ -1,35 +1,20 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-// Static CORS headers - guaranteed to work with Supabase client
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
 Deno.serve(async (req) => {
-  console.log("[dismiss-issue] Function entered", { method: req.method, url: req.url });
-
-  // Handle CORS preflight - MUST return 200 or 204 with headers
+  // Handle CORS preflight
   if (req.method === "OPTIONS") {
-    console.log("[dismiss-issue] Handling OPTIONS preflight");
-    return new Response(null, { status: 204, headers: corsHeaders });
-  }
-
-  // Only allow POST
-  if (req.method !== "POST") {
-    console.log("[dismiss-issue] Method not allowed:", req.method);
-    return new Response(
-      JSON.stringify({ success: false, error: "Method Not Allowed" }),
-      { status: 405, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return new Response("ok", { headers: corsHeaders });
   }
 
   try {
-    // Check auth header
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) {
-      console.log("[dismiss-issue] Missing or invalid auth header");
       return new Response(
         JSON.stringify({ success: false, error: "Unauthorized" }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -37,21 +22,12 @@ Deno.serve(async (req) => {
     }
 
     // Parse request body
-    let body: { id?: unknown; action?: unknown };
-    try {
-      body = await req.json();
-    } catch {
-      console.error("[dismiss-issue] Invalid JSON body");
-      return new Response(
-        JSON.stringify({ success: false, error: "Invalid JSON body" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
+    const body = await req.json();
     const { id, action } = body;
-    console.log("[dismiss-issue] Request body:", { id, action });
 
-    // Validate action
+    console.log("[dismiss-issue] Request received:", { id, action });
+
+    // Validate input
     if (action !== "dismiss") {
       return new Response(
         JSON.stringify({ success: false, error: "Invalid action. Expected 'dismiss'" }),
@@ -59,7 +35,6 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Validate issue ID
     const issueId = typeof id === "number" ? id : parseInt(String(id), 10);
     if (!Number.isFinite(issueId) || issueId <= 0) {
       return new Response(
@@ -69,27 +44,17 @@ Deno.serve(async (req) => {
     }
 
     // Create Supabase client for auth validation
-    const supabaseUrl = Deno.env.get("SUPABASE_URL");
-    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY");
-    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-
-    if (!supabaseUrl || !supabaseAnonKey || !supabaseServiceKey) {
-      console.error("[dismiss-issue] Missing environment variables");
-      return new Response(
-        JSON.stringify({ success: false, error: "Server configuration error" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    const supabaseAuth = createClient(supabaseUrl, supabaseAnonKey, {
-      global: { headers: { Authorization: authHeader } },
-    });
+    const supabaseAuth = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_ANON_KEY")!,
+      { global: { headers: { Authorization: authHeader } } }
+    );
 
     // Validate JWT and get user claims
     const token = authHeader.replace("Bearer ", "");
-    const { data: claimsData, error: claimsError } = await supabaseAuth.auth.getUser(token);
+    const { data: claimsData, error: claimsError } = await supabaseAuth.auth.getClaims(token);
 
-    if (claimsError || !claimsData?.user) {
+    if (claimsError || !claimsData?.claims) {
       console.error("[dismiss-issue] Auth error:", claimsError);
       return new Response(
         JSON.stringify({ success: false, error: "Unauthorized" }),
@@ -97,19 +62,21 @@ Deno.serve(async (req) => {
       );
     }
 
-    const userId = claimsData.user.id;
+    const userId = claimsData.claims.sub;
     console.log("[dismiss-issue] Authenticated user:", userId);
 
-    // Create admin client for role check and soft delete
-    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+    // Create admin client for role check and deletion
+    const supabaseAdmin = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+    );
 
-    // Check if user has employee role
+    // Check if user has employee role (avoid .single() to prevent failures if multiple roles exist)
     const { data: employeeRole, error: roleError } = await supabaseAdmin
       .from("user_roles")
       .select("id")
       .eq("user_id", userId)
       .eq("role", "employee")
-      .limit(1)
       .maybeSingle();
 
     if (roleError) {
@@ -121,64 +88,74 @@ Deno.serve(async (req) => {
     }
 
     if (!employeeRole) {
-      console.log("[dismiss-issue] Forbidden: user is not an employee", { userId });
+      console.error("[dismiss-issue] Forbidden: not employee", { userId });
       return new Response(
         JSON.stringify({ success: false, error: "Only employees can dismiss issues" }),
         { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    console.log("[dismiss-issue] Employee verified, proceeding with soft delete", { userId, issueId });
+    console.log("[dismiss-issue] Employee verified", { userId, issueId });
 
-    // Check if issue exists and is not already dismissed
+    // Idempotency: if already absent, return success.
     const { data: existingIssue, error: existingError } = await supabaseAdmin
       .from("issues")
-      .select("id, dismissed_at")
+      .select("id")
       .eq("id", issueId)
       .maybeSingle();
 
     if (existingError) {
-      console.error("[dismiss-issue] Pre-check error:", existingError);
+      console.error("[dismiss-issue] Pre-check select error:", existingError);
       return new Response(
         JSON.stringify({ success: false, error: "Unable to verify issue existence" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Idempotent: if already dismissed or doesn't exist, return success
-    if (!existingIssue || existingIssue.dismissed_at) {
-      console.log("[dismiss-issue] Already dismissed or absent (idempotent success)", { issueId });
+    if (!existingIssue) {
+      console.log("[dismiss-issue] Issue already absent (idempotent success)", { issueId });
       return new Response(
         JSON.stringify({ success: true, action: "dismissed", id: issueId }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Soft delete: set dismissed_at timestamp
-    const { data: updatedIssue, error: updateError } = await supabaseAdmin
+    console.log("[dismiss-issue] Deleting issue", { issueId });
+
+    const { error: deleteError } = await supabaseAdmin.from("issues").delete().eq("id", issueId);
+
+    if (deleteError) {
+      console.error("[dismiss-issue] Delete error:", deleteError);
+      return new Response(
+        JSON.stringify({ success: false, error: deleteError.message }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Post-check: if the record still exists, do NOT return a false-success.
+    const { data: postIssue, error: postError } = await supabaseAdmin
       .from("issues")
-      .update({ dismissed_at: new Date().toISOString() })
-      .eq("id", issueId)
       .select("id")
+      .eq("id", issueId)
       .maybeSingle();
 
-    if (updateError) {
-      console.error("[dismiss-issue] Update error:", updateError);
+    if (postError) {
+      console.error("[dismiss-issue] Post-check select error:", postError);
       return new Response(
-        JSON.stringify({ success: false, error: updateError.message }),
+        JSON.stringify({ success: false, error: "Unable to verify deletion" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    if (!updatedIssue) {
-      console.error("[dismiss-issue] Update returned no data", { issueId });
+    if (postIssue) {
+      console.error("[dismiss-issue] Delete reported success but record still exists", { issueId });
       return new Response(
-        JSON.stringify({ success: false, error: "Dismiss failed: issue not found or not updated" }),
+        JSON.stringify({ success: false, error: "Dismiss failed: issue still exists" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    console.log("[dismiss-issue] Issue soft-deleted successfully", { issueId });
+    console.log("[dismiss-issue] Issue dismissed successfully", { issueId });
 
     return new Response(
       JSON.stringify({ success: true, action: "dismissed", id: issueId }),

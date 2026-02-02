@@ -199,14 +199,15 @@ const BuildingAlerts = () => {
 
     console.log("[BuildingAlerts] Dismissing issue ID:", issueId);
 
+    // Optimistic remove from UI immediately
+    removeIssueOptimistic(issueId);
+
     try {
       const result = await dismissIssue(issueId);
 
       console.log("[BuildingAlerts] Dismiss response:", result);
 
       if (result.success) {
-        // Only remove from UI AFTER backend confirms dismissal succeeded
-        removeIssueOptimistic(issueId);
         toast({
           title: t("common.success"),
           description: t("issueDetails.issueDismissed", "Issue has been dismissed"),
