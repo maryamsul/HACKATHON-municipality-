@@ -140,40 +140,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const signIn = async (email: string, password: string): Promise<{ error: string | null }> => {
-    try {
-      // Use secure-login edge function for rate-limited authentication
-      const { data, error: invokeError } = await supabase.functions.invoke("secure-login", {
-        body: { email, password },
-      });
-
-      if (invokeError) {
-        console.error("Login invoke error:", invokeError);
-        return { error: "An error occurred. Please try again." };
-      }
-
-      if (!data?.success) {
-        // Return generic error (rate limiting is handled silently on backend)
-        return { error: data?.error || "Invalid credentials" };
-      }
-
-      // Set the session from the edge function response
-      if (data.session) {
-        const { error: setSessionError } = await supabase.auth.setSession({
-          access_token: data.session.access_token,
-          refresh_token: data.session.refresh_token,
-        });
-
-        if (setSessionError) {
-          console.error("Set session error:", setSessionError);
-          return { error: "Failed to establish session" };
-        }
-      }
-
-      return { error: null };
-    } catch (err) {
-      console.error("SignIn error:", err);
-      return { error: "An error occurred. Please try again." };
-    }
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    return { error: error?.message || null };
   };
 
   const signOut = async () => {

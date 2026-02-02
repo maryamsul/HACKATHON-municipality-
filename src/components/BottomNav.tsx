@@ -3,23 +3,30 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/context/AuthContext";
-import { useEffect, useState } from "react";
-import { BuildingAtRisk } from "@/types/building";
-import { Issue } from "@/types/issue";
-import { useBuildings } from "@/context/BuildingsContext";
-import { useIssues } from "@/context/IssuesContext";
+import { useContext } from "react";
+import { BuildingAtRisk, BuildingStatus } from "@/types/building";
+import { Issue, IssueStatus } from "@/types/issue";
 
-// Keys for localStorage to track seen notifications
-const SEEN_NOTIFICATIONS_KEY = "seen_notification_ids";
-const SEEN_EMPLOYEE_ALERTS_KEY = "seen_employee_alert_ids";
+// Import context directly to handle potential missing provider gracefully
+import { createContext } from "react";
 
-// Get seen notification IDs from localStorage
-const getSeenIds = (key: string): Set<string> => {
+// Safe hooks that won't throw if provider is missing
+const useSafeBuildings = () => {
   try {
-    const stored = localStorage.getItem(key);
-    return stored ? new Set(JSON.parse(stored)) : new Set();
+    // Dynamic import to avoid circular dependency issues
+    const { useBuildings } = require("@/context/BuildingsContext");
+    return useBuildings();
   } catch {
-    return new Set();
+    return { buildings: [] as BuildingAtRisk[], loading: true };
+  }
+};
+
+const useSafeIssues = () => {
+  try {
+    const { useIssues } = require("@/context/IssuesContext");
+    return useIssues();
+  } catch {
+    return { issues: [] as Issue[], loading: true };
   }
 };
 
@@ -27,99 +34,15 @@ const BottomNav = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { t } = useTranslation();
-  const { profile, user } = useAuth();
-  const { buildings } = useBuildings();
-  const { issues } = useIssues();
-  const [employeeUnseenCount, setEmployeeUnseenCount] = useState(0);
-  const [citizenNotificationCount, setCitizenNotificationCount] = useState(0);
+  const { profile } = useAuth();
+  const { buildings } = useSafeBuildings();
+  const { issues } = useSafeIssues();
 
   const isEmployee = profile?.role === "employee";
-  
-  // Get pending items for employees
-  const pendingBuildings = buildings.filter((b: BuildingAtRisk) => b.status === "pending");
-  const pendingIssues = issues.filter((i: Issue) => i.status === "pending");
-
-  // Employee: count unseen pending items (new reports they haven't viewed yet)
-  useEffect(() => {
-    if (!isEmployee) {
-      setEmployeeUnseenCount(0);
-      return;
-    }
-
-    const seenIds = getSeenIds(SEEN_EMPLOYEE_ALERTS_KEY);
-    
-    // Count unseen pending items
-    const unseenBuildings = pendingBuildings.filter((b: BuildingAtRisk) => !seenIds.has(`building-${b.id}`));
-    const unseenIssues = pendingIssues.filter((i: Issue) => !seenIds.has(`issue-${i.id}`));
-
-    setEmployeeUnseenCount(unseenBuildings.length + unseenIssues.length);
-  }, [buildings, issues, isEmployee, pendingBuildings, pendingIssues]);
-
-  // Mark employee alerts as seen when visiting the alerts page
-  useEffect(() => {
-    if (location.pathname === "/building-alerts" && isEmployee) {
-      const newSeenIds = [
-        ...pendingBuildings.map((b: BuildingAtRisk) => `building-${b.id}`),
-        ...pendingIssues.map((i: Issue) => `issue-${i.id}`),
-      ];
-
-      if (newSeenIds.length > 0) {
-        const currentSeen = getSeenIds(SEEN_EMPLOYEE_ALERTS_KEY);
-        newSeenIds.forEach((id) => currentSeen.add(id));
-        localStorage.setItem(SEEN_EMPLOYEE_ALERTS_KEY, JSON.stringify([...currentSeen]));
-        setEmployeeUnseenCount(0);
-      }
-    }
-  }, [location.pathname, pendingBuildings, pendingIssues, isEmployee]);
-
-  // Citizen: count unseen status changes on their reports
-  useEffect(() => {
-    if (isEmployee || !user?.id) {
-      setCitizenNotificationCount(0);
-      return;
-    }
-
-    // Get user's reports that have been updated (not pending anymore)
-    const myBuildings = buildings.filter(
-      (b: BuildingAtRisk) => b.reported_by === user.id && b.status !== "pending"
-    );
-    const myIssues = issues.filter(
-      (i: Issue) => i.reported_by === user.id && i.status !== "pending"
-    );
-
-    // Get seen IDs
-    const seenIds = getSeenIds(SEEN_NOTIFICATIONS_KEY);
-
-    // Count unseen notifications
-    const unseenBuildings = myBuildings.filter((b: BuildingAtRisk) => !seenIds.has(`building-${b.id}`));
-    const unseenIssues = myIssues.filter((i: Issue) => !seenIds.has(`issue-${i.id}`));
-
-    setCitizenNotificationCount(unseenBuildings.length + unseenIssues.length);
-  }, [buildings, issues, user?.id, isEmployee]);
-
-  // Mark notifications as seen when visiting the notifications page
-  useEffect(() => {
-    if (location.pathname === "/notifications" && user?.id && !isEmployee) {
-      const myBuildings = buildings.filter(
-        (b: BuildingAtRisk) => b.reported_by === user.id && b.status !== "pending"
-      );
-      const myIssues = issues.filter(
-        (i: Issue) => i.reported_by === user.id && i.status !== "pending"
-      );
-
-      const newSeenIds = [
-        ...myBuildings.map((b: BuildingAtRisk) => `building-${b.id}`),
-        ...myIssues.map((i: Issue) => `issue-${i.id}`),
-      ];
-
-      if (newSeenIds.length > 0) {
-      const currentSeen = getSeenIds(SEEN_NOTIFICATIONS_KEY);
-        newSeenIds.forEach((id) => currentSeen.add(id));
-        localStorage.setItem(SEEN_NOTIFICATIONS_KEY, JSON.stringify([...currentSeen]));
-        setCitizenNotificationCount(0);
-      }
-    }
-  }, [location.pathname, buildings, issues, user?.id, isEmployee]);
+  // Combined pending count from both buildings and issues
+  const pendingBuildingsCount = buildings.filter((b: BuildingAtRisk) => b.status === "pending").length;
+  const pendingIssuesCount = issues.filter((i: Issue) => i.status === "pending").length;
+  const totalPendingCount = pendingBuildingsCount + pendingIssuesCount;
 
   // Base nav items for all users
   const baseNavItems = [
@@ -130,16 +53,16 @@ const BottomNav = () => {
     { icon: Heart, labelKey: "nav.donors", path: "/donors" },
   ];
 
-  // Add alerts for employees (with unseen count), notifications for citizens (with unseen count)
+  // Add alerts for employees, otherwise notifications
   const navItems = isEmployee
     ? [
         ...baseNavItems,
-        { icon: AlertTriangle, labelKey: "nav.alerts", path: "/building-alerts", badge: employeeUnseenCount },
+        { icon: AlertTriangle, labelKey: "nav.alerts", path: "/building-alerts", badge: totalPendingCount },
         { icon: Settings, labelKey: "nav.settings", path: "/settings" },
       ]
     : [
         ...baseNavItems,
-        { icon: Bell, labelKey: "nav.notifications", path: "/notifications", badge: citizenNotificationCount },
+        { icon: Bell, labelKey: "nav.notifications", path: "/notifications" },
         { icon: Settings, labelKey: "nav.settings", path: "/settings" },
       ];
 
@@ -208,9 +131,9 @@ const BottomNav = () => {
                         isActive ? "stroke-[2.5px]" : "stroke-[1.5px]"
                       }`} 
                     />
-                    {/* Red notification badge */}
-                    {"badge" in item && typeof item.badge === "number" && item.badge > 0 && (
-                      <span className="absolute -top-1.5 -right-1.5 min-w-[20px] h-[20px] bg-destructive text-destructive-foreground text-[11px] font-bold rounded-full flex items-center justify-center px-1 shadow-lg border-2 border-background z-10">
+                    {/* Badge for pending alerts */}
+                    {"badge" in item && item.badge !== undefined && item.badge > 0 && (
+                      <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] bg-destructive text-destructive-foreground text-[10px] font-bold rounded-full flex items-center justify-center px-1">
                         {item.badge > 99 ? "99+" : item.badge}
                       </span>
                     )}

@@ -15,7 +15,3 @@ verify_jwt = false
 [functions.dismiss-issue]
 # Validates JWT in code for flexibility
 verify_jwt = false
-
-[functions.secure-login]
-# Public endpoint - handles its own rate limiting
-verify_jwt = false

@@ -34,31 +34,6 @@ const AddBuildingAtRiskForm = ({ onClose }: AddBuildingAtRiskFormProps) => {
   const [showSuccess, setShowSuccess] = useState(false);
   const [isGettingLocation, setIsGettingLocation] = useState(false);
 
-  // Parse coordinates from manual input (supports "lat, lng" format)
-  const parseCoordinatesFromInput = (input: string): { lat: number; lng: number } | null => {
-    const cleaned = input.trim();
-    // Match patterns like "33.8938, 35.5018" or "33.8938,35.5018"
-    const match = cleaned.match(/^(-?\d+\.?\d*)\s*,\s*(-?\d+\.?\d*)$/);
-    if (match) {
-      const lat = parseFloat(match[1]);
-      const lng = parseFloat(match[2]);
-      if (isFinite(lat) && isFinite(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
-        return { lat, lng };
-      }
-    }
-    return null;
-  };
-
-  const handleAddressChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    setAddress(value);
-    // Try to parse coordinates from manual input
-    const parsed = parseCoordinatesFromInput(value);
-    if (parsed) {
-      setCoordinates(parsed);
-    }
-  };
-
   const handlePhotoClick = () => {
     fileInputRef.current?.click();
   };
@@ -255,7 +230,7 @@ const AddBuildingAtRiskForm = ({ onClose }: AddBuildingAtRiskFormProps) => {
               <MapPin className={`absolute ${isRTL ? 'right-3' : 'left-3'} top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground`} />
               <Input
                 value={address}
-                onChange={handleAddressChange}
+                onChange={(e) => setAddress(e.target.value)}
                 placeholder={t('addIssue.locationPlaceholder')}
                 className={isRTL ? 'pr-9' : 'pl-9'}
                 dir="ltr"

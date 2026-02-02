@@ -11,17 +11,14 @@ const SearchResults = () => {
   const { t, i18n } = useTranslation();
   const isRTL = i18n.language === 'ar';
   const query = searchParams.get("q") || "";
-  const q = query.toLowerCase();
   const navigate = useNavigate();
   const { issues } = useIssues();
 
-  const safeLower = (value: unknown) => (typeof value === "string" ? value.toLowerCase() : "");
-
   const filteredIssues = issues.filter(
     (issue) =>
-      safeLower(issue.title).includes(q) ||
-      safeLower(issue.category).includes(q) ||
-      safeLower(issue.description).includes(q)
+      issue.title.toLowerCase().includes(query.toLowerCase()) ||
+      issue.category.toLowerCase().includes(query.toLowerCase()) ||
+      issue.description.toLowerCase().includes(query.toLowerCase())
   );
 
   return (
