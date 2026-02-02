@@ -163,8 +163,8 @@ export const updateIssueStatus = async (
 };
 
 /**
- * Dismisses an issue via the classify-report edge function.
- * Only employees can dismiss issues. Idempotent - returns success even if already dismissed.
+ * Dismisses (deletes) an issue via the dismiss-issue edge function.
+ * Only employees can dismiss issues. Idempotent - returns success even if already deleted.
  */
 export const dismissIssue = async (
   issueId: number
@@ -177,19 +177,17 @@ export const dismissIssue = async (
       };
     }
 
-    console.log("[issueApi] Calling classify-report for dismiss, issueId:", issueId);
+    console.log("Calling dismiss-issue API for issue dismissal");
 
-    // Use classify-report with action: "dismiss" for soft delete
-    const { data, error } = await supabase.functions.invoke("classify-report", {
+    const { data, error } = await supabase.functions.invoke("dismiss-issue", {
       body: {
-        type: "issue",
         id: issueId,
         action: "dismiss",
       },
     });
 
     if (error) {
-      console.error("[issueApi] Dismiss invoke error:", error);
+      console.error("Edge function error:", error);
       return {
         success: false,
         error: error.message || "Failed to dismiss issue",
@@ -197,7 +195,6 @@ export const dismissIssue = async (
       };
     }
 
-    // Always check response success field
     if (!data?.success) {
       return {
         success: false,
@@ -211,7 +208,7 @@ export const dismissIssue = async (
       data: data,
     };
   } catch (err) {
-    console.error("[issueApi] dismissIssue exception:", err);
+    console.error("Unexpected error in dismissIssue:", err);
     return {
       success: false,
       error: err instanceof Error ? err.message : "Unknown error occurred",

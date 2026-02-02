@@ -13,5 +13,4 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.dismiss-issue]
-# Validates JWT in code for flexibility
 verify_jwt = false
